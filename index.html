@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AURA — Kişisel Asistan</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:#05070d;color:#eaf4ff;font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;overflow:hidden} .app{width:min(1100px,94vw);height:min(760px,92vh);border:1px solid #18304a;border-radius:28px;background:radial-gradient(circle at 50% 42%,#10233b 0,#080d17 32%,#05070d 70%);box-shadow:0 0 80px #0b426633;position:relative;display:flex;flex-direction:column;align-items:center}.top{width:100%;padding:24px 30px;display:flex;justify-content:space-between;align-items:center}.logo{letter-spacing:9px;font-size:25px;font-weight:700}.status{font-size:13px;color:#73d7ff}.core{width:250px;height:250px;border-radius:50%;margin-top:55px;border:1px solid #49c8ff88;box-shadow:0 0 35px #20a9ff55, inset 0 0 45px #1473a944;display:flex;align-items:center;justify-content:center;position:relative;animation:pulse 3s infinite}.core:before,.core:after{content:"";position:absolute;border:1px solid #48c9ff55;border-radius:50%;width:115%;height:115%;animation:spin 12s linear infinite}.core:after{width:135%;height:135%;animation-direction:reverse;animation-duration:18s}.orb{width:105px;height:105px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#63d7ff 15%,#176bff 45%,#06162b 75%);box-shadow:0 0 55px #35c8ff}.label{margin-top:38px;text-align:center}.label h1{font-size:22px;margin:0 0 9px}.label p{margin:0;color:#8da6bd}.controls{position:absolute;bottom:35px;display:flex;gap:15px}.btn{border:1px solid #28506c;background:#0b1421;color:#dff6ff;padding:13px 20px;border-radius:14px;cursor:pointer}.btn:hover{background:#102237}.mic{border-color:#36c8ff}.panel{position:absolute;left:25px;bottom:35px;color:#718ba3;font-size:12px;line-height:1.8}@keyframes pulse{50%{box-shadow:0 0 65px #20a9ff77,inset 0 0 55px #1473a955}}@keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="top"><div class="logo">AURA</div><div class="status" id="status">● HAZIR</div></header>
+    <section class="core" id="core"><div class="orb"></div></section>
+    <section class="label"><h1 id="message">Seni dinliyorum.</h1><p>Sesli asistan modu</p></section>
+    <div class="panel">SİSTEM: AKTİF<br>SES: BEKLEMEDE<br>AI CORE: HAZIR</div>
+    <div class="controls"><button class="btn mic" id="mic">🎙 Mikrofon</button><button class="btn" id="test">Ses Testi</button></div>
+  </main>
+<script>
+const status=document.getElementById('status'),message=document.getElementById('message');
+const speak=t=>{if(!('speechSynthesis'in window)){message.textContent='Ses sistemi desteklenmiyor.';return} speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='tr-TR';u.rate=.95;u.pitch=.9;speechSynthesis.speak(u);};
+document.getElementById('test').onclick=()=>{status.textContent='● KONUŞUYOR';message.textContent='AURA aktif. Hazırım.';speak('AURA aktif. Hazırım.');setTimeout(()=>{status.textContent='● HAZIR';message.textContent='Seni dinliyorum.'},2500)};
+document.getElementById('mic').onclick=()=>{const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R){message.textContent='Tarayıcın ses tanımayı desteklemiyor.';return}const r=new R();r.lang='tr-TR';status.textContent='● DİNLİYOR';message.textContent='Seni dinliyorum...';r.onresult=e=>{const t=e.results[0][0].transcript;status.textContent='● DÜŞÜNÜYOR';message.textContent=t;setTimeout(()=>{status.textContent='● KONUŞUYOR';speak('Mesajını aldım. Gerçek yapay zekâ bağlantısı bir sonraki aşamada eklenecek.');setTimeout(()=>{status.textContent='● HAZIR';message.textContent='Seni dinliyorum.'},3000)},400)};r.onerror=()=>{status.textContent='● HAZIR';message.textContent='Ses alınamadı.'};r.start()};
+</script>
+</body>
+</html>
