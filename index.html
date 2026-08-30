@@ -1,26 +1,29 @@
 <!doctype html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AURA — Kişisel Asistan</title>
-  <style>
-    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:#05070d;color:#eaf4ff;font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;overflow:hidden} .app{width:min(1100px,94vw);height:min(760px,92vh);border:1px solid #18304a;border-radius:28px;background:radial-gradient(circle at 50% 42%,#10233b 0,#080d17 32%,#05070d 70%);box-shadow:0 0 80px #0b426633;position:relative;display:flex;flex-direction:column;align-items:center}.top{width:100%;padding:24px 30px;display:flex;justify-content:space-between;align-items:center}.logo{letter-spacing:9px;font-size:25px;font-weight:700}.status{font-size:13px;color:#73d7ff}.core{width:250px;height:250px;border-radius:50%;margin-top:55px;border:1px solid #49c8ff88;box-shadow:0 0 35px #20a9ff55, inset 0 0 45px #1473a944;display:flex;align-items:center;justify-content:center;position:relative;animation:pulse 3s infinite}.core:before,.core:after{content:"";position:absolute;border:1px solid #48c9ff55;border-radius:50%;width:115%;height:115%;animation:spin 12s linear infinite}.core:after{width:135%;height:135%;animation-direction:reverse;animation-duration:18s}.orb{width:105px;height:105px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#63d7ff 15%,#176bff 45%,#06162b 75%);box-shadow:0 0 55px #35c8ff}.label{margin-top:38px;text-align:center}.label h1{font-size:22px;margin:0 0 9px}.label p{margin:0;color:#8da6bd}.controls{position:absolute;bottom:35px;display:flex;gap:15px}.btn{border:1px solid #28506c;background:#0b1421;color:#dff6ff;padding:13px 20px;border-radius:14px;cursor:pointer}.btn:hover{background:#102237}.mic{border-color:#36c8ff}.panel{position:absolute;left:25px;bottom:35px;color:#718ba3;font-size:12px;line-height:1.8}@keyframes pulse{50%{box-shadow:0 0 65px #20a9ff77,inset 0 0 55px #1473a955}}@keyframes spin{to{transform:rotate(360deg)}}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AURA — Kişisel Asistan</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;font-family:Arial,sans-serif;background:#03060b;color:#eaf7ff}body{display:flex;align-items:center;justify-content:center;overflow:hidden}.app{width:min(1200px,96vw);height:min(780px,94vh);position:relative;overflow:hidden;border:1px solid #183650;border-radius:28px;background:radial-gradient(circle at 50% 42%,#102a43 0,#07121f 30%,#03060b 72%);box-shadow:0 0 100px #0788cc22}.top{height:78px;padding:0 30px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #173149}.brand{font-size:25px;font-weight:800;letter-spacing:10px}.status{font-size:12px;letter-spacing:1px;color:#71d9ff}.main{height:calc(100% - 78px);display:flex;flex-direction:column;align-items:center}.core{width:250px;height:250px;margin-top:48px;border:1px solid #4bcfff88;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;box-shadow:0 0 40px #13a9ff44,inset 0 0 50px #0a6d9b33;transition:.3s}.core.active{box-shadow:0 0 90px #18baff88,inset 0 0 70px #0aa2dc55}.ring{position:absolute;border:1px solid #48c9ff55;border-radius:50%;width:115%;height:115%;animation:spin 12s linear infinite}.ring.r2{width:138%;height:138%;animation-duration:20s;animation-direction:reverse}.orb{width:105px;height:105px;border-radius:50%;background:radial-gradient(circle at 32% 28%,#fff 0,#69ddff 14%,#1684ff 48%,#06182b 76%);box-shadow:0 0 65px #37cfff}.title{text-align:center;margin-top:28px}.title h1{margin:0;font-size:25px}.title p{margin:9px 0;color:#8ca8bd}.panel{position:absolute;left:28px;bottom:30px;padding:15px 18px;border:1px solid #18364e;border-radius:16px;background:#06101a99;color:#7592a8;font-size:11px;line-height:1.8}.controls{position:absolute;bottom:30px;right:28px;display:flex;gap:10px}.btn{border:1px solid #28506c;border-radius:13px;background:#091522;color:#e2f8ff;padding:12px 16px;cursor:pointer}.btn:hover{background:#10283b}.mic{border-color:#35caff}.history{position:absolute;right:28px;top:105px;width:210px;padding:14px;border:1px solid #18364e;border-radius:16px;background:#06101a99;font-size:11px;color:#7f9aad}.history b{color:#d9f5ff}.history div{margin-top:8px}.hidden{display:none}@keyframes spin{to{transform:rotate(360deg)}}
+</style>
 </head>
 <body>
-  <main class="app">
-    <header class="top"><div class="logo">AURA</div><div class="status" id="status">● HAZIR</div></header>
-    <section class="core" id="core"><div class="orb"></div></section>
-    <section class="label"><h1 id="message">Seni dinliyorum.</h1><p>Sesli asistan modu</p></section>
-    <div class="panel">SİSTEM: AKTİF<br>SES: BEKLEMEDE<br>AI CORE: HAZIR</div>
-    <div class="controls"><button class="btn mic" id="mic">🎙 Mikrofon</button><button class="btn" id="test">Ses Testi</button></div>
-  </main>
+<div class="app">
+<header class="top"><div class="brand">AURA</div><div class="status" id="status">● HAZIR</div></header>
+<main class="main">
+<section class="core" id="core"><div class="ring"></div><div class="ring r2"></div><div class="orb"></div></section>
+<section class="title"><h1 id="message">Merhaba. Ben AURA.</h1><p id="sub">Sesli asistan hazır.</p></section>
+</main>
+<aside class="panel">SİSTEM: AKTİF<br>SES: HAZIR<br>AI CORE: v0.2</aside>
+<aside class="history" id="history"><b>SON İŞLEM</b><div id="last">Henüz komut yok.</div></aside>
+<div class="controls"><button class="btn mic" id="mic">🎙 Konuş</button><button class="btn" id="test">🔊 Ses Testi</button></div>
+</div>
 <script>
-const status=document.getElementById('status'),message=document.getElementById('message');
-const speak=t=>{if(!('speechSynthesis'in window)){message.textContent='Ses sistemi desteklenmiyor.';return} speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='tr-TR';u.rate=.95;u.pitch=.9;speechSynthesis.speak(u);};
-document.getElementById('test').onclick=()=>{status.textContent='● KONUŞUYOR';message.textContent='AURA aktif. Hazırım.';speak('AURA aktif. Hazırım.');setTimeout(()=>{status.textContent='● HAZIR';message.textContent='Seni dinliyorum.'},2500)};
-document.getElementById('mic').onclick=()=>{const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R){message.textContent='Tarayıcın ses tanımayı desteklemiyor.';return}const r=new R();r.lang='tr-TR';status.textContent='● DİNLİYOR';message.textContent='Seni dinliyorum...';r.onresult=e=>{const t=e.results[0][0].transcript;status.textContent='● DÜŞÜNÜYOR';message.textContent=t;setTimeout(()=>{status.textContent='● KONUŞUYOR';speak('Mesajını aldım. Gerçek yapay zekâ bağlantısı bir sonraki aşamada eklenecek.');setTimeout(()=>{status.textContent='● HAZIR';message.textContent='Seni dinliyorum.'},3000)},400)};r.onerror=()=>{status.textContent='● HAZIR';message.textContent='Ses alınamadı.'};r.start()};
+const $=id=>document.getElementById(id),status=$('status'),message=$('message'),sub=$('sub'),core=$('core'),last=$('last');
+function speak(text){if(!('speechSynthesis'in window)){sub.textContent='Ses sistemi desteklenmiyor.';return}speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang='tr-TR';u.rate=.95;u.pitch=.9;u.onstart=()=>{status.textContent='● KONUŞUYOR';core.classList.add('active')};u.onend=()=>{status.textContent='● HAZIR';core.classList.remove('active')};speechSynthesis.speak(u)}
+$('test').onclick=()=>{message.textContent='AURA aktif.';sub.textContent='Ses sistemi çalışıyor.';last.textContent='Ses testi';speak('AURA aktif. Hazırım.')};
+$('mic').onclick=()=>{const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R){message.textContent='Ses tanıma desteklenmiyor.';sub.textContent='Chrome veya desteklenen bir tarayıcı kullan.';return}const r=new R();r.lang='tr-TR';r.interimResults=false;r.maxAlternatives=1;status.textContent='● DİNLİYOR';core.classList.add('active');message.textContent='Seni dinliyorum...';sub.textContent='Konuşabilirsin.';r.onresult=e=>{const text=e.results[0][0].transcript;last.textContent=text;status.textContent='● DÜŞÜNÜYOR';message.textContent=text;sub.textContent='Komut alındı.';setTimeout(()=>speak('Mesajını aldım. Yapay zekâ motoru bir sonraki aşamada bağlanacak.'),350)};r.onerror=()=>{status.textContent='● HAZIR';core.classList.remove('active');message.textContent='Ses alınamadı.';sub.textContent='Mikrofon iznini kontrol et.'};r.onend=()=>{if(status.textContent==='● DİNLİYOR'){status.textContent='● HAZIR';core.classList.remove('active')}};r.start()};
 </script>
 </body>
 </html>
