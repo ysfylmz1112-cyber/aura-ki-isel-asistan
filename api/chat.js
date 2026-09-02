@@ -1,5 +1,11 @@
 export default async function handler(req, res) {
   res.setHeader('Cache-Control','no-store');
+
+  // Sağlık kontrolü: /api/chat açıldığında endpoint'in gerçekten çalıştığını gösterir.
+  if (req.method === 'GET') {
+    return res.status(200).json({ ok: true, service: 'AURA AI API', method: 'POST', version: '2.1' });
+  }
+
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
