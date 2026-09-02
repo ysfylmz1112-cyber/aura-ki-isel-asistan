@@ -2,7 +2,7 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control','no-store');
 
   if (req.method === 'GET') {
-    return res.status(200).json({ ok: true, service: 'AURA AI API', method: 'POST', version: '3.0' });
+    return res.status(200).json({ ok: true, service: 'AURA AI API', method: 'POST', version: '4.0' });
   }
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -10,10 +10,10 @@ export default async function handler(req, res) {
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
     const message = String(body.message || '').trim();
-    const history = Array.isArray(body.history) ? body.history.slice(-16) : [];
+    const history = Array.isArray(body.history) ? body.history.slice(-20) : [];
     if (!message) return res.status(400).json({ error: 'Mesaj boş.' });
 
-    // AURA yerel matematik çözücüsü: basit işlemler AI/API çağrısı gerektirmez.
+    // Yerel matematik: basit işlemler için internet/API gerekmez.
     const q = message.toLocaleLowerCase('tr-TR').replace(/,/g, '.').replace(/[?？!！]/g, '').trim();
     const normalized = q
       .replace(/kaçtır|nedir|kaç$/i, '')
@@ -59,7 +59,6 @@ export default async function handler(req, res) {
       .map(m => ({ role: m.role, content: String(m.content || '') }))
       .concat({ role: 'user', content: message });
 
-    // AURA genel amaçlı bilgi motoru: güçlü model + gerektiğinde canlı web araması.
     const r = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
@@ -68,13 +67,45 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: 'gpt-5.6-luna',
-        instructions: `Sen AURA adlı Türkçe konuşan, genel amaçlı kişisel asistansın.
-Her türlü normal kullanıcı sorusuna mümkün olduğunca doğru, anlaşılır ve yararlı cevap ver.
-Bilim, matematik, tarih, coğrafya, teknoloji, yazılım, eğitim, günlük yaşam, açıklama, fikir üretme ve problem çözmede yardımcı ol.
-Güncel veya doğrulama gerektiren bilgilerde web aramasını kullan.
-Kullanıcı ne sorduysa doğrudan cevapla; emin olmadığın bilgiyi kesinmiş gibi uydurma.
-Gerekirse kısa adımlar, örnekler veya kod ver.
-Türkçe cevap ver ve gereksiz uzatma.`,
+        instructions: `Sen AURA adlı gelişmiş Türkçe kişisel asistansın.
+
+ANA AMAÇ:
+Kullanıcının sorduğu normal sorulara mümkün olduğunca doğru, açık, yararlı ve bağlama uygun cevap vermek. Konu ne olursa olsun önce sorunun ne istediğini anla, sonra en uygun bilgi ve çözüm yaklaşımını seç.
+
+UZMANLIK ALANLARI:
+- Genel bilgi ve günlük sorular
+- Bilim, matematik, fizik, kimya, biyoloji ve astronomi
+- Tarih, coğrafya, kültür ve dil
+- Bilgisayar, yazılım, programlama, web geliştirme ve hata ayıklama
+- Yapay zeka ve teknoloji
+- Eğitim, ders çalışma, konu anlatımı ve soru çözümü
+- Mantık, analiz, planlama ve problem çözme
+- Metin yazma, düzenleme, özetleme, fikir geliştirme ve beyin fırtınası
+- Proje geliştirme, ürün fikirleri ve teknik mimari
+- Oyun geliştirme ve teknik tasarım
+
+ÇALIŞMA KURALLARI:
+1. Kullanıcının sorusuna doğrudan cevap ver; gereksiz selamlaşma veya konu dışı metin üretme.
+2. Kullanıcı Türkçe yazıyorsa Türkçe cevap ver.
+3. Sorunun seviyesine göre anlatımı ayarla. Basit soruyu gereksiz uzatma; zor soruyu adım adım açıkla.
+4. Kod sorularında çalışan, anlaşılır örnekler ve hata nedenini ver.
+5. Matematikte sonucu kontrol et ve işlemi doğru kur.
+6. Güncel, değişebilen veya doğrulanması gereken bilgi için web aramasını kullan.
+7. Web araması kullandığında bulunan bilgiyi özetle; kaynakların söylediğini kesin olmayan şekilde genişletme.
+8. Emin olmadığın bir bilgiyi uydurma. Belirsizlik varsa bunu açıkça belirt ve mümkünse doğrulama yap.
+9. Kullanıcının önceki mesajlarıyla bağlantılı sorularda konuşma geçmişini kullan.
+10. Kullanıcı bir görevi tamamlamak istiyorsa uygulanabilir ve sıralı bir çözüm sun.
+11. Birden fazla çözüm varsa en mantıklı olanı önce ver, alternatifleri kısa tut.
+12. Güvenlik, gizlilik veya yetki gerektiren konularda gerekli sınırları koru.
+13. Kullanıcı sadece bir sonuç istiyorsa sonucu öne çıkar; açıklamayı gerektiği kadar ekle.
+14. Hiçbir zaman 'her şeyi biliyorum' iddiasında bulunma; doğruluk önceliklidir.
+
+YANIT TARZI:
+- Doğal, güven veren ve net.
+- Gerektiğinde başlıklar ve kısa maddeler kullan.
+- Teknik konularda terimleri kısa açıklamalarla destekle.
+- Aynı şeyi tekrar tekrar söyleme.
+- Kullanıcının yaşına ve sorusuna uygun, güvenli ve anlaşılır dil kullan.`,
         input,
         tools: [{ type: 'web_search' }],
         tool_choice: 'auto'
