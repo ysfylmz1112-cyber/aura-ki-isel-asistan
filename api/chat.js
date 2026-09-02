@@ -2,7 +2,7 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control','no-store');
 
   if (req.method === 'GET') {
-    return res.status(200).json({ ok: true, service: 'AURA AI API', method: 'POST', version: '5.0' });
+    return res.status(200).json({ ok: true, service: 'AURA AI API', method: 'POST', version: '5.1' });
   }
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -13,7 +13,6 @@ export default async function handler(req, res) {
     const history = Array.isArray(body.history) ? body.history.slice(-24) : [];
     if (!message) return res.status(400).json({ error: 'Mesaj boş.' });
 
-    // Yerel matematik: basit dört işlem için API çağrısı gerektirmez.
     const q = message.toLocaleLowerCase('tr-TR').replace(/,/g, '.').replace(/[?？!！]/g, '').trim();
     const normalized = q.replace(/kaçtır|nedir|kaç$/i, '').replace(/hesapla$/i, '').trim();
     const math = normalized.match(/^(-?(?:\d+(?:\.\d+)?|\.\d+))\s*([+\-*/x×÷])\s*(-?(?:\d+(?:\.\d+)?|\.\d+))$/i);
@@ -48,6 +47,17 @@ export default async function handler(req, res) {
       return res.status(200).json({ answer: `Bugün ${new Date().toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}.`, mode: 'local' });
     }
 
+    // Sık kullanılan basit konuşmalar API çağrısını gerektirmez.
+    if (/^(merhaba|selam|selamlar|hey|sa|mrb)$/.test(q)) {
+      return res.status(200).json({ answer: 'Merhaba! AURA çevrimiçi. Sana nasıl yardımcı olabilirim?', mode: 'local-chat' });
+    }
+    if (/^(nasılsın|naber|nasıl gidiyor|iyi misin)$/.test(q)) {
+      return res.status(200).json({ answer: 'İyiyim kanka, AURA hazır. Ne hakkında konuşalım?', mode: 'local-chat' });
+    }
+    if (/^(teşekkürler|teşekkür ederim|sağ ol|sağol)$/.test(q)) {
+      return res.status(200).json({ answer: 'Rica ederim! AURA burada.', mode: 'local-chat' });
+    }
+
     const key = process.env.OPENAI_API_KEY;
     if (!key) return res.status(503).json({ error: 'OPENAI_API_KEY eksik.' });
 
@@ -58,41 +68,23 @@ export default async function handler(req, res) {
     const input = cleanHistory.concat({ role: 'user', content: message });
 
     const instructions = `Sen AURA adlı gelişmiş, Türkçe konuşan kişisel yapay zeka asistanısın.
+Kullanıcının niyetini doğru anlayıp mümkün olan en yararlı cevabı üret. Konu ne olursa olsun uygun uzmanlık yaklaşımını kendin seç.
 
-TEMEL GÖREV
-Kullanıcının niyetini doğru anlayıp mümkün olan en yararlı cevabı üret. Soru hangi alanda olursa olsun uygun uzmanlık yaklaşımını kendin seç.
+Uzmanlık: genel bilgi, bilim, matematik, fizik, kimya, biyoloji, astronomi, tarih, coğrafya, kültür, dil, eğitim, programlama, yazılım, web geliştirme, yapay zeka, teknoloji, mantık, analiz, planlama, karşılaştırma, metin düzenleme, özetleme, proje geliştirme, oyun geliştirme ve teknik mimari.
 
-UZMAN MODLAR
-- Genel bilgi ve günlük yaşam
-- Matematik, fizik, kimya, biyoloji, astronomi
-- Tarih, coğrafya, kültür, dil ve edebiyat
-- Programlama, yazılım, web geliştirme, hata ayıklama
-- Yapay zeka, bilgisayar ve teknoloji
-- Eğitim, konu anlatımı, çalışma ve soru çözümü
-- Mantık, analiz, planlama, karşılaştırma ve karar desteği
-- Metin düzenleme, özetleme, açıklama ve içerik üretimi
-- Oyun geliştirme, proje tasarımı ve teknik mimari
-
-AKILLI DAVRANIŞ
-1. Kullanıcı ne istiyorsa doğrudan onunla ilgilen.
-2. Basit soruları kısa ve net cevapla; zor soruları gerektiğinde adım adım açıkla.
-3. Önceki konuşma bağlamını kullan ve aynı bilgiyi tekrar tekrar isteme.
-4. Güncel, değişken veya doğrulama gerektiren konularda web aramasını kullan.
-5. Web sonucuna dayanıyorsan bilgiyi kaynaklara sadık biçimde özetle; tahmini bilgiyi kesin gerçek gibi yazma.
-6. Emin olmadığın bilgiyi uydurma. Gerekirse belirsizliği açıkça belirt.
-7. Kod verirken çalıştırılabilir, anlaşılır ve güvenli örnekler üret; hata varsa nedenini açıkla.
-8. Matematiksel sonuçlarda işlemi kontrol et.
-9. Kullanıcı bir görev istiyorsa uygulanabilir bir yol haritası ver.
-10. Birden fazla seçenek varsa en mantıklı seçeneği önce göster.
-11. Gereksiz selamlaşma, tekrar ve dolgu cümlelerinden kaçın.
-12. Türkçe konuş; teknik terimleri gerektiğinde kısa açıklamalarla destekle.
-13. Kullanıcı bir şeyin nasıl yapılacağını soruyorsa adımları açık ve sıralı anlat.
-14. Uygun olduğunda tablo, örnek, kod veya kısa kontrol listesi kullan.
-15. Güvenlik, gizlilik ve yetki sınırlarını koru.
-16. Her şeyi bildiğini iddia etme; doğruluk her zaman öncelikli.
-
-CEVAP KALİTESİ
-Önce problemi çöz, sonra cevabı kullanıcı için okunabilir biçimde düzenle. Kullanıcı sadece sonucu istiyorsa sonucu öne çıkar. Kullanıcı öğrenmek istiyorsa mantığını da açıkla.`;
+Kurallar:
+- Kullanıcının sorusuna doğrudan cevap ver.
+- Basit soruları kısa, zor soruları gerektiğinde adım adım açıkla.
+- Önceki konuşma bağlamını kullan.
+- Güncel veya değişken bilgiler için web aramasını kullan.
+- Web sonucuna dayanıyorsan kaynağa sadık kal.
+- Bilmediğin şeyi uydurma; belirsizliği açıkça belirt.
+- Kod verirken güvenli ve anlaşılır örnekler kullan.
+- Matematiksel sonuçları kontrol et.
+- Görevlerde uygulanabilir adımlar sun.
+- Gereksiz tekrar ve dolgu cümlelerinden kaçın.
+- Türkçe konuş.
+- Güvenlik, gizlilik ve yetki sınırlarını koru.`;
 
     const r = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
@@ -132,7 +124,6 @@ CEVAP KALİTESİ
       'Cevap alınamadı.';
 
     const usedWeb = Array.isArray(data.output) && data.output.some(x => x.type === 'web_search_call');
-
     return res.status(200).json({ answer: text, mode: 'ai', web: usedWeb });
   } catch (e) {
     return res.status(500).json({ error: 'Sunucu hatası: ' + (e?.message || 'bilinmeyen hata') });
