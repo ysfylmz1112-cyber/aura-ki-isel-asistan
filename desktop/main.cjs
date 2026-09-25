@@ -166,7 +166,7 @@ async function fetchWebPage(url) {
   const response=await fetch(url,{headers:{'User-Agent':'AURA-Desktop/1.0'},redirect:'follow'});
   if (!response.ok) throw new Error('Web sayfası alınamadı (HTTP '+response.status+').');
   const raw=await response.text();
-  const text=raw.replace(/<script[\\s\\S]*?<\\/script>/gi,' ').replace(/<style[\\s\\S]*?<\\/style>/gi,' ').replace(/<[^>]+>/g,' ').replace(/\\s+/g,' ').trim();
+  const text=raw.replace(/<script\b[\s\S]*?<\/script>/gi,' ').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
   return {url,status:response.status,text:text.slice(0,30000)};
 }
 function systemInfo() {
