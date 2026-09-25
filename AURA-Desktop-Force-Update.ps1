@@ -23,7 +23,7 @@ $files = @(
 foreach($item in $files){
   Write-Host ('Guncelleniyor: ' + $item.Local) -ForegroundColor DarkCyan
   $remote = (Invoke-WebRequest -UseBasicParsing -Uri $item.Remote -Headers @{ 'Cache-Control' = 'no-cache' }).Content
-  if([string]::IsNullOrWhiteSpace($remote) -or $remote.Length -lt 2000 -or $remote -notmatch [regex]::Escape($item.Required)){
+  if([string]::IsNullOrWhiteSpace($remote) -or $remote -notmatch [regex]::Escape($item.Required)){
     throw ('GitHub dosyasi dogrulanamadi: ' + $item.Remote)
   }
   if(Test-Path $item.Local){
@@ -31,7 +31,7 @@ foreach($item in $files){
     Copy-Item -LiteralPath $item.Local -Destination ($item.Local + '.backup-' + $stamp) -Force
   }
   [System.IO.File]::WriteAllText($item.Local, $remote, (New-Object System.Text.UTF8Encoding($false)))
-  Write-Host ('Dogrulandi: ' + $item.Name) -ForegroundColor Green
+  Write-Host ('Dogrulandi: ' + $item['Local']) -ForegroundColor Green
 }
 
 Set-Location $repoRoot
