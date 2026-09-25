@@ -172,6 +172,40 @@ async function discoverShortcutApps() {
   return unique;
 }
 
+async function discoverRegistryApps() {
+  const queries = [
+    ['HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall', '/reg:64'],
+    ['HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall', '/reg:32'],
+    ['HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall', '/reg:64'],
+    ['HKLM\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall', '/reg:32']
+  ];
+  const apps = [];
+  for(const [key,arch] of queries){
+    const result=await new Promise(resolve=>{
+      execFile('reg.exe',['query',key,'/s',arch],{windowsHide:true,maxBuffer:6*1024*1024},(error,stdout)=>{
+        resolve(error ? '' : String(stdout||''));
+      });
+    });
+    let current=null;
+    for(const line of result.split(/\r?\n/)){
+      const header=line.match(/^HKEY[^\r\n]+$/i);
+      if(header){ current={key:header[0]}; continue; }
+      const m=line.match(/^\s+DisplayName\s+REG_SZ\s+(.*)$/i);
+      if(!m || !current) continue;
+      const name=m[1].trim();
+      if(!name || name.length>180) continue;
+      apps.push({name,path:current.key,kind:'registry'});
+    }
+  }
+  const seen=new Set();
+  return apps.filter(x=>{
+    const key=normalizedSearchText(x.name);
+    if(!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0,300);
+}
+
 function findSteamRootCandidates() {
   return [
     'C:\\Program Files (x86)\\Steam',
@@ -332,38 +366,40 @@ async function scanEnvironment() {
     roots:[],
     apps:[],
     games:[],
+    runningProcesses:[],
     recentWindowsItems:[],
     permissions:rootList,
     scanErrors:[]
   };
 
   const safeStep=async(name,fn,fallback)=>{
-    try { return await fn(); }
-    catch(error) {
+    try{return await fn();}
+    catch(error){
       profile.scanErrors.push({step:name,error:error?.message||String(error)});
       return fallback;
     }
   };
 
-  const uniqueRoots=[];
-  for(const root of rootList) {
-    if(!uniqueRoots.some(x=>x.toLowerCase()===root.toLowerCase())) uniqueRoots.push(root);
-  }
-
-  for(const root of uniqueRoots) {
-    const item=await safeStep('folder:'+root,()=>directorySummary(root),{path:root,exists:false,error:true});
-    profile.roots.push(item);
+  const uniqueRoots=[...new Set(rootList.map(x=>x.toLowerCase()))].map(lower=>rootList.find(x=>x.toLowerCase()===lower));
+  for(const root of uniqueRoots){
+    profile.roots.push(await safeStep('folder:'+root,()=>directorySummary(root),{path:root,exists:false,error:true}));
   }
 
   profile.desktop=await safeStep('desktop',()=>directorySummary(path.join(home,'Desktop')),{path:path.join(home,'Desktop'),exists:false,error:true});
   profile.documents=await safeStep('documents',()=>directorySummary(path.join(home,'Documents')),{path:path.join(home,'Documents'),exists:false,error:true});
   profile.downloads=await safeStep('downloads',()=>directorySummary(path.join(home,'Downloads')),{path:path.join(home,'Downloads'),exists:false,error:true});
 
-  profile.apps=(await safeStep('applications',()=>discoverShortcutApps(),[])).slice(0,300)
-    .map(x=>({name:x.name,path:x.path,kind:x.kind}));
+  const shortcutApps=await safeStep('start-menu',()=>discoverShortcutApps(),[]);
+  const registryApps=await safeStep('windows-registry',()=>discoverRegistryApps(),[]);
+  const appMap=new Map();
+  for(const item of [...shortcutApps,...registryApps]){
+    const key=normalizedSearchText(item.name);
+    if(key && !appMap.has(key)) appMap.set(key,item);
+  }
+  profile.apps=[...appMap.values()].slice(0,400);
 
   profile.games=(await safeStep('steam-games',()=>discoverSteamGames(),[])).slice(0,300);
-
+  profile.runningProcesses=await safeStep('running-processes',()=>currentProcesses(),[]);
   profile.recentWindowsItems=await safeStep('recent-windows',()=>recentWindowsItems(),[]);
 
   environmentProfile=profile;
@@ -658,7 +694,7 @@ app.whenReady().then(async()=>{
       return {ok:false,error:error?.message||'Bilinmeyen hata'};
     }
   });
-  ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'1.3.0',mode:'secure-local-agent-pc-aware',roots:allowedRoots()}));
+  ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'1.4.0',mode:'secure-local-agent-pc-aware',roots:allowedRoots()}));
   createWindow();
   scanEnvironment().catch(()=>{});
   app.on('activate',()=>{
