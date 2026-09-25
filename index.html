@@ -54,25 +54,59 @@ function isDirectDesktopCommand(q){
   return exact.includes(x) || /^.+? aç(?:ıver|ar)?$/.test(x);
 }
 
+async function desktopProfileFallback(){
+  const home=(await window.auraDesktop.getInfo()).roots?.[0] || "";
+  const known=[];
+  const roots=[home,
+    home.replace(/\\$/,"")+"\\Desktop",
+    home.replace(/\\$/,"")+"\\Documents",
+    home.replace(/\\$/,"")+"\\Downloads"
+  ];
+  for(const root of [...new Set(roots)]){
+    const r=await window.auraDesktop.call("desktop_list_directory",{path:root});
+    if(r?.ok) known.push({path:root,items:r.result||[]});
+  }
+  const profile={
+    scannedAt:new Date().toISOString(),
+    legacy:true,
+    roots:known,
+    apps:[],
+    games:[],
+    note:"Eski Desktop ajanıyla uyumlu tarama. Uygulama/oyun keşfi sınırlı."
+  };
+  environmentProfile=profile;
+  localStorage.setItem("aura_environment_profile",JSON.stringify(profile));
+  return profile;
+}
+
 async function directDesktopCommand(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
 
   if(!hasDesktopAgent()){
     if(/bilgisayarımda neler var|pc['’]?de neler var|uygulamalarımı göster|oyunlarımı göster|hangi oyunlarım var/i.test(x)){
-      return "Bu ekran AURA'nın web sürümü. Bilgisayarını taramak için AURA Desktop'ı başlatman gerekiyor.";
+      return "Bu ekran AURA'nın web sürümü. Bilgisayar taraması için AURA Desktop'ı aç.";
     }
     if(/(?:.+?) aç(?:ıver|ar)?$/i.test(x)){
-      return "Bu ekran AURA'nın web sürümü. Uygulama veya oyun açmak için AURA Desktop'ı başlatman gerekiyor.";
+      return "Bu ekran AURA'nın web sürümü. Uygulama veya oyun açmak için AURA Desktop'ı aç.";
     }
     return null;
   }
 
   if(/bilgisayarımda neler var|pc['’]?de neler var|uygulamalarımı göster|oyunlarımı göster|hangi oyunlarım var/i.test(x)){
-    const r=await window.auraDesktop.call("desktop_scan_environment",{});
+    let info=null;
+    try{ info=await window.auraDesktop.getInfo(); }catch{}
+    const version=String(info?.version||"");
+    let r;
+    if(version && /^(?:1\.)?2\./.test(version)){
+      r=await window.auraDesktop.call("desktop_scan_environment",{});
+    }else{
+      r={ok:true,result:await desktopProfileFallback()};
+    }
     if(!r?.ok) throw new Error(r?.error||"Bilgisayar taranamadı.");
     environmentProfile=r.result;
     localStorage.setItem("aura_environment_profile",JSON.stringify(environmentProfile));
-    return "PC taraması tamamlandı kanka. "+(environmentProfile?.apps?.length||0)+" uygulama ve "+(environmentProfile?.games?.length||0)+" Steam oyunu tanındı.";
+    return "PC taraması tamamlandı kanka. Masaüstü ve temel klasörler okundu."
+      +(environmentProfile?.apps?.length!==undefined ? " "+environmentProfile.apps.length+" uygulama ve "+(environmentProfile.games?.length||0)+" oyun tanındı." : "");
   }
 
   const urlMap={
