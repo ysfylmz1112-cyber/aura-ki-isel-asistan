@@ -112,10 +112,22 @@ async function directDesktopCommand(q){
     const appCount=Number(environmentProfile?.apps?.length||0);
     const gameCount=Number(environmentProfile?.games?.length||0);
     const rootCount=Array.isArray(environmentProfile?.roots)?environmentProfile.roots.length:0;
+    const running=Array.isArray(environmentProfile?.runningProcesses)?environmentProfile.runningProcesses.length:0;
+    const appNames=Array.isArray(environmentProfile?.apps)
+      ? environmentProfile.apps.slice(0,12).map(x=>x.name).filter(Boolean)
+      : [];
+    const gameNames=Array.isArray(environmentProfile?.games)
+      ? environmentProfile.games.slice(0,12).map(x=>x.name).filter(Boolean)
+      : [];
+    const errors=Array.isArray(environmentProfile?.scanErrors)
+      ? environmentProfile.scanErrors.slice(0,5).map(x=>x.step+": "+x.error)
+      : [];
 
-    return "PC taraması tamamlandı kanka. "
-      +appCount+" uygulama ve "+gameCount+" oyun tanındı. "
-      +rootCount+" izinli konum kontrol edildi.";
+    let message="PC taraması tamamlandı kanka. "+appCount+" uygulama, "+gameCount+" oyun ve "+running+" çalışan işlem bulundu. "+rootCount+" izinli konum kontrol edildi.";
+    if(appNames.length) message+=" Uygulamalar: "+appNames.join(", ")+"...";
+    if(gameNames.length) message+=" Oyunlar: "+gameNames.join(", ")+"...";
+    if(errors.length) message+=" Tarama notu: "+errors.join(" | ");
+    return message;
   }
   const urlMap={
     "google aç":"https://www.google.com",
