@@ -42,10 +42,43 @@ function localAnswer(q){
 
   return null
 }
+async function directDesktopCommand(q){
+  if(!hasDesktopAgent()) return null;
+  const x=q.toLocaleLowerCase("tr-TR").trim();
+
+  const urlMap={
+    "google aç":"https://www.google.com",
+    "google'ı aç":"https://www.google.com",
+    "googleyi aç":"https://www.google.com",
+    "youtube aç":"https://www.youtube.com",
+    "youtube'u aç":"https://www.youtube.com",
+    "discord aç":"https://discord.com/app",
+    "github aç":"https://github.com",
+    "chatgpt aç":"https://chatgpt.com"
+  };
+
+  if(urlMap[x]){
+    const r=await window.auraDesktop.call("desktop_open_external_url",{url:urlMap[x]});
+    if(!r?.ok) throw new Error(r?.error||"Web adresi açılamadı.");
+    return "Tamam kanka, "+x+" açıldı.";
+  }
+
+  const appMatch=x.match(/^(.+?) aç(?:ıver|ar)?$/);
+  if(appMatch){
+    const appName=appMatch[1].trim();
+    if(appName && !["google","youtube","github","chatgpt","discord"].includes(appName)){
+      const r=await window.auraDesktop.call("desktop_find_and_launch_app",{app:appName});
+      if(!r?.ok) throw new Error(r?.error||("Uygulama bulunamadı: "+appName));
+      return "Tamam kanka, "+appName+" açıldı.";
+    }
+  }
+
+  return null;
+}
 function speak(t){if(!window.speechSynthesis)return;let u=new SpeechSynthesisUtterance(t);u.lang="tr-TR";u.rate=.96;$("tts").textContent="KONUŞUYOR";core.classList.add("active");u.onend=()=>{$("tts").textContent="HAZIR";if(!busy)core.classList.remove("active")};speechSynthesis.cancel();speechSynthesis.speak(u)}
 function addMessage(kind,label,text){chat.insertAdjacentHTML("beforeend",'<div class="msg '+kind+'"><b>'+label+"</b> · "+esc(text)+"</div>");chat.scrollTop=chat.scrollHeight}
 function localProgress(p){status.textContent=p.percent!=null?"● MODEL "+p.percent+"%":"● MODEL HAZIRLANIYOR";$("ai").textContent=p.percent!=null?p.percent+"%":"YÜKLENİYOR";$("sub").textContent=p.text||"Yerel AI modeli hazırlanıyor..."}
-async function run(q){q=String(q||"").trim();if(!q||busy)return;busy=true;sendBtn.disabled=true;micBtn.disabled=true;addMessage("me","SEN",q);input.value="";status.textContent="● DÜŞÜNÜYOR";core.classList.add("active");let local=localAnswer(q);if(local){finish(q,local,false);return}try{const recent=history.slice(0,8).reverse().flatMap(x=>[{role:"user",content:x.q},{role:"assistant",content:x.a}]);const answer=await askLocalAI(q,recent,localProgress);$("ai").textContent="YEREL";$("sub").textContent="API key yok · Yerel model: "+getLocalAIModel();finish(q,answer,true)}catch(e){$("ai").textContent="YEREL";status.textContent="● YEREL MOD";core.classList.remove("active");addMessage("error","AURA","Yerel AI kullanılamıyor: "+(e?.message||"bilinmeyen hata")+" API key kullanılmıyor.");busy=false;sendBtn.disabled=false;micBtn.disabled=false}}
+async function run(q){q=String(q||"").trim();if(!q||busy)return;busy=true;sendBtn.disabled=true;micBtn.disabled=true;addMessage("me","SEN",q);input.value="";status.textContent="● DÜŞÜNÜYOR";core.classList.add("active");let local=localAnswer(q);if(local){finish(q,local,false);return}try{const direct=await directDesktopCommand(q);if(direct){finish(q,direct,false);return}}catch(e){status.textContent="● HAZIR";core.classList.remove("active");addMessage("error","AURA","Masaüstü işlemi yapılamadı: "+(e?.message||"bilinmeyen hata"));busy=false;sendBtn.disabled=false;micBtn.disabled=false;return}try{const recent=history.slice(0,8).reverse().flatMap(x=>[{role:"user",content:x.q},{role:"assistant",content:x.a}]);const answer=await askLocalAI(q,recent,localProgress);$("ai").textContent="YEREL";$("sub").textContent="API key yok · Yerel model: "+getLocalAIModel();finish(q,answer,true)}catch(e){$("ai").textContent="YEREL";status.textContent="● YEREL MOD";core.classList.remove("active");addMessage("error","AURA","Yerel AI kullanılamıyor: "+(e?.message||"bilinmeyen hata")+" API key kullanılmıyor.");busy=false;sendBtn.disabled=false;micBtn.disabled=false}}
 function finish(q,a,ai){addMessage("","AURA",a);history.unshift({q,a,time:Date.now(),ai,localModel:ai?getLocalAIModel():""});history=history.slice(0,100);save();status.textContent="● HAZIR";busy=false;sendBtn.disabled=false;micBtn.disabled=false;core.classList.remove("active");speak(a)}
 sendBtn.onclick=()=>run(input.value);input.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();run(input.value)}};document.querySelectorAll(".chip").forEach(b=>b.onclick=()=>run(b.dataset.q));
 micBtn.onclick=()=>{const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R){$("sub").textContent="Tarayıcı ses tanımayı desteklemiyor.";return}const r=new R;r.lang="tr-TR";r.onstart=()=>{status.textContent="● DİNLİYOR";core.classList.add("active")};r.onresult=e=>run(e.results[0][0].transcript);r.onerror=()=>{status.textContent="● HAZIR";core.classList.remove("active")};r.onend=()=>{if(!busy)core.classList.remove("active")};r.start()};
