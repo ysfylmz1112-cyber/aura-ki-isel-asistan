@@ -31,6 +31,335 @@ async function saveExtraRoots() {
   await fsp.mkdir(path.dirname(PERMISSIONS_FILE), { recursive: true });
   await fsp.writeFile(PERMISSIONS_FILE, JSON.stringify({ roots: extraRoots }, null, 2), 'utf8');
 }
+
+
+const USAGE_FILE = path.join(app.getPath('userData'), 'aura-usage.json');
+const PROFILE_FILE = path.join(app.getPath('userData'), 'aura-device-profile.json');
+let usageState = { launches: [], counts: {}, lastLaunch: null };
+let environmentProfile = null;
+
+async function loadUsageState() {
+  try {
+    const raw = await fsp.readFile(USAGE_FILE, 'utf8');
+    const data = JSON.parse(raw);
+    usageState = {
+      launches: Array.isArray(data?.launches) ? data.launches.slice(-100) : [],
+      counts: data?.counts && typeof data.counts === 'object' ? data.counts : {},
+      lastLaunch: data?.lastLaunch || null
+    };
+  } catch {
+    usageState = { launches: [], counts: {}, lastLaunch: null };
+  }
+}
+
+async function saveUsageState() {
+  await fsp.mkdir(path.dirname(USAGE_FILE), { recursive: true });
+  await fsp.writeFile(USAGE_FILE, JSON.stringify(usageState, null, 2), 'utf8');
+}
+
+async function recordLaunch(name, type, target) {
+  const key = String(name || target || '').trim();
+  if (!key) return;
+  usageState.counts[key] = Number(usageState.counts[key] || 0) + 1;
+  usageState.lastLaunch = { name:key, type:String(type || 'app'), target:String(target || ''), at:new Date().toISOString() };
+  usageState.launches = [...usageState.launches, usageState.lastLaunch].slice(-100);
+  await saveUsageState().catch(() => {});
+}
+
+function normalizedSearchText(value) {
+  return String(value || '')
+    .toLocaleLowerCase('tr-TR')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ı/g, 'i')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+const APP_ALIASES = {
+  'vs code':'Visual Studio Code',
+  'vscode':'Visual Studio Code',
+  'visual studio code':'Visual Studio Code',
+  'chrome':'Google Chrome',
+  'google chrome':'Google Chrome',
+  'edge':'Microsoft Edge',
+  'microsoft edge':'Microsoft Edge',
+  'discord':'Discord',
+  'spotify':'Spotify',
+  'steam':'Steam',
+  'unity':'Unity Hub',
+  'unity hub':'Unity Hub',
+  'obs':'OBS Studio',
+  'obs studio':'OBS Studio',
+  'epic':'Epic Games Launcher',
+  'epic games':'Epic Games Launcher',
+  'riot':'Riot Client',
+  'riot client':'Riot Client',
+  'minecraft':'Minecraft Launcher',
+  'minecraft launcher':'Minecraft Launcher',
+  'tlauncher':'TLauncher',
+  'powershell':'PowerShell',
+  'terminal':'Windows Terminal',
+  'dosya gezgini':'File Explorer',
+  'explorer':'File Explorer',
+  'hesap makinesi':'Calculator',
+  'notepad':'Notepad'
+};
+
+function expandedAppQueries(value) {
+  const original = String(value || '').trim();
+  const normalized = normalizedSearchText(original);
+  const queries = [original, normalized];
+  const alias = APP_ALIASES[normalized];
+  if (alias) queries.push(alias);
+  return [...new Set(queries.map(normalizedSearchText).filter(Boolean))];
+}
+
+function candidateScore(query, candidate) {
+  const q = normalizedSearchText(query);
+  const c = normalizedSearchText(candidate);
+  if (!q || !c) return 0;
+  if (c === q) return 1000;
+  if (c.includes(q)) return 850 - Math.min(200, c.length - q.length);
+  const qt = q.split(' ').filter(Boolean);
+  const ct = c.split(' ').filter(Boolean);
+  let score = 0;
+  for (const token of qt) {
+    if (ct.includes(token)) score += 180;
+    else if (c.includes(token)) score += 90;
+  }
+  return score - Math.max(0, c.length - q.length);
+}
+
+async function discoverShortcutApps() {
+  const dirs = [
+    path.join(process.env.ProgramData || 'C:\\ProgramData','Microsoft','Windows','Start Menu','Programs'),
+    path.join(os.homedir(),'AppData','Roaming','Microsoft','Windows','Start Menu','Programs'),
+    path.join(os.homedir(),'Desktop'),
+    path.join(process.env.PUBLIC || 'C:\\Users\\Public','Desktop')
+  ];
+  const matches = [];
+  async function walk(dir, depth=0) {
+    if (depth > 4 || matches.length >= 300) return;
+    let entries = [];
+    try { entries = await fsp.readdir(dir,{withFileTypes:true}); } catch { return; }
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name !== 'node_modules') await walk(full, depth+1);
+        continue;
+      }
+      const lower = entry.name.toLowerCase();
+      if (!(lower.endsWith('.lnk') || lower.endsWith('.exe'))) continue;
+      const display = entry.name.replace(/\.(lnk|exe)$/i,'');
+      matches.push({name:display, path:full, kind:lower.endsWith('.lnk') ? 'shortcut' : 'exe'});
+      if (matches.length >= 300) return;
+    }
+  }
+  for (const dir of dirs) await walk(dir);
+  const unique = [];
+  const seen = new Set();
+  for (const item of matches) {
+    const key = item.path.toLowerCase();
+    if (!seen.has(key)) { seen.add(key); unique.push(item); }
+  }
+  return unique;
+}
+
+function findSteamRootCandidates() {
+  return [
+    'C:\\Program Files (x86)\\Steam',
+    'C:\\Program Files\\Steam',
+    path.join(os.homedir(),'AppData','Local','Steam'),
+    path.join(os.homedir(),'AppData','Roaming','Steam')
+  ];
+}
+
+function findSteamExecutable() {
+  for (const root of findSteamRootCandidates()) {
+    const exe = path.join(root,'steam.exe');
+    if (fs.existsSync(exe)) return exe;
+  }
+  return null;
+}
+
+async function steamLibraryPaths() {
+  const libraries = [];
+  const exe = findSteamExecutable();
+  if (exe) libraries.push(path.dirname(exe));
+  for (const root of [...findSteamRootCandidates(), ...libraries]) {
+    const cfg = path.join(root,'steamapps','libraryfolders.vdf');
+    try {
+      const text = await fsp.readFile(cfg,'utf8');
+      const re=/"path"\s+"([^"]+)"/gi;
+      let m;
+      while ((m=re.exec(text))) libraries.push(m[1].replace(/\\\\/g,'\\'));
+    } catch {}
+  }
+  return [...new Set(libraries.map(normalizePath).filter(Boolean))];
+}
+
+async function discoverSteamGames() {
+  const roots = await steamLibraryPaths();
+  const games = [];
+  for (const root of roots) {
+    const dir = path.join(root,'steamapps');
+    let entries=[];
+    try { entries=await fsp.readdir(dir,{withFileTypes:true}); } catch { continue; }
+    for (const e of entries) {
+      if (!e.isFile() || !/^appmanifest_\d+\.acf$/i.test(e.name)) continue;
+      try {
+        const text=await fsp.readFile(path.join(dir,e.name),'utf8');
+        const id=(text.match(/"appid"\s+"(\d+)"/i)||[])[1];
+        const name=(text.match(/"name"\s+"([^"]+)"/i)||[])[1];
+        if (id && name) games.push({name,appid:id,library:root});
+      } catch {}
+      if (games.length>=300) break;
+    }
+    if (games.length>=300) break;
+  }
+  return games;
+}
+
+async function launchSteamGame(game) {
+  const steamExe = findSteamExecutable();
+  if (!steamExe) throw new Error('Steam bulunamadı.');
+  const ok=await confirmAction('AURA — Oyun açma izni','AURA şu Steam oyununu açacak:\n\n'+game.name);
+  if(!ok) throw new Error('Kullanıcı işlemi iptal etti.');
+  execFile(steamExe,['-applaunch',String(game.appid)],{windowsHide:false});
+  await recordLaunch(game.name,'steam-game',game.appid);
+  return {ok:true,app:game.name,type:'steam-game',appid:game.appid};
+}
+
+async function findAndLaunchGameOrApp(appName) {
+  const target=String(appName||'').trim();
+  if(!target || target.length>100) throw new Error('Uygulama/oyun adı geçersiz.');
+
+  const queries=expandedAppQueries(target);
+  const games=await discoverSteamGames();
+  const gameCandidates=games
+    .map(g=>({...g,score:Math.max(...queries.map(q=>candidateScore(q,g.name)))}))
+    .filter(x=>x.score>=120)
+    .sort((a,b)=>b.score-a.score);
+
+  if(gameCandidates.length && gameCandidates[0].score>=950) return launchSteamGame(gameCandidates[0]);
+
+  const apps=await discoverShortcutApps();
+  const appCandidates=apps
+    .map(a=>({...a,score:Math.max(...queries.map(q=>candidateScore(q,a.name)))}))
+    .filter(x=>x.score>=100)
+    .sort((a,b)=>b.score-a.score);
+
+  if(!appCandidates.length && gameCandidates.length) return launchSteamGame(gameCandidates[0]);
+  if(!appCandidates.length) throw new Error('Uygulama veya oyun bulunamadı: '+target);
+
+  const chosen=appCandidates[0];
+  const ok=await confirmAction(
+    'AURA — Uygulama/oyun açma izni',
+    'AURA bunu açacak:\n\n'+chosen.name+'\n'+chosen.path+
+    (appCandidates.length>1 ? '\n\nEn yakın eşleşmeler: '+appCandidates.slice(0,5).map(x=>x.name).join(', ') : '')
+  );
+  if(!ok) throw new Error('Kullanıcı işlemi iptal etti.');
+  const err=await shell.openPath(chosen.path);
+  if(err) throw new Error(err);
+  await recordLaunch(chosen.name,'app',chosen.path);
+  return {ok:true,app:chosen.name,path:chosen.path,matches:appCandidates.slice(0,10)};
+}
+
+async function directorySummary(root) {
+  root=normalizePath(root);
+  if(!fs.existsSync(root)) return {path:root,exists:false};
+  let entries=[];
+  try { entries=await fsp.readdir(root,{withFileTypes:true}); } catch { return {path:root,exists:false}; }
+  const folders=entries.filter(e=>e.isDirectory()).length;
+  const files=entries.length-folders;
+  return {
+    path:root,exists:true,folders,files,total:entries.length,
+    items:entries.slice(0,120).map(e=>({name:e.name,type:e.isDirectory()?'directory':'file'}))
+  };
+}
+
+async function recentWindowsItems() {
+  const dir=path.join(os.homedir(),'AppData','Roaming','Microsoft','Windows','Recent');
+  let entries=[];
+  try { entries=await fsp.readdir(dir,{withFileTypes:true}); } catch { return []; }
+  return entries.filter(e=>e.isFile()).slice(0,80).map(e=>e.name.replace(/\.lnk$/i,''));
+}
+
+async function currentProcesses() {
+  return new Promise(resolve=>{
+    execFile('tasklist.exe',['/FO','CSV','/NH'],{windowsHide:true,maxBuffer:1024*1024},(error,stdout)=>{
+      if(error) return resolve([]);
+      const items=String(stdout||'').split(/\r?\n/).map(line=>{
+        const m=line.match(/"([^"]+)","(\d+)","([^"]+)"/);
+        return m ? {name:m[1],pid:Number(m[2])} : null;
+      }).filter(Boolean);
+      resolve(items.slice(0,120));
+    });
+  });
+}
+
+async function getUsageReport() {
+  const processes=await currentProcesses();
+  const recent=await recentWindowsItems();
+  const top=Object.entries(usageState.counts||{})
+    .map(([name,count])=>({name,count:Number(count)||0}))
+    .sort((a,b)=>b.count-a.count)
+    .slice(0,30);
+  return {
+    trackedByAura:top,
+    lastLaunch:usageState.lastLaunch,
+    recentWindowsItems:recent,
+    runningProcesses:processes
+  };
+}
+
+async function scanEnvironment() {
+  const home=os.homedir();
+  const rootList=allowedRoots();
+  const roots=[];
+  for (const root of rootList) {
+    if (!roots.some(x=>x.path.toLowerCase()===root.toLowerCase())) roots.push(await directorySummary(root));
+  }
+  const apps=(await discoverShortcutApps()).sort((a,b)=>a.name.localeCompare(b.name,'tr'));
+  const games=(await discoverSteamGames()).sort((a,b)=>a.name.localeCompare(b.name,'tr'));
+  const profile={
+    scannedAt:new Date().toISOString(),
+    system:systemInfo(),
+    desktop:await directorySummary(path.join(home,'Desktop')),
+    documents:await directorySummary(path.join(home,'Documents')),
+    downloads:await directorySummary(path.join(home,'Downloads')),
+    roots,
+    apps:apps.slice(0,160).map(x=>({name:x.name,path:x.path,kind:x.kind})),
+    games:games.slice(0,160),
+    recentWindowsItems:await recentWindowsItems(),
+    permissions:rootList
+  };
+  environmentProfile=profile;
+  await fsp.mkdir(path.dirname(PROFILE_FILE),{recursive:true});
+  await fsp.writeFile(PROFILE_FILE,JSON.stringify(profile,null,2),'utf8').catch(()=>{});
+  return profile;
+}
+
+async function getEnvironmentProfile() {
+  if (environmentProfile) return environmentProfile;
+  try {
+    const raw=await fsp.readFile(PROFILE_FILE,'utf8');
+    const data=JSON.parse(raw);
+    const age=Date.now()-new Date(data?.scannedAt||0).getTime();
+    if (data?.scannedAt && age < 10*60*1000) {
+      environmentProfile=data;
+      return data;
+    }
+  } catch {}
+  return scanEnvironment();
+}
+
 function isAllowedPath(target) {
   const p = normalizePath(target).toLowerCase();
   return allowedRoots().some(root => { const r = root.toLowerCase(); return p === r || p.startsWith(r + path.sep); });
@@ -218,40 +547,7 @@ async function launchApp(appName) {
 
 
 async function findAndLaunchApp(appName) {
-  const target=String(appName||'').toLowerCase().trim();
-  if(!target || target.length>80) throw new Error('Uygulama adı geçersiz.');
-
-  const dirs=[
-    path.join(process.env.ProgramData||'C:\\ProgramData','Microsoft','Windows','Start Menu','Programs'),
-    path.join(os.homedir(),'AppData','Roaming','Microsoft','Windows','Start Menu','Programs'),
-    path.join(os.homedir(),'Desktop')
-  ];
-
-  const wanted=[];
-  async function walk(dir,depth=0){
-    if(depth>3 || wanted.length>=20) return;
-    let entries=[];
-    try{entries=await fsp.readdir(dir,{withFileTypes:true});}catch{return;}
-    for(const entry of entries){
-      const full=path.join(dir,entry.name);
-      if(entry.isDirectory()){
-        await walk(full,depth+1);
-      }else{
-        const lower=entry.name.toLowerCase();
-        if((lower.endsWith('.lnk')||lower.endsWith('.exe')) && lower.includes(target)) wanted.push(full);
-      }
-      if(wanted.length>=20) return;
-    }
-  }
-  for(const dir of dirs) await walk(dir);
-  if(!wanted.length) throw new Error('Uygulama bulunamadı: '+appName);
-
-  const chosen=wanted[0];
-  const ok=await confirmAction('AURA — Uygulama açma izni','AURA şu uygulamayı açacak:\n\n'+chosen);
-  if(!ok) throw new Error('Kullanıcı işlemi iptal etti.');
-  const err=await shell.openPath(chosen);
-  if(err) throw new Error(err);
-  return {ok:true,app:appName,path:chosen,matches:wanted.slice(0,10)};
+  return findAndLaunchGameOrApp(appName);
 }
 
 async function openExternalUrl(url) {
@@ -296,6 +592,9 @@ async function handleTool(tool,args) {
     case 'desktop_run_powershell': return runPowerShell(args.command);
     case 'desktop_launch_app': return launchApp(args.app);
     case 'desktop_find_and_launch_app': return findAndLaunchApp(args.app);
+    case 'desktop_scan_environment': return scanEnvironment();
+    case 'desktop_get_environment_profile': return getEnvironmentProfile();
+    case 'desktop_get_usage_report': return getUsageReport();
     case 'desktop_open_external_url': return openExternalUrl(args.url);
     case 'desktop_open_unity_project': return openUnityProject(normalizePath(args.projectPath));
     case 'desktop_web_search': return webSearch(args.query);
@@ -313,6 +612,7 @@ function createWindow() {
 }
 app.whenReady().then(async()=>{
   await loadExtraRoots();
+  await loadUsageState();
   ipcMain.handle('aura:tool',async(event,payload)=>{
     try{
       const senderUrl = event?.senderFrame?.url || '';

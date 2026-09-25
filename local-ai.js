@@ -12,7 +12,10 @@ const SYSTEM_PROMPT = [
   "Sen AURA'sın: kullanıcının kişisel, yerel ve Türkçe yapay zeka asistanısın.",
   "Doğru, net ve yararlı cevap ver. Bilmediğini uydurma.",
   "Güncel bilgi gerektiğinde masaüstü ajanındaki web arama araçlarını kullan.",
-  "Masaüstü ajanı bağlıysa izinli dosya, klasör, uygulama ve Unity araçlarını kullanabilirsin.",
+  "Masaüstü ajanı bağlıysa izinli dosya, klasör, uygulama, oyun ve Unity araçlarını kullanabilirsin.",
+  "Kullanıcı bilgisayarında neler olduğunu, uygulamaları, oyunları, masaüstünü veya klasör yapısını sorarsa desktop_get_environment_profile kullan; gerekirse desktop_scan_environment ile yenile.",
+  "Kullanıcı bir uygulama veya oyun açmanı istediğinde genel desktop_find_and_launch_app aracını kullan. Bu araç Google gibi birkaç özel uygulamayla sınırlı değildir; yaygın uygulamaları ve Steam oyunlarını isimle bulabilir.",
+  "Kullanıcı kullanım hakkında sorarsa desktop_get_usage_report kullan ve bu verinin AURA tarafından izlenen açılışlar, Windows Son Öğeler ve anlık süreç görünümü olduğunu açıkça belirt.",
   "Kullanıcı açıkça istemediği sürece dosya yazma, silme, taşıma, uygulama çalıştırma veya komut çalıştırma araçlarını kullanma.",
   "Unity geliştirirken proje dosyalarını okuyabilir, C# ve yapılandırma dosyaları oluşturup değiştirebilir ve Unity projesini açabilirsin.",
   "PowerShell aracı yalnızca kullanıcı açıkça geliştirici veya sistem komutu istediğinde kullanılmalıdır.",
@@ -21,6 +24,30 @@ const SYSTEM_PROMPT = [
 ].join("\n");
 
 const TOOLS = [
+  {
+    type: "function",
+    function: {
+      name: "desktop_scan_environment",
+      description: "Bilgisayarın izinli klasörlerini, masaüstü yapısını, Başlat menüsündeki uygulamaları, Steam oyunlarını ve Windows son öğelerini tarar; AURA bilgisayar profilini günceller.",
+      parameters: { type:"object", properties:{}, additionalProperties:false }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_get_environment_profile",
+      description: "AURA'nın bilgisayar profilini getirir: tanınan uygulamalar, oyunlar, masaüstü ve izinli klasörlerin yapısı.",
+      parameters: { type:"object", properties:{}, additionalProperties:false }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_get_usage_report",
+      description: "AURA'nın açtığı uygulama/oyunların takip edilen açılış sayaçlarını, son açılanları ve o an çalışan Windows süreçlerinin anlık listesini verir. Tüm geçmiş Windows kullanım süresi değildir.",
+      parameters: { type:"object", properties:{}, additionalProperties:false }
+    }
+  },
   {
     type: "function",
     function: {
@@ -367,7 +394,7 @@ async function executeTool(toolCall) {
   return desktopCall(name, parseArguments(toolCall?.function?.arguments));
 }
 
-export async function askLocalAI(message, history = [], onProgress = () => {}) {
+export async function askLocalAI(message, history = [], onProgress = () => {}, environment = null) {
   const value = String(message || "").trim();
   if (!value) throw new Error("Mesaj boş.");
 
@@ -377,7 +404,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}) {
       role:"system",
       content: SYSTEM_PROMPT +
         (desktopAvailable()
-          ? "\nMasaüstü ajanı BAĞLI."
+          ? "\nMasaüstü ajanı BAĞLI." + (environment ? "\nBilgisayar profili:\n" + JSON.stringify(environment).slice(0,18000) : "")
           : "\nMasaüstü ajanı BAĞLI DEĞİL.")
     },
     ...cleanMessages(history),
