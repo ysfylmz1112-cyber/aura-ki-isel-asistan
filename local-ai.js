@@ -177,6 +177,74 @@ const TOOLS = [
     type: "function",
     function: {
       name: "desktop_open_external_url",
+  {
+    type: "function",
+    function: {
+      name: "desktop_choose_folder",
+      description: "Kullanıcının seçtiği klasörü AURA'nın kalıcı erişim alanına ekler. Seçim penceresi açılır.",
+      parameters: {
+        type:"object",
+        properties:{ purpose:{type:"string"} },
+        required:["purpose"], additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_list_drives",
+      description: "Bilgisayardaki mevcut sürücüleri listeler.",
+      parameters: {type:"object",properties:{},additionalProperties:false}
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_copy_path",
+      description: "İzinli bir dosya veya klasörü başka bir izinli konuma kopyalar. Kullanıcı onayı alınır.",
+      parameters: {
+        type:"object",
+        properties:{source:{type:"string"},destination:{type:"string"}},
+        required:["source","destination"],additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_move_path",
+      description: "İzinli bir dosya veya klasörü başka bir izinli konuma taşır. Kullanıcı onayı alınır.",
+      parameters: {
+        type:"object",
+        properties:{source:{type:"string"},destination:{type:"string"}},
+        required:["source","destination"],additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_search_files",
+      description: "İzinli bir klasörde dosya veya klasör adına göre arama yapar. Unity projelerinde dosya bulmak için kullan.",
+      parameters: {
+        type:"object",
+        properties:{root:{type:"string"},query:{type:"string"},maxResults:{type:"number"}},
+        required:["root","query"],additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_run_powershell",
+      description: "Kullanıcının açıkça istediği geliştirici/sistem komutunu PowerShell'de çalıştırır. Önce tam komut için kullanıcı onayı gösterilir ve yönetici yetkisi yükseltilmez.",
+      parameters: {
+        type:"object",
+        properties:{command:{type:"string"}},
+        required:["command"],additionalProperties:false
+      }
+    }
+  },
       description: "Verilen HTTP/HTTPS adresini varsayılan tarayıcıda açar. Açmadan önce kullanıcı onayı gösterilir.",
       parameters: {
         type:"object",
@@ -234,7 +302,7 @@ export async function ensureLocalAI(onProgress = () => {}) {
   if (engine) return engine;
   if (enginePromise) return enginePromise;
 
-  enginePromise = CreateMLCEngine(MODEL_ID, {
+  const config = {
     initProgressCallback: progress => {
       try {
         const percent = typeof progress?.progress === "number"
@@ -243,15 +311,32 @@ export async function ensureLocalAI(onProgress = () => {}) {
         onProgress({percent,text:progress?.text || "Yerel AI modeli hazırlanıyor..."});
       } catch {}
     }
-  }).then(result => {
-    engine = result;
-    onProgress({percent:100,text:"Yerel AI hazır."});
-    return result;
-  }).catch(error => {
-    engine = null;
-    enginePromise = null;
-    throw error;
-  });
+  };
+
+  enginePromise = CreateMLCEngine(MODEL_ID, config)
+    .then(result => {
+      engine = result;
+      onProgress({percent:100,text:"Yerel AI hazır."});
+      return result;
+    })
+    .catch(async error => {
+      if (desktopAvailable() && MODEL_ID === DESKTOP_MODEL_ID && /memory|alloc|out of memory|device|buffer|gpu/i.test(String(error?.message || error))) {
+        onProgress({percent:0,text:"7B model bu bilgisayarda açılmadı; 3B yedek modele geçiliyor..."});
+        try {
+          const fallback = await CreateMLCEngine(WEB_MODEL_ID, config);
+          engine = fallback;
+          onProgress({percent:100,text:"Qwen2.5-3B yedek yerel model hazır."});
+          return fallback;
+        } catch (fallbackError) {
+          engine = null;
+          enginePromise = null;
+          throw fallbackError;
+        }
+      }
+      engine = null;
+      enginePromise = null;
+      throw error;
+    });
 
   return enginePromise;
 }
