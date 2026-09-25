@@ -125,6 +125,30 @@ const TOOLS = [
   {
     type: "function",
     function: {
+      name: "desktop_find_and_launch_app",
+      description: "Windows Başlat menüsü ve masaüstünde adı verilen uygulamayı bulur ve açar. Açmadan önce kullanıcı onayı gösterilir.",
+      parameters: {
+        type:"object",
+        properties:{ app:{type:"string",description:"Uygulama adı"} },
+        required:["app"], additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_open_external_url",
+      description: "Verilen HTTP/HTTPS adresini varsayılan tarayıcıda açar. Açmadan önce kullanıcı onayı gösterilir.",
+      parameters: {
+        type:"object",
+        properties:{ url:{type:"string",description:"Web adresi"} },
+        required:["url"], additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
       name: "desktop_web_search",
       description: "İnternette güncel bilgi arar ve başlık, URL ve özet döndürür.",
       parameters: {
