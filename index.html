@@ -6,7 +6,42 @@ function esc(s){return String(s).replace(/[&<>\\"']/g,c=>({"&":"&amp;","<":"&lt;
 function render(){$("count").textContent=history.length;historyEl.innerHTML=history.slice(0,10).map((x,i)=>'<div class="historyItem" data-i="'+i+'"><b>'+esc(x.q)+'</b><small>'+esc(x.a)+'</small></div>').join('')||'<small style="color:#668397">Henüz sohbet yok.</small>';historyEl.querySelectorAll(".historyItem").forEach(e=>e.onclick=()=>run(history[+e.dataset.i].q))}
 function save(){localStorage.setItem("aura_history",JSON.stringify(history));render()}
 function solveMath(q){let x=q.toLocaleLowerCase("tr-TR").replace(/,/g,".").replace(/[?？!！=]/g,"").replace(/\s+/g," ").trim();x=x.replace(/^(hesapla\s+|sonucu\s+|sonuç\s+|kaçtır\s+)/i,"").trim();let m=x.match(/^(-?(?:\d+(?:\.\d+)?|\.\d+))\s*([+\-*/x×÷])\s*(-?(?:\d+(?:\.\d+)?|\.\d+))$/i);if(!m)return null;let a=Number(m[1]),b=Number(m[3]),op=m[2].toLowerCase(),r;if(op==="+")r=a+b;else if(op==="-")r=a-b;else if(op==="*"||op==="x"||op==="×")r=a*b;else if(op==="/"||op==="÷")r=b===0?null:a/b;else return null;return r===null?"Sıfıra bölme yapılamaz.":Number.isFinite(r)?"Sonuç: "+r:null}
-function localAnswer(q){let x=q.toLocaleLowerCase("tr-TR").trim(),m=solveMath(q);if(m)return m;if(/^(merhaba|selam|hey|sa|slm)$/.test(x))return"Merhaba! AURA çevrimiçi. Nasıl yardımcı olayım?";if(/^(nasılsın|nasılsın\?|iyi misin|naber|ne haber)$/.test(x))return"İyiyim kanka, AURA hazır. Ne konuşalım?";if(x.includes("saat"))return"Saat şu anda "+new Date().toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"})+".";if(x.includes("bugün")||x.includes("tarih")||x.includes("hangi gün"))return"Bugün "+new Date().toLocaleDateString("tr-TR",{weekday:"long",day:"numeric",month:"long",year:"numeric"})+".";if(x.includes("sistem"))return"AURA arayüzü, yerel hafıza, ses sistemi ve yerel AI katmanı aktif.";if(x.includes("hafıza")||x.includes("hatırl"))return history.length?"Bu tarayıcıda "+history.length+" sohbet kaydı bulunuyor.":"Henüz kayıtlı bir sohbet yok.";return null}
+function localAnswer(q){
+  const x=q.toLocaleLowerCase("tr-TR").trim();
+  const math=solveMath(q);
+  if(math)return math;
+
+  if(/^(merhaba|selam|hey|sa|slm|mrb|selamlar)$/.test(x))
+    return "Merhaba! AURA çevrimiçi. Nasıl yardımcı olayım?";
+
+  if(/^(nasılsın|nasılsın\?|iyi misin|naber|ne haber|nasıl gidiyor)$/.test(x))
+    return "İyiyim kanka, AURA hazır. Ne konuşalım?";
+
+  if(/^(saat kaç|saat kaç\?|şu an saat kaç|kaç saat)$/.test(x) || x.includes("saat kaç"))
+    return "Saat şu anda "+new Date().toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"})+".";
+
+  if(x.includes("bugün") || x.includes("tarih") || x.includes("hangi gün") || x.includes("bugünün tarihi"))
+    return "Bugün "+new Date().toLocaleDateString("tr-TR",{weekday:"long",day:"numeric",month:"long",year:"numeric"})+".";
+
+  if(x.includes("sistem"))
+    return "AURA arayüzü, yerel hafıza, ses sistemi ve WebGPU tabanlı yerel AI katmanı aktif.";
+
+  if(x.includes("hafıza") || x.includes("hatırl"))
+    return history.length
+      ? "Bu tarayıcıda "+history.length+" sohbet kaydı bulunuyor."
+      : "Henüz kayıtlı bir sohbet yok.";
+
+  if(x.includes("bilmece"))
+    return "Bilmece: Şehirleri var ama evleri yok, ormanları var ama ağaçları yok, nehirleri var ama suyu yok. Nedir?";
+
+  if(x.includes("teşekkür") || x.includes("sağ ol") || x==="eyvallah")
+    return "Rica ederim kanka. 😎";
+
+  if(x==="adın ne" || x==="sen kimsin" || x.includes("kimsin"))
+    return "Ben AURA. API key gerektirmeden tarayıcında çalışan yerel yapay zeka asistanıyım.";
+
+  return null
+}
 function speak(t){if(!window.speechSynthesis)return;let u=new SpeechSynthesisUtterance(t);u.lang="tr-TR";u.rate=.96;$("tts").textContent="KONUŞUYOR";core.classList.add("active");u.onend=()=>{$("tts").textContent="HAZIR";if(!busy)core.classList.remove("active")};speechSynthesis.cancel();speechSynthesis.speak(u)}
 function addMessage(kind,label,text){chat.insertAdjacentHTML("beforeend",'<div class="msg '+kind+'"><b>'+label+"</b> · "+esc(text)+"</div>");chat.scrollTop=chat.scrollHeight}
 function localProgress(p){status.textContent=p.percent!=null?"● MODEL "+p.percent+"%":"● MODEL HAZIRLANIYOR";$("ai").textContent=p.percent!=null?p.percent+"%":"YÜKLENİYOR";$("sub").textContent=p.text||"Yerel AI modeli hazırlanıyor..."}
