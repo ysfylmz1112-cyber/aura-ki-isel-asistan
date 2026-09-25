@@ -199,7 +199,17 @@ function createWindow() {
   win.loadURL(PROD_URL);
 }
 app.whenReady().then(()=>{
-  ipcMain.handle('aura:tool',async(_event,payload)=>{try{return {ok:true,result:await handleTool(payload?.tool,payload?.args||{})};}catch(error){return {ok:false,error:error?.message||'Bilinmeyen hata'};}});
+  ipcMain.handle('aura:tool',async(event,payload)=>{
+    try{
+      const senderUrl = event?.senderFrame?.url || '';
+      if(new URL(senderUrl).origin !== ALLOWED_REMOTE_ORIGIN){
+        return {ok:false,error:'Yetkisiz pencere.'};
+      }
+      return {ok:true,result:await handleTool(payload?.tool,payload?.args||{})};
+    }catch(error){
+      return {ok:false,error:error?.message||'Bilinmeyen hata'};
+    }
+  });
   ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'1.0.0',mode:'secure-local-agent',roots:allowedRoots()}));
   createWindow();
   app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0)createWindow();});
