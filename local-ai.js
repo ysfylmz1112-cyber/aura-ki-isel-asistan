@@ -1,6 +1,13 @@
 import { CreateMLCEngine } from "https://esm.run/@mlc-ai/web-llm@0.2.85";
 
-const MODEL_ID = "Qwen2.5-3B-Instruct-q4f16_1-MLC";
+const WEB_MODEL_ID = "Qwen2.5-3B-Instruct-q4f16_1-MLC";
+const DESKTOP_MODEL_ID = "Qwen2.5-7B-Instruct-q4f16_1-MLC";
+
+function desktopAvailable() {
+  return !!globalThis.auraDesktop?.isDesktop;
+}
+
+const MODEL_ID = desktopAvailable() ? DESKTOP_MODEL_ID : WEB_MODEL_ID;
 
 const SYSTEM_PROMPT = [
   "Sen AURA'sın: kullanıcının kişisel, yerel ve Türkçe yapay zeka asistanısın.",
@@ -137,6 +144,38 @@ const TOOLS = [
   {
     type: "function",
     function: {
+      name: "desktop_choose_folder",
+      description: "Windows'ta kullanıcının seçtiği bir klasöre AURA erişim izni verir.",
+      parameters: {
+        type:"object",
+        properties:{ purpose:{type:"string",description:"Klasörün neden seçildiği"} },
+        required:["purpose"], additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_list_drives",
+      description: "Windows'taki sürücüleri listeler.",
+      parameters: {type:"object",properties:{},additionalProperties:false}
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_run_powershell",
+      description: "Kullanıcının açık isteğiyle bir PowerShell komutunu çalıştırır. Çalıştırmadan önce tam komut için kullanıcı onayı gösterilir. Yönetici yetkisi yükseltmez.",
+      parameters: {
+        type:"object",
+        properties:{ command:{type:"string",description:"Çalıştırılacak PowerShell komutu"} },
+        required:["command"], additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
       name: "desktop_open_external_url",
       description: "Verilen HTTP/HTTPS adresini varsayılan tarayıcıda açar. Açmadan önce kullanıcı onayı gösterilir.",
       parameters: {
@@ -179,10 +218,6 @@ function assertWebGPU() {
   if (!navigator.gpu) {
     throw new Error("Bu tarayıcı WebGPU desteklemiyor. Güncel Chrome veya Edge ile aç.");
   }
-}
-
-function desktopAvailable() {
-  return !!globalThis.auraDesktop?.isDesktop;
 }
 
 async function desktopCall(name, args) {
@@ -321,4 +356,6 @@ export async function askLocalAI(message, history = [], onProgress = () => {}) {
 }
 
 export function getLocalAIModel() { return MODEL_ID; }
+export function getWebModel() { return WEB_MODEL_ID; }
+export function getDesktopModel() { return DESKTOP_MODEL_ID; }
 export function hasDesktopAgent() { return desktopAvailable(); }
