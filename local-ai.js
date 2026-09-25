@@ -1,6 +1,6 @@
 import { CreateMLCEngine } from "https://esm.run/@mlc-ai/web-llm@0.2.85";
 
-const MODEL_ID = "Qwen2.5-0.5B-Instruct-q4f16_1-MLC";
+const MODEL_ID = "Qwen2.5-3B-Instruct-q4f16_1-MLC";
 const SYSTEM_PROMPT = [
   "Sen AURA adlı Türkçe konuşan kişisel yapay zeka asistanısın.",
   "Kullanıcıya doğrudan, anlaşılır ve yararlı cevaplar ver.",
@@ -70,7 +70,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}) {
     ],
     temperature: 0.7,
     top_p: 0.9,
-    max_tokens: 512,
+    max_tokens: 768,
     stream: false
   });
 
