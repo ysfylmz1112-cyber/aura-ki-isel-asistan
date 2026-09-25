@@ -145,66 +145,63 @@ async function discoverShortcutApps() {
     path.join(process.env.PUBLIC || 'C:\\Users\\Public','Desktop')
   ];
   const matches = [];
+
   async function walk(dir, depth=0) {
-    if (depth > 4 || matches.length >= 300) return;
-    let entries = [];
-    try { entries = await fsp.readdir(dir,{withFileTypes:true}); } catch { return; }
-    for (const entry of entries) {
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        if (entry.name !== 'node_modules') await walk(full, depth+1);
+    if(depth>5 || matches.length>=500) return;
+    let entries=[];
+    try { entries=await fsp.readdir(dir,{withFileTypes:true}); } catch { return; }
+    for(const entry of entries){
+      const full=path.join(dir,entry.name);
+      if(entry.isDirectory()){
+        if(!['node_modules','AppData'].includes(entry.name)) await walk(full,depth+1);
         continue;
       }
-      const lower = entry.name.toLowerCase();
-      if (!(lower.endsWith('.lnk') || lower.endsWith('.exe'))) continue;
-      const display = entry.name.replace(/\.(lnk|exe)$/i,'');
-      matches.push({name:display, path:full, kind:lower.endsWith('.lnk') ? 'shortcut' : 'exe'});
-      if (matches.length >= 300) return;
+      const lower=entry.name.toLowerCase();
+      if(!(lower.endsWith('.lnk')||lower.endsWith('.exe'))) continue;
+      matches.push({
+        name:entry.name.replace(/\.(lnk|exe)$/i,''),
+        path:full,
+        kind:lower.endsWith('.lnk')?'shortcut':'exe'
+      });
+      if(matches.length>=500) return;
     }
   }
-  for (const dir of dirs) await walk(dir);
-  const unique = [];
-  const seen = new Set();
-  for (const item of matches) {
-    const key = item.path.toLowerCase();
-    if (!seen.has(key)) { seen.add(key); unique.push(item); }
+
+  for(const dir of dirs) await walk(dir);
+
+  // Windows StartApps: güvenilir uygulama kataloğu.
+  const startApps=await new Promise(resolve=>{
+    execFile(
+      'powershell.exe',
+      ['-NoProfile','-NonInteractive','-Command',
+       "Get-StartApps | Select-Object Name,AppID | ConvertTo-Json -Compress"],
+      {windowsHide:true,maxBuffer:4*1024*1024},
+      (error,stdout)=>{
+        if(error) return resolve([]);
+        try{
+          const value=JSON.parse(String(stdout||'[]'));
+          const list=Array.isArray(value)?value:[value];
+          resolve(list.filter(x=>x?.Name).map(x=>({
+            name:String(x.Name),
+            path:String(x.AppID||''),
+            kind:'start-app'
+          })));
+        }catch{ resolve([]); }
+      }
+    );
+  });
+
+  const unique=[];
+  const seen=new Set();
+  for(const item of [...startApps,...matches]){
+    const key=normalizedSearchText(item.name);
+    if(!key||seen.has(key)) continue;
+    seen.add(key);
+    unique.push(item);
   }
   return unique;
 }
 
-async function discoverRegistryApps() {
-  const queries = [
-    ['HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall', '/reg:64'],
-    ['HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall', '/reg:32'],
-    ['HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall', '/reg:64'],
-    ['HKLM\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall', '/reg:32']
-  ];
-  const apps = [];
-  for(const [key,arch] of queries){
-    const result=await new Promise(resolve=>{
-      execFile('reg.exe',['query',key,'/s',arch],{windowsHide:true,maxBuffer:6*1024*1024},(error,stdout)=>{
-        resolve(error ? '' : String(stdout||''));
-      });
-    });
-    let current=null;
-    for(const line of result.split(/\r?\n/)){
-      const header=line.match(/^HKEY[^\r\n]+$/i);
-      if(header){ current={key:header[0]}; continue; }
-      const m=line.match(/^\s+DisplayName\s+REG_SZ\s+(.*)$/i);
-      if(!m || !current) continue;
-      const name=m[1].trim();
-      if(!name || name.length>180) continue;
-      apps.push({name,path:current.key,kind:'registry'});
-    }
-  }
-  const seen=new Set();
-  return apps.filter(x=>{
-    const key=normalizedSearchText(x.name);
-    if(!key || seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  }).slice(0,300);
-}
 
 function findSteamRootCandidates() {
   return [
@@ -328,16 +325,28 @@ async function recentWindowsItems() {
 
 async function currentProcesses() {
   return new Promise(resolve=>{
-    execFile('tasklist.exe',['/FO','CSV','/NH'],{windowsHide:true,maxBuffer:1024*1024},(error,stdout)=>{
-      if(error) return resolve([]);
-      const items=String(stdout||'').split(/\r?\n/).map(line=>{
-        const m=line.match(/"([^"]+)","(\d+)","([^"]+)"/);
-        return m ? {name:m[1],pid:Number(m[2])} : null;
-      }).filter(Boolean);
-      resolve(items.slice(0,120));
-    });
+    execFile(
+      'powershell.exe',
+      ['-NoProfile','-NonInteractive','-Command',
+       "Get-Process | Select-Object -First 300 ProcessName,Id | ConvertTo-Json -Compress"],
+      {windowsHide:true,maxBuffer:4*1024*1024},
+      (error,stdout)=>{
+        if(error) return resolve([]);
+        try{
+          const value=JSON.parse(String(stdout||'[]'));
+          const list=Array.isArray(value)?value:[value];
+          resolve(list.filter(x=>x?.ProcessName).map(x=>({
+            name:String(x.ProcessName)+'.exe',
+            pid:Number(x.Id)||0
+          })));
+        }catch{
+          resolve([]);
+        }
+      }
+    );
   });
 }
+
 
 async function getUsageReport() {
   const processes=await currentProcesses();
@@ -359,6 +368,7 @@ async function scanEnvironment() {
   const rootList=allowedRoots();
   const profile={
     scannedAt:new Date().toISOString(),
+    live:true,
     system:systemInfo(),
     desktop:null,
     documents:null,
@@ -380,31 +390,35 @@ async function scanEnvironment() {
     }
   };
 
-  const uniqueRoots=[...new Set(rootList.map(x=>x.toLowerCase()))].map(lower=>rootList.find(x=>x.toLowerCase()===lower));
+  const uniqueRoots=[];
+  for(const root of rootList){
+    if(!uniqueRoots.some(x=>x.toLowerCase()===root.toLowerCase())) uniqueRoots.push(root);
+  }
   for(const root of uniqueRoots){
-    profile.roots.push(await safeStep('folder:'+root,()=>directorySummary(root),{path:root,exists:false,error:true}));
+    profile.roots.push(await safeStep(
+      'folder:'+root,
+      ()=>directorySummary(root),
+      {path:root,exists:false,error:true}
+    ));
   }
 
   profile.desktop=await safeStep('desktop',()=>directorySummary(path.join(home,'Desktop')),{path:path.join(home,'Desktop'),exists:false,error:true});
   profile.documents=await safeStep('documents',()=>directorySummary(path.join(home,'Documents')),{path:path.join(home,'Documents'),exists:false,error:true});
   profile.downloads=await safeStep('downloads',()=>directorySummary(path.join(home,'Downloads')),{path:path.join(home,'Downloads'),exists:false,error:true});
 
-  const shortcutApps=await safeStep('start-menu',()=>discoverShortcutApps(),[]);
-  const registryApps=await safeStep('windows-registry',()=>discoverRegistryApps(),[]);
-  const appMap=new Map();
-  for(const item of [...shortcutApps,...registryApps]){
-    const key=normalizedSearchText(item.name);
-    if(key && !appMap.has(key)) appMap.set(key,item);
-  }
-  profile.apps=[...appMap.values()].slice(0,400);
+  const shortcutApps=await safeStep('applications',()=>discoverShortcutApps(),[]);
+  profile.apps=shortcutApps.slice(0,500);
 
-  profile.games=(await safeStep('steam-games',()=>discoverSteamGames(),[])).slice(0,300);
-  profile.runningProcesses=await safeStep('running-processes',()=>currentProcesses(),[]);
+  profile.games=await safeStep('steam-games',()=>discoverSteamGames(),[]);
+  profile.runningProcesses=await safeStep('processes',()=>currentProcesses(),[]);
   profile.recentWindowsItems=await safeStep('recent-windows',()=>recentWindowsItems(),[]);
 
   environmentProfile=profile;
-  await fsp.mkdir(path.dirname(PROFILE_FILE),{recursive:true}).catch(()=>{});
-  await fsp.writeFile(PROFILE_FILE,JSON.stringify(profile,null,2),'utf8').catch(()=>{});
+  try{
+    await fsp.mkdir(path.dirname(PROFILE_FILE),{recursive:true});
+    await fsp.writeFile(PROFILE_FILE,JSON.stringify(profile,null,2),'utf8');
+  }catch{}
+
   return profile;
 }
 async function getEnvironmentProfile() {
@@ -694,7 +708,7 @@ app.whenReady().then(async()=>{
       return {ok:false,error:error?.message||'Bilinmeyen hata'};
     }
   });
-  ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'1.4.0',mode:'secure-local-agent-pc-aware',roots:allowedRoots()}));
+  ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'1.5.0',mode:'secure-local-agent-pc-aware',roots:allowedRoots()}));
   createWindow();
   scanEnvironment().catch(()=>{});
   app.on('activate',()=>{
