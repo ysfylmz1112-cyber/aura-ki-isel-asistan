@@ -36,31 +36,46 @@ Set-Location $project
 
 # Yerel Electron ajanı eski kaldıysa Git durumundan bağımsız olarak güncel
 # main.cjs dosyasını doğrudan GitHub'dan yenile.
-$mainPath = Join-Path $project 'main.cjs'
-$rawMainUrl = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/main/desktop/main.cjs'
-
-try {
-    $remoteMain = (Invoke-WebRequest -UseBasicParsing -Uri $rawMainUrl).Content
-    if ($remoteMain -notmatch "desktop_scan_environment") {
-        throw 'GitHub üzerindeki AURA Desktop kodunda desktop_scan_environment bulunamadı.'
+$filesToRefresh = @(
+    @{
+        Name = 'main.cjs'
+        Local = Join-Path $project 'main.cjs'
+        Remote = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/main/desktop/main.cjs'
+        Required = 'desktop_scan_environment'
+    },
+    @{
+        Name = 'index.html'
+        Local = Join-Path $root 'index.html'
+        Remote = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/main/index.html'
+        Required = 'PC taraması tamamlandı kanka'
     }
+)
 
-    $localMain = ''
-    if (Test-Path $mainPath) {
-        $localMain = Get-Content -Raw -LiteralPath $mainPath
-    }
-
-    if ($localMain -ne $remoteMain) {
-        $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-        if ($localMain) {
-            Copy-Item -LiteralPath $mainPath -Destination (Join-Path $project "main.cjs.backup-$stamp") -Force
+foreach ($item in $filesToRefresh) {
+    try {
+        $remote = (Invoke-WebRequest -UseBasicParsing -Uri $item.Remote).Content
+        if ($remote -notmatch [regex]::Escape($item.Required)) {
+            throw ($item.Name + ' için GitHub içeriği beklenen AURA kodunu içermiyor.')
         }
-        Set-Content -LiteralPath $mainPath -Value $remoteMain -Encoding UTF8
-        Write-Host 'AURA Desktop ajan kodu yenilendi.' -ForegroundColor Green
+
+        $local = ''
+        if (Test-Path $item.Local) {
+            $local = Get-Content -Raw -LiteralPath $item.Local
+        }
+
+        if ($local -ne $remote) {
+            $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+            if ($local) {
+                $backup = $item.Local + '.backup-' + $stamp
+                Copy-Item -LiteralPath $item.Local -Destination $backup -Force
+            }
+            Set-Content -LiteralPath $item.Local -Value $remote -Encoding UTF8
+            Write-Host ('AURA dosyasi yenilendi: ' + $item.Name) -ForegroundColor Green
+        }
     }
-}
-catch {
-    Write-Host ('Desktop ajan guncellemesi yapilamadi: ' + $_.Exception.Message) -ForegroundColor Yellow
+    catch {
+        Write-Host ($item.Name + ' guncellenemedi: ' + $_.Exception.Message) -ForegroundColor Yellow
+    }
 }
 
 if (-not (Test-Path '.\node_modules')) {
