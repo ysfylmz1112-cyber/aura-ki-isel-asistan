@@ -172,8 +172,23 @@ hydrateEnvironmentProfile();
 
 const navText={memory:"Son 100 konuşma bu tarayıcıda yerel olarak tutuluyor.",voice:"Türkçe mikrofon ve sesli cevap aktif.",settings:"Ayarlar: yerel hafıza, WebGPU tabanlı AI ve tema sistemi aktif.",about:"AURA — API key gerektirmeyen tarayıcı içi yerel AI asistanı.",home:"Sorunu yaz, AURA cevaplasın."};Object.keys(navText).forEach(id=>$(id).onclick=()=>{$("sub").textContent=navText[id];document.querySelectorAll(".nav").forEach(n=>n.classList.remove("active"));$(id).classList.add("active")});
 document.addEventListener("keydown",e=>{if(e.ctrlKey&&e.key.toLowerCase()==="k"){e.preventDefault();input.focus()}if(e.key==="Escape"){speechSynthesis.cancel();busy=false;sendBtn.disabled=false;micBtn.disabled=false;status.textContent="● HAZIR";core.classList.remove("active");$("tts").textContent="HAZIR"}});
-if(hasDesktopAgent()){try{const info=await window.auraDesktop.getInfo();$("ai").textContent="PC + YEREL AI";$("sub").textContent="Desktop "+String(info?.version||"?")+" bağlı · canlı PC taraması aktif · API key yok.";}catch{$("ai").textContent="PC + YEREL AI";$("sub").textContent="Masaüstü ajanı bağlı · canlı PC taraması aktif.";}}else{$("ai").textContent="YEREL AI";$("sub").textContent="API key yok · İlk AI sorusunda yerel model tarayıcıya indirilecek."}
-input.disabled=false;sendBtn.disabled=false;micBtn.disabled=false;setTimeout(()=>{try{input.focus();input.disabled=false;}catch{}},150);
+function initDesktopStatus(){
+  if(!hasDesktopAgent()){
+    $("ai").textContent="YEREL AI";
+    $("sub").textContent="API key yok · İlk AI sorusunda yerel model tarayıcıya indirilecek.";
+    return;
+  }
+  $("ai").textContent="PC + YEREL AI";
+  $("sub").textContent="Desktop bağlı · canlı PC taraması aktif · API key yok.";
+  Promise.resolve().then(async()=>{
+    try{
+      const info=await window.auraDesktop.getInfo();
+      $("sub").textContent="Desktop "+String(info?.version||"?")+" bağlı · canlı PC taraması aktif · API key yok.";
+    }catch{}
+  });
+}
+input.disabled=false;sendBtn.disabled=false;micBtn.disabled=false;
+initDesktopStatus();setTimeout(()=>{try{input.focus();input.disabled=false;}catch{}},150);
 input.disabled=false;
 sendBtn.disabled=false;
 micBtn.disabled=false;
