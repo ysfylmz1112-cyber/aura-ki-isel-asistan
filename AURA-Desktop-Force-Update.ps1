@@ -12,7 +12,7 @@ Start-Sleep -Milliseconds 700
 
 $base = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/main/'
 $files = @(
-  @{ Local = Join-Path $repoRoot 'index.html'; Remote = $base + 'index.html'; Required = 'PC taraması tamamlandı kanka' },
+  @{ Local = Join-Path $repoRoot 'index.html'; Remote = $base + 'index.html'; Required = 'desktop_scan_environment' },
   @{ Local = Join-Path $repoRoot 'local-ai.js'; Remote = $base + 'local-ai.js'; Required = 'Qwen2.5-1.5B-Instruct' },
   @{ Local = Join-Path $desktopDir 'main.cjs'; Remote = $base + 'desktop/main.cjs'; Required = 'desktop_scan_environment' },
   @{ Local = Join-Path $desktopDir 'preload.cjs'; Remote = $base + 'desktop/preload.cjs'; Required = 'auraDesktop' },
@@ -23,7 +23,7 @@ $files = @(
 foreach($item in $files){
   Write-Host ('Guncelleniyor: ' + $item.Local) -ForegroundColor DarkCyan
   $remote = (Invoke-WebRequest -UseBasicParsing -Uri $item.Remote -Headers @{ 'Cache-Control' = 'no-cache' }).Content
-  if([string]::IsNullOrWhiteSpace($remote) -or $remote -notmatch [regex]::Escape($item.Required)){
+  if([string]::IsNullOrWhiteSpace($remote) -or $remote.Length -lt 2000 -or $remote -notmatch [regex]::Escape($item.Required)){
     throw ('GitHub dosyasi dogrulanamadi: ' + $item.Remote)
   }
   if(Test-Path $item.Local){
@@ -31,6 +31,7 @@ foreach($item in $files){
     Copy-Item -LiteralPath $item.Local -Destination ($item.Local + '.backup-' + $stamp) -Force
   }
   [System.IO.File]::WriteAllText($item.Local, $remote, (New-Object System.Text.UTF8Encoding($false)))
+  Write-Host ('Dogrulandi: ' + $item.Name) -ForegroundColor Green
 }
 
 Set-Location $repoRoot
