@@ -43,18 +43,37 @@ function localAnswer(q){
   return null
 }
 function isDirectDesktopCommand(q){
-  if(!hasDesktopAgent()) return false;
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
   const exact=[
     "google aç","google'ı aç","googleyi aç","youtube aç","youtube'u aç",
-    "discord aç","github aç","chatgpt aç"
+    "discord aç","github aç","chatgpt aç",
+    "bilgisayarımda neler var","bilgisayarımda neler var?",
+    "pc'de neler var","pc de neler var","uygulamalarımı göster",
+    "oyunlarımı göster","hangi oyunlarım var"
   ];
   return exact.includes(x) || /^.+? aç(?:ıver|ar)?$/.test(x);
 }
 
 async function directDesktopCommand(q){
-  if(!hasDesktopAgent()) return null;
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
+
+  if(!hasDesktopAgent()){
+    if(/bilgisayarımda neler var|pc['’]?de neler var|uygulamalarımı göster|oyunlarımı göster|hangi oyunlarım var/i.test(x)){
+      return "Bu ekran AURA'nın web sürümü. Bilgisayarını taramak için AURA Desktop'ı başlatman gerekiyor.";
+    }
+    if(/(?:.+?) aç(?:ıver|ar)?$/i.test(x)){
+      return "Bu ekran AURA'nın web sürümü. Uygulama veya oyun açmak için AURA Desktop'ı başlatman gerekiyor.";
+    }
+    return null;
+  }
+
+  if(/bilgisayarımda neler var|pc['’]?de neler var|uygulamalarımı göster|oyunlarımı göster|hangi oyunlarım var/i.test(x)){
+    const r=await window.auraDesktop.call("desktop_scan_environment",{});
+    if(!r?.ok) throw new Error(r?.error||"Bilgisayar taranamadı.");
+    environmentProfile=r.result;
+    localStorage.setItem("aura_environment_profile",JSON.stringify(environmentProfile));
+    return "PC taraması tamamlandı kanka. "+(environmentProfile?.apps?.length||0)+" uygulama ve "+(environmentProfile?.games?.length||0)+" Steam oyunu tanındı.";
+  }
 
   const urlMap={
     "google aç":"https://www.google.com",
@@ -93,15 +112,9 @@ async function run(q){
   if(!q)return;
 
   const direct=isDirectDesktopCommand(q);
-  if(direct && !busy){
-    busy=true;sendBtn.disabled=true;micBtn.disabled=true;addMessage("me","SEN",q);input.value="";status.textContent="● ÇALIŞIYOR";core.classList.add("active");
-  } else if(!direct && busy){
-    return;
-  } else if(!direct){
-    busy=true;sendBtn.disabled=true;micBtn.disabled=true;addMessage("me","SEN",q);input.value="";status.textContent="● DÜŞÜNÜYOR";core.classList.add("active");
-  } else if(direct && busy){
-    addMessage("me","SEN",q);input.value="";
-  }
+  if(busy) return;
+  busy=true;sendBtn.disabled=true;micBtn.disabled=true;addMessage("me","SEN",q);input.value="";
+  status.textContent=direct?"● ÇALIŞIYOR":"● DÜŞÜNÜYOR";core.classList.add("active");
 
   let local=localAnswer(q);
   if(local){finish(q,local,false);return}
@@ -109,19 +122,7 @@ async function run(q){
   if(direct){
     try{
       const answer=await directDesktopCommand(q);
-      if(answer){
-        if(busy && status.textContent!=="● ÇALIŞIYOR"){
-          addMessage("","AURA",answer);
-          history.unshift({q,a:answer,time:Date.now(),ai:false});
-          history=history.slice(0,100);save();speak(answer);
-        }else{
-          finish(q,answer,false);
-        }
-        if(status.textContent==="● ÇALIŞIYOR"){
-          status.textContent="● HAZIR";core.classList.remove("active");busy=false;sendBtn.disabled=false;micBtn.disabled=false;
-        }
-        return;
-      }
+      if(answer){finish(q,answer,false);return}
     }catch(e){
       status.textContent="● HAZIR";core.classList.remove("active");addMessage("error","AURA","Masaüstü işlemi yapılamadı: "+(e?.message||"bilinmeyen hata"));busy=false;sendBtn.disabled=false;micBtn.disabled=false;return;
     }
