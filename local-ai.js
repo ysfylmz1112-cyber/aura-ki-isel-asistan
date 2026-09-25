@@ -8,17 +8,16 @@ function desktopAvailable() {
 }
 
 const MODEL_ID = desktopAvailable() ? DESKTOP_MODEL_ID : WEB_MODEL_ID;
-
 const SYSTEM_PROMPT = [
   "Sen AURA'sın: kullanıcının kişisel, yerel ve Türkçe yapay zeka asistanısın.",
   "Doğru, net ve yararlı cevap ver. Bilmediğini uydurma.",
-  "Güncel bilgi gerektiğinde ve masaüstü ajanı bağlı olduğunda web araması araçlarını kullan.",
-  "Masaüstü ajanı bağlıysa bilgisayardaki izinli dosya ve uygulama araçlarını kullanabilirsin.",
-  "Dosya yazma, silme, klasör oluşturma, uygulama açma ve Unity açma gibi değişiklik yapan işlemleri sadece kullanıcı açıkça istiyorsa araç olarak seç.",
-  "Kritik veya geri alınması zor işlemleri yapmadan önce aracın kullanıcı onay penceresinin çalışmasına izin ver.",
-  "Kullanıcı Unity ile oyun geliştiriyorsa; proje dosyalarını okuyup anlayabilir, C# scriptleri oluşturabilir/değiştirebilir ve Unity projesini açabilir.",
-  "Bilgisayarda keyfi sistem komutu çalıştırma aracı yoktur; bu sınırı aşmaya çalışma.",
-  "Türkçe konuş. Gereksiz tekrar yapma."
+  "Güncel bilgi gerektiğinde masaüstü ajanındaki web arama araçlarını kullan.",
+  "Masaüstü ajanı bağlıysa izinli dosya, klasör, uygulama ve Unity araçlarını kullanabilirsin.",
+  "Kullanıcı açıkça istemediği sürece dosya yazma, silme, taşıma, uygulama çalıştırma veya komut çalıştırma araçlarını kullanma.",
+  "Unity geliştirirken proje dosyalarını okuyabilir, C# ve yapılandırma dosyaları oluşturup değiştirebilir ve Unity projesini açabilirsin.",
+  "PowerShell aracı yalnızca kullanıcı açıkça geliştirici veya sistem komutu istediğinde kullanılmalıdır.",
+  "Web sonuçlarını kullanırken kaynakları ayırt et ve emin olmadığın bilgiyi kesin gerçek gibi sunma.",
+  "Türkçe konuş."
 ].join("\n");
 
 const TOOLS = [
@@ -26,198 +25,41 @@ const TOOLS = [
     type: "function",
     function: {
       name: "desktop_get_system_info",
-      description: "Bilgisayarın işletim sistemi, CPU, RAM ve kullanıcı klasörü gibi güvenli sistem bilgilerini alır.",
+      description: "İşletim sistemi, CPU, RAM ve kullanıcı klasörü gibi sistem bilgilerini alır.",
       parameters: { type:"object", properties:{}, additionalProperties:false }
     }
   },
   {
     type: "function",
     function: {
-      name: "desktop_list_directory",
-      description: "İzin verilen bir klasörün içeriğini listeler.",
-      parameters: {
-        type:"object",
-        properties:{ path:{type:"string",description:"Klasör yolu"} },
-        required:["path"], additionalProperties:false
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "desktop_read_text_file",
-      description: "İzin verilen bir metin dosyasını okur. Kod dosyalarını incelemek için kullan.",
-      parameters: {
-        type:"object",
-        properties:{ path:{type:"string",description:"Dosya yolu"} },
-        required:["path"], additionalProperties:false
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "desktop_write_text_file",
-      description: "İzin verilen bir dosyayı oluşturur veya değiştirir. Kullanıcı açıkça kod/dosya oluşturma veya değiştirme istediğinde kullan.",
-      parameters: {
-        type:"object",
-        properties:{
-          path:{type:"string",description:"Dosya yolu"},
-          content:{type:"string",description:"Dosyanın tamamı"}
-        },
-        required:["path","content"], additionalProperties:false
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "desktop_create_directory",
-      description: "İzin verilen bir klasörü oluşturur.",
-      parameters: {
-        type:"object",
-        properties:{ path:{type:"string"} },
-        required:["path"], additionalProperties:false
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "desktop_delete_path",
-      description: "İzin verilen bir dosya veya klasörü siler. Sadece açık ve net silme isteğinde kullan.",
-      parameters: {
-        type:"object",
-        properties:{ path:{type:"string"} },
-        required:["path"], additionalProperties:false
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "desktop_open_path",
-      description: "İzin verilen bir dosya veya klasörü Windows'ta açar.",
-      parameters: {
-        type:"object",
-        properties:{ path:{type:"string"} },
-        required:["path"], additionalProperties:false
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "desktop_launch_app",
-      description: "Güvenli uygulama kısayollarından Not Defteri, Hesap Makinesi veya Dosya Gezgini açar.",
-      parameters: {
-        type:"object",
-        properties:{ app:{type:"string",enum:["notepad","calculator","explorer"]} },
-        required:["app"], additionalProperties:false
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "desktop_open_unity_project",
-      description: "Unity Editor'ı verilen Unity proje klasörü ile açar.",
-      parameters: {
-        type:"object",
-        properties:{ projectPath:{type:"string",description:"Unity proje klasörü"} },
-        required:["projectPath"], additionalProperties:false
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "desktop_find_and_launch_app",
-      description: "Windows Başlat menüsü ve masaüstünde adı verilen uygulamayı bulur ve açar. Açmadan önce kullanıcı onayı gösterilir.",
-      parameters: {
-        type:"object",
-        properties:{ app:{type:"string",description:"Uygulama adı"} },
-        required:["app"], additionalProperties:false
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "desktop_choose_folder",
-      description: "Windows'ta kullanıcının seçtiği bir klasöre AURA erişim izni verir.",
-      parameters: {
-        type:"object",
-        properties:{ purpose:{type:"string",description:"Klasörün neden seçildiği"} },
-        required:["purpose"], additionalProperties:false
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
       name: "desktop_list_drives",
-      description: "Windows'taki sürücüleri listeler.",
-      parameters: {type:"object",properties:{},additionalProperties:false}
+      description: "Windows sürücülerini listeler.",
+      parameters: { type:"object", properties:{}, additionalProperties:false }
     }
   },
-  {
-    type: "function",
-    function: {
-      name: "desktop_run_powershell",
-      description: "Kullanıcının açık isteğiyle bir PowerShell komutunu çalıştırır. Çalıştırmadan önce tam komut için kullanıcı onayı gösterilir. Yönetici yetkisi yükseltmez.",
-      parameters: {
-        type:"object",
-        properties:{ command:{type:"string",description:"Çalıştırılacak PowerShell komutu"} },
-        required:["command"], additionalProperties:false
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "desktop_open_external_url",
   {
     type: "function",
     function: {
       name: "desktop_choose_folder",
-      description: "Kullanıcının seçtiği klasörü AURA'nın kalıcı erişim alanına ekler. Seçim penceresi açılır.",
+      description: "Kullanıcının seçtiği klasörü AURA'nın erişim alanına ekler.",
       parameters: {
         type:"object",
         properties:{ purpose:{type:"string"} },
-        required:["purpose"], additionalProperties:false
+        required:["purpose"],
+        additionalProperties:false
       }
     }
   },
   {
     type: "function",
     function: {
-      name: "desktop_list_drives",
-      description: "Bilgisayardaki mevcut sürücüleri listeler.",
-      parameters: {type:"object",properties:{},additionalProperties:false}
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "desktop_copy_path",
-      description: "İzinli bir dosya veya klasörü başka bir izinli konuma kopyalar. Kullanıcı onayı alınır.",
+      name: "desktop_list_directory",
+      description: "İzinli bir klasörün içeriğini listeler.",
       parameters: {
         type:"object",
-        properties:{source:{type:"string"},destination:{type:"string"}},
-        required:["source","destination"],additionalProperties:false
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "desktop_move_path",
-      description: "İzinli bir dosya veya klasörü başka bir izinli konuma taşır. Kullanıcı onayı alınır.",
-      parameters: {
-        type:"object",
-        properties:{source:{type:"string"},destination:{type:"string"}},
-        required:["source","destination"],additionalProperties:false
+        properties:{ path:{type:"string"} },
+        required:["path"],
+        additionalProperties:false
       }
     }
   },
@@ -225,11 +67,157 @@ const TOOLS = [
     type: "function",
     function: {
       name: "desktop_search_files",
-      description: "İzinli bir klasörde dosya veya klasör adına göre arama yapar. Unity projelerinde dosya bulmak için kullan.",
+      description: "İzinli bir klasörde dosya veya klasör adı arar.",
       parameters: {
         type:"object",
-        properties:{root:{type:"string"},query:{type:"string"},maxResults:{type:"number"}},
-        required:["root","query"],additionalProperties:false
+        properties:{
+          root:{type:"string"},
+          query:{type:"string"},
+          maxResults:{type:"number"}
+        },
+        required:["root","query"],
+        additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_read_text_file",
+      description: "İzinli bir metin veya kod dosyasını okur.",
+      parameters: {
+        type:"object",
+        properties:{ path:{type:"string"} },
+        required:["path"],
+        additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_write_text_file",
+      description: "İzinli bir dosyayı oluşturur veya tamamen değiştirir. Kullanıcı onayı gösterilir.",
+      parameters: {
+        type:"object",
+        properties:{
+          path:{type:"string"},
+          content:{type:"string"}
+        },
+        required:["path","content"],
+        additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_create_directory",
+      description: "İzinli bir klasör oluşturur. Kullanıcı onayı gösterilir.",
+      parameters: {
+        type:"object",
+        properties:{ path:{type:"string"} },
+        required:["path"],
+        additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_copy_path",
+      description: "İzinli bir dosya veya klasörü başka bir izinli yere kopyalar.",
+      parameters: {
+        type:"object",
+        properties:{
+          source:{type:"string"},
+          destination:{type:"string"}
+        },
+        required:["source","destination"],
+        additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_move_path",
+      description: "İzinli bir dosya veya klasörü başka bir izinli yere taşır.",
+      parameters: {
+        type:"object",
+        properties:{
+          source:{type:"string"},
+          destination:{type:"string"}
+        },
+        required:["source","destination"],
+        additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_delete_path",
+      description: "İzinli bir dosya veya klasörü siler. Kullanıcı onayı zorunludur.",
+      parameters: {
+        type:"object",
+        properties:{ path:{type:"string"} },
+        required:["path"],
+        additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_open_path",
+      description: "İzinli bir dosya veya klasörü Windows'ta açar.",
+      parameters: {
+        type:"object",
+        properties:{ path:{type:"string"} },
+        required:["path"],
+        additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_find_and_launch_app",
+      description: "Başlat menüsü ve masaüstünde bir uygulamayı bulup açar. Kullanıcı onayı gösterilir.",
+      parameters: {
+        type:"object",
+        properties:{ app:{type:"string"} },
+        required:["app"],
+        additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_launch_app",
+      description: "Not Defteri, Hesap Makinesi veya Dosya Gezgini açar. Kullanıcı onayı gösterilir.",
+      parameters: {
+        type:"object",
+        properties:{
+          app:{type:"string",enum:["notepad","calculator","explorer"]}
+        },
+        required:["app"],
+        additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_open_unity_project",
+      description: "Verilen Unity proje klasörünü Unity Editor ile açar. Kullanıcı onayı gösterilir.",
+      parameters: {
+        type:"object",
+        properties:{ projectPath:{type:"string"} },
+        required:["projectPath"],
+        additionalProperties:false
       }
     }
   },
@@ -237,19 +225,25 @@ const TOOLS = [
     type: "function",
     function: {
       name: "desktop_run_powershell",
-      description: "Kullanıcının açıkça istediği geliştirici/sistem komutunu PowerShell'de çalıştırır. Önce tam komut için kullanıcı onayı gösterilir ve yönetici yetkisi yükseltilmez.",
+      description: "Açıkça istenen PowerShell geliştirici/sistem komutunu çalıştırır. Yönetici yetkisine yükseltmez ve kullanıcıdan tam komut onayı ister.",
       parameters: {
         type:"object",
-        properties:{command:{type:"string"}},
-        required:["command"],additionalProperties:false
+        properties:{ command:{type:"string"} },
+        required:["command"],
+        additionalProperties:false
       }
     }
   },
-      description: "Verilen HTTP/HTTPS adresini varsayılan tarayıcıda açar. Açmadan önce kullanıcı onayı gösterilir.",
+  {
+    type: "function",
+    function: {
+      name: "desktop_open_external_url",
+      description: "Bir HTTP/HTTPS adresini varsayılan tarayıcıda açar. Kullanıcı onayı gösterilir.",
       parameters: {
         type:"object",
-        properties:{ url:{type:"string",description:"Web adresi"} },
-        required:["url"], additionalProperties:false
+        properties:{ url:{type:"string"} },
+        required:["url"],
+        additionalProperties:false
       }
     }
   },
@@ -257,11 +251,12 @@ const TOOLS = [
     type: "function",
     function: {
       name: "desktop_web_search",
-      description: "İnternette güncel bilgi arar ve başlık, URL ve özet döndürür.",
+      description: "İnternette güncel bilgi arar.",
       parameters: {
         type:"object",
-        properties:{ query:{type:"string",description:"Arama sorgusu"} },
-        required:["query"], additionalProperties:false
+        properties:{ query:{type:"string"} },
+        required:["query"],
+        additionalProperties:false
       }
     }
   },
@@ -269,11 +264,12 @@ const TOOLS = [
     type: "function",
     function: {
       name: "desktop_fetch_web_page",
-      description: "Verilen HTTP/HTTPS web sayfasının metin içeriğini getirir.",
+      description: "HTTP/HTTPS web sayfasının metin içeriğini getirir.",
       parameters: {
         type:"object",
-        properties:{ url:{type:"string",description:"Web adresi"} },
-        required:["url"], additionalProperties:false
+        properties:{ url:{type:"string"} },
+        required:["url"],
+        additionalProperties:false
       }
     }
   }
@@ -281,20 +277,24 @@ const TOOLS = [
 
 let engine = null;
 let enginePromise = null;
+let activeModel = MODEL_ID;
 
 function assertWebGPU() {
   if (!navigator.gpu) {
-    throw new Error("Bu tarayıcı WebGPU desteklemiyor. Güncel Chrome veya Edge ile aç.");
+    throw new Error("Bu tarayıcı WebGPU desteklemiyor. Güncel Chrome veya Edge kullan.");
   }
 }
 
-async function desktopCall(name, args) {
-  if (!desktopAvailable()) {
-    throw new Error("Masaüstü ajanı bağlı değil. AURA web sürümünde çalışıyor.");
-  }
-  const result = await globalThis.auraDesktop.call(name, args || {});
-  if (!result?.ok) throw new Error(result?.error || "Masaüstü işlemi başarısız.");
-  return result.result;
+async function createEngine(modelId, config, onProgress) {
+  activeModel = modelId;
+  onProgress({ percent:0, text:"Yerel AI modeli hazırlanıyor: " + modelId });
+
+  return CreateMLCEngine(modelId, config).then(result => {
+    engine = result;
+    activeModel = modelId;
+    onProgress({ percent:100, text:"Yerel AI hazır: " + modelId });
+    return result;
+  });
 }
 
 export async function ensureLocalAI(onProgress = () => {}) {
@@ -308,35 +308,40 @@ export async function ensureLocalAI(onProgress = () => {}) {
         const percent = typeof progress?.progress === "number"
           ? Math.max(0, Math.min(100, Math.round(progress.progress * 100)))
           : null;
-        onProgress({percent,text:progress?.text || "Yerel AI modeli hazırlanıyor..."});
+        onProgress({
+          percent,
+          text: progress?.text || "Model hazırlanıyor..."
+        });
       } catch {}
     }
   };
 
-  enginePromise = CreateMLCEngine(MODEL_ID, config)
-    .then(result => {
-      engine = result;
-      onProgress({percent:100,text:"Yerel AI hazır."});
-      return result;
-    })
-    .catch(async error => {
-      if (desktopAvailable() && MODEL_ID === DESKTOP_MODEL_ID && /memory|alloc|out of memory|device|buffer|gpu/i.test(String(error?.message || error))) {
-        onProgress({percent:0,text:"7B model bu bilgisayarda açılmadı; 3B yedek modele geçiliyor..."});
-        try {
-          const fallback = await CreateMLCEngine(WEB_MODEL_ID, config);
-          engine = fallback;
-          onProgress({percent:100,text:"Qwen2.5-3B yedek yerel model hazır."});
-          return fallback;
-        } catch (fallbackError) {
-          engine = null;
-          enginePromise = null;
-          throw fallbackError;
-        }
+  enginePromise = createEngine(MODEL_ID, config, onProgress).catch(async error => {
+    const message = String(error?.message || error);
+
+    if (
+      desktopAvailable() &&
+      MODEL_ID === DESKTOP_MODEL_ID &&
+      /memory|alloc|out of memory|device|buffer|gpu|webgpu/i.test(message)
+    ) {
+      onProgress({
+        percent:0,
+        text:"7B model bu bilgisayarda açılamadı; 3B yedek modele geçiliyor..."
+      });
+
+      try {
+        return await createEngine(WEB_MODEL_ID, config, onProgress);
+      } catch (fallbackError) {
+        engine = null;
+        enginePromise = null;
+        throw fallbackError;
       }
-      engine = null;
-      enginePromise = null;
-      throw error;
-    });
+    }
+
+    engine = null;
+    enginePromise = null;
+    throw error;
+  });
 
   return enginePromise;
 }
@@ -344,7 +349,7 @@ export async function ensureLocalAI(onProgress = () => {}) {
 function cleanMessages(history) {
   return (Array.isArray(history) ? history : [])
     .filter(m => m && (m.role === "user" || m.role === "assistant"))
-    .slice(-8)
+    .slice(-10)
     .map(m => ({
       role:m.role,
       content:String(m.content || "").slice(0,5000)
@@ -358,8 +363,8 @@ function parseArguments(value) {
 
 async function executeTool(toolCall) {
   const name = toolCall?.function?.name;
-  const args = parseArguments(toolCall?.function?.arguments);
-  return desktopCall(name,args);
+  if (!name) throw new Error("Araç adı bulunamadı.");
+  return desktopCall(name, parseArguments(toolCall?.function?.arguments));
 }
 
 export async function askLocalAI(message, history = [], onProgress = () => {}) {
@@ -368,17 +373,20 @@ export async function askLocalAI(message, history = [], onProgress = () => {}) {
 
   const localEngine = await ensureLocalAI(onProgress);
   const messages = [
-    {role:"system",content:SYSTEM_PROMPT + (desktopAvailable()
-      ? "\nMasaüstü ajanı: BAĞLI. İzinli araçları gerektiğinde kullan."
-      : "\nMasaüstü ajanı: BAĞLI DEĞİL. Sadece sohbet cevapları üret.")},
+    {
+      role:"system",
+      content: SYSTEM_PROMPT +
+        (desktopAvailable()
+          ? "\nMasaüstü ajanı BAĞLI."
+          : "\nMasaüstü ajanı BAĞLI DEĞİL.")
+    },
     ...cleanMessages(history),
-    {role:"user",content:value}
+    { role:"user", content:value }
   ];
 
-  const maxRounds = 4;
-
-  for (let round=0; round<maxRounds; round++) {
+  for (let round=0; round<6; round++) {
     let response;
+
     try {
       response = await localEngine.chat.completions.create({
         messages,
@@ -386,30 +394,29 @@ export async function askLocalAI(message, history = [], onProgress = () => {}) {
         tool_choice: desktopAvailable() ? "auto" : undefined,
         temperature:0.55,
         top_p:0.9,
-        max_tokens:768,
+        max_tokens:1024,
         stream:false
       });
     } catch (firstError) {
       if (!desktopAvailable()) throw firstError;
+
       response = await localEngine.chat.completions.create({
         messages,
         temperature:0.55,
         top_p:0.9,
-        max_tokens:768,
+        max_tokens:1024,
         stream:false
       });
     }
 
-    const choice = response?.choices?.[0];
-    const assistantMessage = choice?.message;
-
+    const assistantMessage = response?.choices?.[0]?.message;
     if (!assistantMessage) throw new Error("Yerel AI cevap üretmedi.");
+
+    messages.push(assistantMessage);
 
     const toolCalls = Array.isArray(assistantMessage.tool_calls)
       ? assistantMessage.tool_calls
       : [];
-
-    messages.push(assistantMessage);
 
     if (!toolCalls.length) {
       const answer = String(assistantMessage.content || "").trim();
@@ -431,16 +438,32 @@ export async function askLocalAI(message, history = [], onProgress = () => {}) {
           role:"tool",
           tool_call_id:call.id,
           name:call.function.name,
-          content:JSON.stringify({error:error?.message || "Araç hatası"})
+          content:JSON.stringify({
+            error:error?.message || "Araç hatası"
+          })
         });
       }
     }
   }
 
-  return "İşlemi birkaç araç adımında tamamlayamadım. Son durumu kontrol edip tekrar deneyebilirsin.";
+  return "Görevi tamamlamak için izin verilen araç adımlarının sınırına ulaştım.";
 }
 
-export function getLocalAIModel() { return MODEL_ID; }
+export function getLocalAIModel() { return activeModel; }
 export function getWebModel() { return WEB_MODEL_ID; }
 export function getDesktopModel() { return DESKTOP_MODEL_ID; }
 export function hasDesktopAgent() { return desktopAvailable(); }
+export function desktopToolCount() { return TOOLS.length; }
+
+async function desktopCall(name,args) {
+  if (!desktopAvailable()) {
+    throw new Error("Masaüstü ajanı bağlı değil.");
+  }
+
+  const result = await globalThis.auraDesktop.call(name,args || {});
+  if (!result?.ok) {
+    throw new Error(result?.error || "Masaüstü işlemi başarısız.");
+  }
+
+  return result.result;
+}
