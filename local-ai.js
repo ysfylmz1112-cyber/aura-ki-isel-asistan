@@ -258,15 +258,27 @@ export async function askLocalAI(message, history = [], onProgress = () => {}) {
   const maxRounds = 4;
 
   for (let round=0; round<maxRounds; round++) {
-    const response = await localEngine.chat.completions.create({
-      messages,
-      tools: desktopAvailable() ? TOOLS : undefined,
-      tool_choice: desktopAvailable() ? "auto" : undefined,
-      temperature:0.55,
-      top_p:0.9,
-      max_tokens:768,
-      stream:false
-    });
+    let response;
+    try {
+      response = await localEngine.chat.completions.create({
+        messages,
+        tools: desktopAvailable() ? TOOLS : undefined,
+        tool_choice: desktopAvailable() ? "auto" : undefined,
+        temperature:0.55,
+        top_p:0.9,
+        max_tokens:768,
+        stream:false
+      });
+    } catch (firstError) {
+      if (!desktopAvailable()) throw firstError;
+      response = await localEngine.chat.completions.create({
+        messages,
+        temperature:0.55,
+        top_p:0.9,
+        max_tokens:768,
+        stream:false
+      });
+    }
 
     const choice = response?.choices?.[0];
     const assistantMessage = choice?.message;
