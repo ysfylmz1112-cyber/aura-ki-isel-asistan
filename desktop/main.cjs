@@ -636,6 +636,12 @@ app.whenReady().then(async()=>{
   });
   ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'1.0.0',mode:'secure-local-agent',roots:allowedRoots()}));
   createWindow();
-  app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0)createWindow();});
+  scanEnvironment().catch(()=>{});
+  app.on('activate',()=>{
+    if(BrowserWindow.getAllWindows().length===0){
+      createWindow();
+      scanEnvironment().catch(()=>{});
+    }
+  });
 });
 app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
