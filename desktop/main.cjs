@@ -323,30 +323,54 @@ async function getUsageReport() {
 async function scanEnvironment() {
   const home=os.homedir();
   const rootList=allowedRoots();
-  const roots=[];
-  for (const root of rootList) {
-    if (!roots.some(x=>x.path.toLowerCase()===root.toLowerCase())) roots.push(await directorySummary(root));
-  }
-  const apps=(await discoverShortcutApps()).sort((a,b)=>a.name.localeCompare(b.name,'tr'));
-  const games=(await discoverSteamGames()).sort((a,b)=>a.name.localeCompare(b.name,'tr'));
   const profile={
     scannedAt:new Date().toISOString(),
     system:systemInfo(),
-    desktop:await directorySummary(path.join(home,'Desktop')),
-    documents:await directorySummary(path.join(home,'Documents')),
-    downloads:await directorySummary(path.join(home,'Downloads')),
-    roots,
-    apps:apps.slice(0,160).map(x=>({name:x.name,path:x.path,kind:x.kind})),
-    games:games.slice(0,160),
-    recentWindowsItems:await recentWindowsItems(),
-    permissions:rootList
+    desktop:null,
+    documents:null,
+    downloads:null,
+    roots:[],
+    apps:[],
+    games:[],
+    recentWindowsItems:[],
+    permissions:rootList,
+    scanErrors:[]
   };
+
+  const safeStep=async(name,fn,fallback)=>{
+    try { return await fn(); }
+    catch(error) {
+      profile.scanErrors.push({step:name,error:error?.message||String(error)});
+      return fallback;
+    }
+  };
+
+  const uniqueRoots=[];
+  for(const root of rootList) {
+    if(!uniqueRoots.some(x=>x.toLowerCase()===root.toLowerCase())) uniqueRoots.push(root);
+  }
+
+  for(const root of uniqueRoots) {
+    const item=await safeStep('folder:'+root,()=>directorySummary(root),{path:root,exists:false,error:true});
+    profile.roots.push(item);
+  }
+
+  profile.desktop=await safeStep('desktop',()=>directorySummary(path.join(home,'Desktop')),{path:path.join(home,'Desktop'),exists:false,error:true});
+  profile.documents=await safeStep('documents',()=>directorySummary(path.join(home,'Documents')),{path:path.join(home,'Documents'),exists:false,error:true});
+  profile.downloads=await safeStep('downloads',()=>directorySummary(path.join(home,'Downloads')),{path:path.join(home,'Downloads'),exists:false,error:true});
+
+  profile.apps=(await safeStep('applications',()=>discoverShortcutApps(),[])).slice(0,300)
+    .map(x=>({name:x.name,path:x.path,kind:x.kind}));
+
+  profile.games=(await safeStep('steam-games',()=>discoverSteamGames(),[])).slice(0,300);
+
+  profile.recentWindowsItems=await safeStep('recent-windows',()=>recentWindowsItems(),[]);
+
   environmentProfile=profile;
-  await fsp.mkdir(path.dirname(PROFILE_FILE),{recursive:true});
+  await fsp.mkdir(path.dirname(PROFILE_FILE),{recursive:true}).catch(()=>{});
   await fsp.writeFile(PROFILE_FILE,JSON.stringify(profile,null,2),'utf8').catch(()=>{});
   return profile;
 }
-
 async function getEnvironmentProfile() {
   if (environmentProfile) return environmentProfile;
   try {
