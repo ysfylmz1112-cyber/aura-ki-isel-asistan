@@ -8,6 +8,7 @@ const { search } = require('duck-duck-scrape');
 
 const PROD_URL = 'https://aura-ki-isel-asistan.vercel.app/';
 const ALLOWED_REMOTE_ORIGIN = 'https://aura-ki-isel-asistan.vercel.app';
+const LOCAL_INDEX = path.join(__dirname,'..','index.html');
 const PERMISSIONS_FILE = path.join(app.getPath('userData'), 'aura-permissions.json');
 let extraRoots = [];
 
@@ -606,10 +607,16 @@ async function handleTool(tool,args) {
 function createWindow() {
   const win=new BrowserWindow({width:1480,height:920,minWidth:1000,minHeight:680,backgroundColor:'#02050b',webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
   win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
-  win.webContents.on('will-navigate',(event,url)=>{try{if(new URL(url).origin!==ALLOWED_REMOTE_ORIGIN)event.preventDefault();}catch{event.preventDefault();}});
+  win.webContents.on('will-navigate',(event,url)=>{
+    try{
+      const u=new URL(url);
+      if(u.protocol==='file:') return;
+      if(u.origin!==ALLOWED_REMOTE_ORIGIN) event.preventDefault();
+    }catch{ event.preventDefault(); }
+  });
   session.defaultSession.setPermissionRequestHandler((_wc,permission,callback)=>callback(permission==='media'));
   win.webContents.session.clearCache().catch(()=>{});
-  win.loadURL(PROD_URL + '?desktop=1&v=' + Date.now());
+  win.loadFile(LOCAL_INDEX);
 }
 app.whenReady().then(async()=>{
   await loadExtraRoots();
@@ -617,7 +624,9 @@ app.whenReady().then(async()=>{
   ipcMain.handle('aura:tool',async(event,payload)=>{
     try{
       const senderUrl = event?.senderFrame?.url || '';
-      if(new URL(senderUrl).origin !== ALLOWED_REMOTE_ORIGIN){
+      const isLocal = senderUrl.startsWith('file://');
+      const isRemote = (()=>{ try { return new URL(senderUrl).origin === ALLOWED_REMOTE_ORIGIN; } catch { return false; } })();
+      if(!isLocal && !isRemote){
         return {ok:false,error:'Yetkisiz pencere.'};
       }
       return {ok:true,result:await handleTool(payload?.tool,payload?.args||{})};
