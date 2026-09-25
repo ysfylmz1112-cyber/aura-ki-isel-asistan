@@ -84,49 +84,24 @@ async function directDesktopCommand(q){
 
   if(!hasDesktopAgent()){
     if(/bilgisayarımda neler var|pc['’]?de neler var|uygulamalarımı göster|oyunlarımı göster|hangi oyunlarım var/i.test(x)){
-      return "Bu ekran AURA'nın web sürümü. Bilgisayar taraması için AURA Desktop'ı aç.";
-    }
-    if(/(?:.+?) aç(?:ıver|ar)?$/i.test(x)){
-      return "Bu ekran AURA'nın web sürümü. Uygulama veya oyun açmak için AURA Desktop'ı aç.";
-    }
-    return null;
-  }
-
-  if(/bilgisayarımda neler var|pc['’]?de neler var|uygulamalarımı göster|oyunlarımı göster|hangi oyunlarım var/i.test(x)){
-    let r;
-    try{
-      r=await window.auraDesktop.call("desktop_scan_environment",{});
-    }catch(error){
-      r=null;
-    }
-
+    const r=await window.auraDesktop.call("desktop_scan_environment",{});
     if(!r?.ok){
-      const fallback=await desktopProfileFallback();
-      r={ok:true,result:fallback};
+      throw new Error("PC taraması başarısız: "+(r?.error||"Desktop ajanı tarama sonucunu vermedi."));
     }
 
-    if(!r?.ok) throw new Error(r?.error||"Bilgisayar taranamadı.");
     environmentProfile=r.result;
     localStorage.setItem("aura_environment_profile",JSON.stringify(environmentProfile));
 
     const appCount=Number(environmentProfile?.apps?.length||0);
     const gameCount=Number(environmentProfile?.games?.length||0);
+    const running=Number(environmentProfile?.runningProcesses?.length||0);
     const rootCount=Array.isArray(environmentProfile?.roots)?environmentProfile.roots.length:0;
-    const running=Array.isArray(environmentProfile?.runningProcesses)?environmentProfile.runningProcesses.length:0;
-    const appNames=Array.isArray(environmentProfile?.apps)
-      ? environmentProfile.apps.slice(0,12).map(x=>x.name).filter(Boolean)
-      : [];
-    const gameNames=Array.isArray(environmentProfile?.games)
-      ? environmentProfile.games.slice(0,12).map(x=>x.name).filter(Boolean)
-      : [];
-    const errors=Array.isArray(environmentProfile?.scanErrors)
-      ? environmentProfile.scanErrors.slice(0,5).map(x=>x.step+": "+x.error)
-      : [];
+    const appNames=Array.isArray(environmentProfile?.apps)?environmentProfile.apps.slice(0,20).map(x=>x.name).filter(Boolean):[];
+    const gameNames=Array.isArray(environmentProfile?.games)?environmentProfile.games.slice(0,20).map(x=>x.name).filter(Boolean):[];
 
     let message="PC taraması tamamlandı kanka. "+appCount+" uygulama, "+gameCount+" oyun ve "+running+" çalışan işlem bulundu. "+rootCount+" izinli konum kontrol edildi.";
-    if(appNames.length) message+=" Uygulamalar: "+appNames.join(", ")+"...";
-    if(gameNames.length) message+=" Oyunlar: "+gameNames.join(", ")+"...";
-    if(errors.length) message+=" Tarama notu: "+errors.join(" | ");
+    if(appNames.length) message+=" Uygulamalar: "+appNames.join(", ")+"." ;
+    if(gameNames.length) message+=" Oyunlar: "+gameNames.join(", ")+"." ;
     return message;
   }
   const urlMap={
