@@ -8,11 +8,28 @@ const { search } = require('duck-duck-scrape');
 
 const PROD_URL = 'https://aura-ki-isel-asistan.vercel.app/';
 const ALLOWED_REMOTE_ORIGIN = 'https://aura-ki-isel-asistan.vercel.app';
+const PERMISSIONS_FILE = path.join(app.getPath('userData'), 'aura-permissions.json');
+let extraRoots = [];
 
 function normalizePath(value) { return path.resolve(String(value || '')); }
 function allowedRoots() {
   const home = os.homedir();
-  return [home, path.join(home,'Desktop'), path.join(home,'Documents'), path.join(home,'Downloads'), path.join(home,'OneDrive'), 'C:\\Projects', 'C:\\Games'].map(normalizePath);
+  return [home, path.join(home,'Desktop'), path.join(home,'Documents'), path.join(home,'Downloads'), path.join(home,'OneDrive'), 'C:\\Projects', 'C:\\Games', ...extraRoots].map(normalizePath);
+}
+
+async function loadExtraRoots() {
+  try {
+    const raw = await fsp.readFile(PERMISSIONS_FILE, 'utf8');
+    const data = JSON.parse(raw);
+    extraRoots = Array.isArray(data?.roots) ? data.roots.map(normalizePath).filter(Boolean).slice(0,30) : [];
+  } catch {
+    extraRoots = [];
+  }
+}
+
+async function saveExtraRoots() {
+  await fsp.mkdir(path.dirname(PERMISSIONS_FILE), { recursive: true });
+  await fsp.writeFile(PERMISSIONS_FILE, JSON.stringify({ roots: extraRoots }, null, 2), 'utf8');
 }
 function isAllowedPath(target) {
   const p = normalizePath(target).toLowerCase();
@@ -24,6 +41,96 @@ function safeUrl(value) {
 async function confirmAction(title, message) {
   const r = await dialog.showMessageBox({ type:'question', buttons:['İptal','İzin ver'], defaultId:0, cancelId:0, noLink:true, title, message });
   return r.response === 1;
+}
+
+async function chooseFolder(purpose) {
+  const result = await dialog.showOpenDialog({
+    properties: ['openDirectory'],
+    title: 'AURA — Klasör erişim izni'
+  });
+  if (result.canceled || !result.filePaths[0]) throw new Error('Klasör seçimi iptal edildi.');
+  const selected = normalizePath(result.filePaths[0]);
+  const exists = allowedRoots().some(root => selected.toLowerCase() === root.toLowerCase());
+  if (!exists) {
+    const ok = await confirmAction(
+      'AURA — Klasöre erişim izni',
+      'AURA şu klasöre erişim izni ekleyecek:\n\n' + selected + '\n\nAmaç: ' + String(purpose || 'bilgisayar işlemi')
+    );
+    if (!ok) throw new Error('Kullanıcı izin vermedi.');
+    extraRoots = [...extraRoots, selected].slice(-30);
+    await saveExtraRoots();
+  }
+  return { ok:true, path:selected, roots:allowedRoots() };
+}
+
+function listDrives() {
+  const drives = [];
+  for (let code=67; code<=90; code++) {
+    const drive=String.fromCharCode(code)+':\\';
+    if (fs.existsSync(drive)) drives.push(drive);
+  }
+  return drives;
+}
+
+async function copyPath(source, destination) {
+  source=normalizePath(source); destination=normalizePath(destination);
+  if(!isAllowedPath(source)||!isAllowedPath(destination)) throw new Error('Kaynak veya hedef için erişim izni yok.');
+  const ok=await confirmAction('AURA — Kopyalama izni','Kaynak:\n'+source+'\n\nHedef:\n'+destination+'\n\nDevam edilsin mi?');
+  if(!ok) throw new Error('Kullanıcı işlemi iptal etti.');
+  await fsp.cp(source,destination,{recursive:true,force:true});
+  return {ok:true,source,destination};
+}
+
+async function movePath(source, destination) {
+  source=normalizePath(source); destination=normalizePath(destination);
+  if(!isAllowedPath(source)||!isAllowedPath(destination)) throw new Error('Kaynak veya hedef için erişim izni yok.');
+  const ok=await confirmAction('AURA — Taşıma izni','Kaynak:\n'+source+'\n\nHedef:\n'+destination+'\n\nDevam edilsin mi?');
+  if(!ok) throw new Error('Kullanıcı işlemi iptal etti.');
+  await fsp.rename(source,destination);
+  return {ok:true,source,destination};
+}
+
+async function searchFiles(root, query, maxResults=80) {
+  root=normalizePath(root);
+  if(!isAllowedPath(root)) throw new Error('Bu klasöre erişim izni yok.');
+  const q=String(query||'').toLowerCase().trim();
+  if(!q) throw new Error('Arama sorgusu boş.');
+  const results=[];
+  async function walk(dir, depth=0) {
+    if(depth>8 || results.length>=maxResults) return;
+    let entries=[];
+    try { entries=await fsp.readdir(dir,{withFileTypes:true}); } catch { return; }
+    for(const entry of entries) {
+      const full=path.join(dir,entry.name);
+      if(entry.name.startsWith('.') || entry.name==='node_modules' || entry.name==='Library' && path.basename(root).toLowerCase()==='unity') continue;
+      if(entry.name.toLowerCase().includes(q)) results.push({path:full,type:entry.isDirectory()?'directory':'file'});
+      if(entry.isDirectory()) await walk(full,depth+1);
+      if(results.length>=maxResults) return;
+    }
+  }
+  await walk(root);
+  return {root,query:q,results};
+}
+
+async function runPowerShell(command) {
+  const cmd=String(command||'').trim();
+  if(!cmd) throw new Error('PowerShell komutu boş.');
+  if(cmd.length>4000) throw new Error('Komut 4000 karakter sınırını aşıyor.');
+  if(/(?:-EncodedCommand|Start-Process\\s+.*-Verb\\s+RunAs|runas(?:\.exe)?)/i.test(cmd)) {
+    throw new Error('Yetki yükseltme veya kodlanmış komutlar AURA tarafından engelleniyor.');
+  }
+  const ok=await confirmAction('AURA — PowerShell çalıştırma izni','AURA şu PowerShell komutunu çalıştıracak:\n\n'+cmd+'\n\nKomut yönetici yetkisiyle çalıştırılmayacak. Devam edilsin mi?');
+  if(!ok) throw new Error('Kullanıcı işlemi iptal etti.');
+  return new Promise((resolve,reject)=>{
+    execFile('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-Command',cmd],{windowsHide:true,maxBuffer:1024*1024},(error,stdout,stderr)=>{
+      resolve({
+        ok:!error,
+        exitCode:error?.code ?? 0,
+        stdout:String(stdout||'').slice(0,30000),
+        stderr:String(stderr||'').slice(0,12000)
+      });
+    });
+  });
 }
 
 async function readTextFile(filePath) {
@@ -181,6 +288,12 @@ async function handleTool(tool,args) {
     case 'desktop_create_directory': return makeDirectory(normalizePath(args.path));
     case 'desktop_delete_path': return deletePath(normalizePath(args.path));
     case 'desktop_open_path': return openPath(normalizePath(args.path));
+    case 'desktop_choose_folder': return chooseFolder(args.purpose);
+    case 'desktop_list_drives': return listDrives();
+    case 'desktop_copy_path': return copyPath(args.source,args.destination);
+    case 'desktop_move_path': return movePath(args.source,args.destination);
+    case 'desktop_search_files': return searchFiles(args.root,args.query,args.maxResults||80);
+    case 'desktop_run_powershell': return runPowerShell(args.command);
     case 'desktop_launch_app': return launchApp(args.app);
     case 'desktop_find_and_launch_app': return findAndLaunchApp(args.app);
     case 'desktop_open_external_url': return openExternalUrl(args.url);
@@ -198,7 +311,8 @@ function createWindow() {
   session.defaultSession.setPermissionRequestHandler((_wc,permission,callback)=>callback(permission==='media'));
   win.loadURL(PROD_URL);
 }
-app.whenReady().then(()=>{
+app.whenReady().then(async()=>{
+  await loadExtraRoots();
   ipcMain.handle('aura:tool',async(event,payload)=>{
     try{
       const senderUrl = event?.senderFrame?.url || '';
