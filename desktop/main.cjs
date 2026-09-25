@@ -634,7 +634,7 @@ app.whenReady().then(async()=>{
       return {ok:false,error:error?.message||'Bilinmeyen hata'};
     }
   });
-  ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'1.2.0',mode:'secure-local-agent-pc-aware',roots:allowedRoots(),localInterface:true}));
+  ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'1.0.0',mode:'secure-local-agent',roots:allowedRoots()}));
   createWindow();
   scanEnvironment().catch(()=>{});
   app.on('activate',()=>{

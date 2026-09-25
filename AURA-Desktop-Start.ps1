@@ -37,8 +37,6 @@ Set-Location $project
 if (-not (Test-Path '.\node_modules')) {
     Write-Host 'AURA Desktop bagimliliklari kuruluyor...' -ForegroundColor Cyan
     npm install
-} else {
-    npm install --no-audit --no-fund
 }
 
 Write-Host 'AURA Desktop baslatiliyor...' -ForegroundColor Green
