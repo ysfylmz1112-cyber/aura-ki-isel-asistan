@@ -109,6 +109,52 @@ async function launchApp(appName) {
   return {ok:true,app:name};
 }
 
+
+async function findAndLaunchApp(appName) {
+  const target=String(appName||'').toLowerCase().trim();
+  if(!target || target.length>80) throw new Error('Uygulama adı geçersiz.');
+
+  const dirs=[
+    path.join(process.env.ProgramData||'C:\\ProgramData','Microsoft','Windows','Start Menu','Programs'),
+    path.join(os.homedir(),'AppData','Roaming','Microsoft','Windows','Start Menu','Programs'),
+    path.join(os.homedir(),'Desktop')
+  ];
+
+  const wanted=[];
+  async function walk(dir,depth=0){
+    if(depth>3 || wanted.length>=20) return;
+    let entries=[];
+    try{entries=await fsp.readdir(dir,{withFileTypes:true});}catch{return;}
+    for(const entry of entries){
+      const full=path.join(dir,entry.name);
+      if(entry.isDirectory()){
+        await walk(full,depth+1);
+      }else{
+        const lower=entry.name.toLowerCase();
+        if((lower.endsWith('.lnk')||lower.endsWith('.exe')) && lower.includes(target)) wanted.push(full);
+      }
+      if(wanted.length>=20) return;
+    }
+  }
+  for(const dir of dirs) await walk(dir);
+  if(!wanted.length) throw new Error('Uygulama bulunamadı: '+appName);
+
+  const chosen=wanted[0];
+  const ok=await confirmAction('AURA — Uygulama açma izni','AURA şu uygulamayı açacak:\n\n'+chosen);
+  if(!ok) throw new Error('Kullanıcı işlemi iptal etti.');
+  const err=await shell.openPath(chosen);
+  if(err) throw new Error(err);
+  return {ok:true,app:appName,path:chosen,matches:wanted.slice(0,10)};
+}
+
+async function openExternalUrl(url) {
+  if(!safeUrl(url)) throw new Error('Sadece HTTP/HTTPS adresleri açılabilir.');
+  const ok=await confirmAction('AURA — Web adresi açma izni','AURA şu adresi varsayılan tarayıcıda açacak:\n\n'+url);
+  if(!ok) throw new Error('Kullanıcı işlemi iptal etti.');
+  await shell.openExternal(url);
+  return {ok:true,url};
+}
+
 async function webSearch(query) {
   const q=String(query||'').trim();
   if (!q || q.length>300) throw new Error('Geçersiz arama sorgusu.');
@@ -136,6 +182,8 @@ async function handleTool(tool,args) {
     case 'desktop_delete_path': return deletePath(normalizePath(args.path));
     case 'desktop_open_path': return openPath(normalizePath(args.path));
     case 'desktop_launch_app': return launchApp(args.app);
+    case 'desktop_find_and_launch_app': return findAndLaunchApp(args.app);
+    case 'desktop_open_external_url': return openExternalUrl(args.url);
     case 'desktop_open_unity_project': return openUnityProject(normalizePath(args.projectPath));
     case 'desktop_web_search': return webSearch(args.query);
     case 'desktop_fetch_web_page': return fetchWebPage(args.url);
