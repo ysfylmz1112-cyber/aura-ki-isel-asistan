@@ -93,22 +93,30 @@ async function directDesktopCommand(q){
   }
 
   if(/bilgisayarımda neler var|pc['’]?de neler var|uygulamalarımı göster|oyunlarımı göster|hangi oyunlarım var/i.test(x)){
-    let info=null;
-    try{ info=await window.auraDesktop.getInfo(); }catch{}
-    const version=String(info?.version||"");
     let r;
-    if(version && /^(?:1\.)?2\./.test(version)){
+    try{
       r=await window.auraDesktop.call("desktop_scan_environment",{});
-    }else{
-      r={ok:true,result:await desktopProfileFallback()};
+    }catch(error){
+      r=null;
     }
+
+    if(!r?.ok){
+      const fallback=await desktopProfileFallback();
+      r={ok:true,result:fallback};
+    }
+
     if(!r?.ok) throw new Error(r?.error||"Bilgisayar taranamadı.");
     environmentProfile=r.result;
     localStorage.setItem("aura_environment_profile",JSON.stringify(environmentProfile));
-    return "PC taraması tamamlandı kanka. Masaüstü ve temel klasörler okundu."
-      +(environmentProfile?.apps?.length!==undefined ? " "+environmentProfile.apps.length+" uygulama ve "+(environmentProfile.games?.length||0)+" oyun tanındı." : "");
-  }
 
+    const appCount=Number(environmentProfile?.apps?.length||0);
+    const gameCount=Number(environmentProfile?.games?.length||0);
+    const rootCount=Array.isArray(environmentProfile?.roots)?environmentProfile.roots.length:0;
+
+    return "PC taraması tamamlandı kanka. "
+      +appCount+" uygulama ve "+gameCount+" oyun tanındı. "
+      +rootCount+" izinli konum kontrol edildi.";
+  }
   const urlMap={
     "google aç":"https://www.google.com",
     "google'ı aç":"https://www.google.com",
