@@ -608,7 +608,8 @@ function createWindow() {
   win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
   win.webContents.on('will-navigate',(event,url)=>{try{if(new URL(url).origin!==ALLOWED_REMOTE_ORIGIN)event.preventDefault();}catch{event.preventDefault();}});
   session.defaultSession.setPermissionRequestHandler((_wc,permission,callback)=>callback(permission==='media'));
-  win.loadURL(PROD_URL);
+  win.webContents.session.clearCache().catch(()=>{});
+  win.loadURL(PROD_URL + '?desktop=1&v=' + Date.now());
 }
 app.whenReady().then(async()=>{
   await loadExtraRoots();

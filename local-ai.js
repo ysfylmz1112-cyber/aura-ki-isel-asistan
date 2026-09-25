@@ -1,7 +1,7 @@
 import { CreateMLCEngine } from "https://esm.run/@mlc-ai/web-llm@0.2.85";
 
-const WEB_MODEL_ID = "Qwen2.5-3B-Instruct-q4f16_1-MLC";
-const DESKTOP_MODEL_ID = "Qwen2.5-7B-Instruct-q4f16_1-MLC";
+const WEB_MODEL_ID = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
+const DESKTOP_MODEL_ID = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
 
 function desktopAvailable() {
   return !!globalThis.auraDesktop?.isDesktop;
@@ -12,7 +12,7 @@ const SYSTEM_PROMPT = [
   "Sen AURA'sın: kullanıcının kişisel, yerel ve Türkçe yapay zeka asistanısın.",
   "Doğru, net ve yararlı cevap ver. Bilmediğini uydurma.",
   "Güncel bilgi gerektiğinde masaüstü ajanındaki web arama araçlarını kullan.",
-  "Masaüstü ajanı bağlıysa izinli dosya, klasör, uygulama, oyun ve Unity araçlarını kullanabilirsin.",
+  "Masaüstü ajanı bağlıysa izinli dosya, klasör, uygulama, oyun ve Unity araçlarını kullanabilirsin. PC/uygulama/oyun işlemlerini doğrudan araçlarla yap; bunları tahmin etme.",
   "Kullanıcı bilgisayarında neler olduğunu, uygulamaları, oyunları, masaüstünü veya klasör yapısını sorarsa desktop_get_environment_profile kullan; gerekirse desktop_scan_environment ile yenile.",
   "Kullanıcı bir uygulama veya oyun açmanı istediğinde genel desktop_find_and_launch_app aracını kullan. Bu araç Google gibi birkaç özel uygulamayla sınırlı değildir; yaygın uygulamaları ve Steam oyunlarını isimle bulabilir.",
   "Kullanıcı kullanım hakkında sorarsa desktop_get_usage_report kullan ve bu verinin AURA tarafından izlenen açılışlar, Windows Son Öğeler ve anlık süreç görünümü olduğunu açıkça belirt.",
@@ -376,7 +376,7 @@ export async function ensureLocalAI(onProgress = () => {}) {
 function cleanMessages(history) {
   return (Array.isArray(history) ? history : [])
     .filter(m => m && (m.role === "user" || m.role === "assistant"))
-    .slice(-10)
+    .slice(-6)
     .map(m => ({
       role:m.role,
       content:String(m.content || "").slice(0,5000)
@@ -411,7 +411,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     { role:"user", content:value }
   ];
 
-  for (let round=0; round<6; round++) {
+  for (let round=0; round<3; round++) {
     let response;
 
     try {
@@ -421,7 +421,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         tool_choice: desktopAvailable() ? "auto" : undefined,
         temperature:0.55,
         top_p:0.9,
-        max_tokens:1024,
+        max_tokens:512,
         stream:false
       });
     } catch (firstError) {
@@ -451,7 +451,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
       return answer;
     }
 
-    for (const call of toolCalls.slice(0,4)) {
+    for (const call of toolCalls.slice(0,2)) {
       try {
         const result = await executeTool(call);
         messages.push({
