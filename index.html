@@ -182,13 +182,16 @@ async function handleDirectCommand(q) {
 
     const apps = Array.isArray(profile?.apps) ? profile.apps : [];
     const games = Array.isArray(profile?.games) ? profile.games : [];
-    const processes = Array.isArray(profile?.runningProcesses) ? profile.runningProcesses : [];
+    const processCount = Number(
+      profile?.runningProcesses?.count ??
+      (Array.isArray(profile?.runningProcesses) ? profile.runningProcesses.length : 0)
+    );
 
     let answer =
       "PC taraması tamamlandı kanka. " +
       apps.length + " uygulama, " +
       games.length + " oyun ve " +
-      processes.length + " çalışan işlem bulundu.";
+      processCount + " çalışan işlem bulundu.";
 
     if (apps.length) {
       answer += " Uygulamalardan bazıları: " +
