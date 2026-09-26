@@ -212,6 +212,34 @@ function findSteamRootCandidates() {
   ];
 }
 
+async function discoverSteamRegistryRoots() {
+  const roots = [];
+  const queries = [
+    ['HKCU\\Software\\Valve\\Steam','SteamPath'],
+    ['HKCU\\Software\\Valve\\Steam','InstallPath'],
+    ['HKLM\\Software\\WOW6432Node\\Valve\\Steam','InstallPath'],
+    ['HKLM\\Software\\Valve\\Steam','InstallPath']
+  ];
+
+  for(const [key,valueName] of queries){
+    const result = await new Promise(resolve=>{
+      execFile(
+        'reg.exe',
+        ['query',key,'/v',valueName],
+        {windowsHide:true,maxBuffer:1024*1024},
+        (error,stdout)=>{
+          if(error) return resolve('');
+          resolve(String(stdout||''));
+        }
+      );
+    });
+    const m=result.match(new RegExp(valueName+'\\s+REG_SZ\\s+(.+)', 'i'));
+    if(m?.[1]) roots.push(m[1].trim());
+  }
+
+  return [...new Set(roots.map(normalizePath).filter(p=>fs.existsSync(p)))];
+}
+
 function findSteamExecutable() {
   for (const root of findSteamRootCandidates()) {
     const exe = path.join(root,'steam.exe');
@@ -221,43 +249,88 @@ function findSteamExecutable() {
 }
 
 async function steamLibraryPaths() {
+  const baseRoots=[...findSteamRootCandidates(), ...(await discoverSteamRegistryRoots())];
   const libraries = [];
   const exe = findSteamExecutable();
   if (exe) libraries.push(path.dirname(exe));
-  for (const root of [...findSteamRootCandidates(), ...libraries]) {
+
+  for (const root of [...baseRoots,...libraries]) {
     const cfg = path.join(root,'steamapps','libraryfolders.vdf');
     try {
       const text = await fsp.readFile(cfg,'utf8');
       const re=/"path"\s+"([^"]+)"/gi;
       let m;
-      while ((m=re.exec(text))) libraries.push(m[1].replace(/\\\\/g,'\\'));
+      while ((m=re.exec(text))) {
+        libraries.push(m[1].replace(/\\\\/g,'\\'));
+      }
     } catch {}
   }
+
   return [...new Set(libraries.map(normalizePath).filter(Boolean))];
+}
+
+const GAME_NAME_HINTS = [
+  'minecraft','fortnite','valorant','league of legends','league of legends',
+  'counter-strike','cs2','apex','albion','terraria','stardew','gta',
+  'grand theft auto','red dead','cyberpunk','the witcher','witcher',
+  'assassin','far cry','watch dogs','need for speed','fifa','ea sports',
+  'pes','efootball','football manager','nba 2k','wwe','ark','rust',
+  'valheim','hades','elden ring','dark souls','sekiro','doom','quake',
+  'overwatch','destiny','warframe','palworld','among us','roblox',
+  'rocket league','fall guys','pubg','steam','epic games','riot client'
+];
+
+function looksLikeGame(name) {
+  const n=normalizedSearchText(name);
+  return GAME_NAME_HINTS.some(h=>n===normalizedSearchText(h)||n.includes(normalizedSearchText(h)));
 }
 
 async function discoverSteamGames() {
   const roots = await steamLibraryPaths();
   const games = [];
-  for (const root of roots) {
-    const dir = path.join(root,'steamapps');
+  const seen = new Set();
+
+  for(const root of roots){
+    const dir=path.join(root,'steamapps');
     let entries=[];
-    try { entries=await fsp.readdir(dir,{withFileTypes:true}); } catch { continue; }
-    for (const e of entries) {
-      if (!e.isFile() || !/^appmanifest_\d+\.acf$/i.test(e.name)) continue;
-      try {
+    try{entries=await fsp.readdir(dir,{withFileTypes:true});}catch{continue;}
+
+    for(const e of entries){
+      if(!e.isFile() || !/^appmanifest_\d+\.acf$/i.test(e.name)) continue;
+      try{
         const text=await fsp.readFile(path.join(dir,e.name),'utf8');
         const id=(text.match(/"appid"\s+"(\d+)"/i)||[])[1];
         const name=(text.match(/"name"\s+"([^"]+)"/i)||[])[1];
-        if (id && name) games.push({name,appid:id,library:root});
-      } catch {}
-      if (games.length>=300) break;
+        if(id&&name){
+          const key=id;
+          if(!seen.has(key)){
+            seen.add(key);
+            games.push({name,appid:id,library:root,source:'steam'});
+          }
+        }
+      }catch{}
+      if(games.length>=500) break;
     }
-    if (games.length>=300) break;
+    if(games.length>=500) break;
   }
+
+  // Steam bulunamazsa bile, Windows StartApps içindeki bilinen oyun adlarını
+  // oyun olarak işaretleyerek sıfır göstermeyi engelle.
+  if(games.length===0){
+    const apps=await discoverShortcutApps().catch(()=>[]);
+    for(const app of apps){
+      if(looksLikeGame(app.name)){
+        const key=normalizedSearchText(app.name);
+        if(!seen.has(key)){
+          seen.add(key);
+          games.push({name:app.name,path:app.path,source:'windows-app'});
+        }
+      }
+    }
+  }
+
   return games;
 }
-
 async function launchSteamGame(game) {
   const steamExe = findSteamExecutable();
   if (!steamExe) throw new Error('Steam bulunamadı.');
@@ -708,7 +781,7 @@ app.whenReady().then(async()=>{
       return {ok:false,error:error?.message||'Bilinmeyen hata'};
     }
   });
-  ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'1.7.0',mode:'secure-local-agent-pc-aware',roots:allowedRoots()}));
+  ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'1.8.0',mode:'secure-local-agent-pc-aware',roots:allowedRoots()}));
   createWindow();
   scanEnvironment().catch(()=>{});
   app.on('activate',()=>{
