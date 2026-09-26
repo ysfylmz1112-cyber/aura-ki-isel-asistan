@@ -376,11 +376,35 @@ export async function ensureLocalAI(onProgress = () => {}) {
 function cleanMessages(history) {
   return (Array.isArray(history) ? history : [])
     .filter(m => m && (m.role === "user" || m.role === "assistant"))
-    .slice(-6)
+    .slice(-4)
     .map(m => ({
       role:m.role,
-      content:String(m.content || "").slice(0,5000)
+      content:String(m.content || "").slice(0,1200)
     }));
+}
+
+function compactEnvironment(environment) {
+  if (!environment || typeof environment !== "object") return "";
+  const apps=Array.isArray(environment.apps)
+    ? environment.apps.slice(0,20).map(x=>String(x?.name||"")).filter(Boolean)
+    : [];
+  const games=Array.isArray(environment.games)
+    ? environment.games.slice(0,20).map(x=>String(x?.name||"")).filter(Boolean)
+    : [];
+  const running=Array.isArray(environment.runningProcesses)
+    ? environment.runningProcesses.slice(0,20).map(x=>String(x?.name||"")).filter(Boolean)
+    : [];
+  const roots=Array.isArray(environment.roots) ? environment.roots.length : 0;
+  return JSON.stringify({
+    scannedAt:environment.scannedAt||null,
+    roots,
+    appCount:Array.isArray(environment.apps)?environment.apps.length:0,
+    gameCount:Array.isArray(environment.games)?environment.games.length:0,
+    runningCount:Array.isArray(environment.runningProcesses)?environment.runningProcesses.length:0,
+    apps,
+    games,
+    running
+  });
 }
 
 function parseArguments(value) {
@@ -404,7 +428,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
       role:"system",
       content: SYSTEM_PROMPT +
         (desktopAvailable()
-          ? "\nMasaüstü ajanı BAĞLI." + (environment ? "\nBilgisayar profili:\n" + JSON.stringify(environment).slice(0,18000) : "")
+          ? "\nMasaüstü ajanı BAĞLI." + (environment ? "\nKısa PC özeti:\n" + compactEnvironment(environment) : "")
           : "\nMasaüstü ajanı BAĞLI DEĞİL.")
     },
     ...cleanMessages(history),
@@ -421,7 +445,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         tool_choice: desktopAvailable() ? "auto" : undefined,
         temperature:0.55,
         top_p:0.9,
-        max_tokens:512,
+        max_tokens:256,
         stream:false
       });
     } catch (firstError) {
@@ -431,7 +455,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         messages,
         temperature:0.55,
         top_p:0.9,
-        max_tokens:1024,
+        max_tokens:256,
         stream:false
       });
     }
@@ -458,7 +482,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
           role:"tool",
           tool_call_id:call.id,
           name:call.function.name,
-          content:JSON.stringify(result).slice(0,30000)
+          content:JSON.stringify(result).slice(0,6000)
         });
       } catch (error) {
         messages.push({
@@ -467,7 +491,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
           name:call.function.name,
           content:JSON.stringify({
             error:error?.message || "Araç hatası"
-          })
+          }).slice(0,2000)
         });
       }
     }
