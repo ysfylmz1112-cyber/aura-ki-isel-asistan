@@ -7,7 +7,7 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
-    "build:win": "electron-builder --win portable"
+    "build:win": "electron-builder --win nsis"
   },
   "dependencies": {
     "duck-duck-scrape": "2.2.7"
@@ -19,7 +19,7 @@
   "build": {
     "appId": "com.aura.personalassistant",
     "productName": "AURA",
-    "artifactName": "AURA-${version}-portable.exe",
+    "artifactName": "AURA-${version}-Setup.exe",
     "directories": {
       "output": "dist",
       "buildResources": "build"
@@ -33,18 +33,21 @@
     "win": {
       "target": [
         {
-          "target": "portable",
+          "target": "nsis",
           "arch": [
             "x64"
           ]
         }
       ],
-      "executableName": "AURA",
-      "artifactName": "AURA-${version}-portable.exe"
+      "executableName": "AURA"
     },
-    "portable": {
-      "artifactName": "AURA-${version}-portable.exe"
-    },
-    "asar": true
+    "asar": true,
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "AURA"
+    }
   }
 }
