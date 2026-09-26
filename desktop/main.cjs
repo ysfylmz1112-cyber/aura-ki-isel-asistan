@@ -171,15 +171,15 @@ async function discoverShortcutApps() {
 
   // Windows StartApps: güvenilir uygulama kataloğu.
   const startApps=await new Promise(resolve=>{
+    const command="[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; $json=(Get-StartApps | Select-Object Name,AppID | ConvertTo-Json -Compress); [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($json))";
     execFile(
       'powershell.exe',
-      ['-NoProfile','-NonInteractive','-Command',
-       "Get-StartApps | Select-Object Name,AppID | ConvertTo-Json -Compress"],
+      ['-NoProfile','-NonInteractive','-Command',command],
       {windowsHide:true,maxBuffer:4*1024*1024},
       (error,stdout)=>{
         if(error) return resolve([]);
         try{
-          const value=JSON.parse(String(stdout||'[]'));
+          const value=JSON.parse(Buffer.from(String(stdout||'').trim(),'base64').toString('utf8'));
           const list=Array.isArray(value)?value:[value];
           resolve(list.filter(x=>x?.Name).map(x=>({
             name:String(x.Name),
@@ -840,7 +840,7 @@ app.whenReady().then(async()=>{
       return {ok:false,error:error?.message||'Bilinmeyen hata'};
     }
   });
-  ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'2.0.0',mode:'secure-local-agent-pc-aware',roots:allowedRoots()}));
+  ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'2.1.0',mode:'secure-local-agent-pc-aware',roots:allowedRoots()}));
   createWindow();
   scanEnvironment().catch(()=>{});
   app.on('activate',()=>{
