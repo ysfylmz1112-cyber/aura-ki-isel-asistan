@@ -226,6 +226,27 @@ function isSystemUtility(name) {
   return SYSTEM_APP_NAMES.some(x=>n===normalizedSearchText(x));
 }
 
+async function discoverCurrentUserInstalledApps() {
+  const key='HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall';
+  return new Promise(resolve=>{
+    const command="[Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes((reg query '"+key+"' /s /reg:64 2>$null | Out-String)))";
+    execFile('powershell.exe',['-NoProfile','-NonInteractive','-Command',command],{windowsHide:true,maxBuffer:4*1024*1024},(error,stdout)=>{
+      if(error) return resolve([]);
+      try{
+        const raw=Buffer.from(String(stdout||'').trim(),'base64').toString('utf8');
+        const entries=[];
+        let currentKey='';
+        for(const line of raw.split(/\r?\n/)){
+          if(/^HKEY/i.test(line)){ currentKey=line.trim(); continue; }
+          const m=line.match(/^\s*DisplayName\s+REG_SZ\s+(.+)$/i);
+          if(m?.[1]&&currentKey) entries.push({name:m[1].trim(),path:currentKey,kind:'user-install'});
+        }
+        resolve(entries);
+      }catch{resolve([]);}
+    });
+  });
+}
+
 function findSteamRootCandidates() {
   return [
     'C:\\Program Files (x86)\\Steam',
@@ -561,13 +582,20 @@ async function scanEnvironment() {
   profile.downloads=await safeStep('downloads',()=>directorySummary(path.join(home,'Downloads')),{path:path.join(home,'Downloads'),exists:false,error:true});
 
   const shortcutApps=await safeStep('applications',()=>discoverShortcutApps(),[]);
-  const userApps=shortcutApps.filter(x=>!isSystemUtility(x.name));
-  const systemApps=shortcutApps.filter(x=>isSystemUtility(x.name));
-  profile.apps=userApps.slice(0,500);
+  const registryApps=await safeStep('user-installed-apps',()=>discoverCurrentUserInstalledApps(),[]);
+  const combinedApps=[...shortcutApps,...registryApps];
+  const userApps=combinedApps.filter(x=>!isSystemUtility(x.name));
+  const systemApps=combinedApps.filter(x=>isSystemUtility(x.name));
+  const appMap=new Map();
+  for(const item of userApps){
+    const key=normalizedSearchText(item.name);
+    if(key&&!appMap.has(key)) appMap.set(key,item);
+  }
+  profile.apps=[...appMap.values()].slice(0,500);
   profile.applicationSummary={
     userApps:userApps.length,
     systemUtilities:systemApps.length,
-    totalDiscovered:shortcutApps.length
+    totalDiscovered:combinedApps.length
   };
 
   const steamGames=await safeStep('steam-games',()=>discoverSteamGames(),[]);
