@@ -138,6 +138,17 @@ function finish(q, answer, usedAI = false) {
   speak(answer);
 }
 
+function quickLocalAnswer(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
+  if(/^(nasılsın|nasilsin|nasılsın\?|nasilsin\?)$/.test(x))
+    return "İyiyim kanka, hazırım. Ne yapmamı istersin?";
+  if(/^(merhaba|selam|selamlar|sa|slm|mrb)$/.test(x))
+    return "Selam kanka! AURA hazır.";
+  if(/^(saat kaç|saat kac|saat kaç\?|saat kac\?)$/.test(x))
+    return "Saat şu an " + new Date().toLocaleTimeString("tr-TR") + ".";
+  return null;
+}
+
 function isPCRequest(q) {
   const x = String(q).toLocaleLowerCase("tr-TR").trim();
   return [
@@ -228,6 +239,11 @@ async function run(q) {
 
   try {
     const direct = isPCRequest(q) || !!extractOpenTarget(q);
+    const quick = quickLocalAnswer(q);
+    if (quick) {
+      finish(q, quick, false);
+      return;
+    }
     if (direct) {
       const answer = await handleDirectCommand(q);
       finish(q, answer || "Komut çalıştırılamadı.", false);
