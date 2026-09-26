@@ -32,6 +32,13 @@ if (Test-Path '.git') {
     }
 }
 
+$desktopExe = Join-Path $env:USERPROFILE 'Desktop\AURA.exe'
+if (Test-Path $desktopExe) {
+    Write-Host 'AURA.exe baslatiliyor...' -ForegroundColor Green
+    Start-Process -FilePath $desktopExe
+    exit 0
+}
+
 Set-Location $project
 
 # Yerel Electron ajanı eski kaldıysa Git durumundan bağımsız olarak güncel
