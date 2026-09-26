@@ -271,16 +271,18 @@ async function steamLibraryPaths() {
 
 const GAME_NAME_HINTS = [
   'minecraft','fortnite','valorant','league of legends',
-  'counter strike','cs2','apex','albion','terraria','stardew','gta',
-  'grand theft auto','red dead','cyberpunk','the witcher','witcher',
-  'assassin','far cry','watch dogs','need for speed','fifa','ea sports',
-  'pes','efootball','football manager','nba 2k','wwe','ark','rust',
-  'valheim','hades','elden ring','dark souls','sekiro','doom','quake',
-  'overwatch','destiny','warframe','palworld','among us','roblox',
-  'rocket league','fall guys','pubg','tlauncher','minecraft launcher'
+  'counter strike','cs2','apex legends','albion online','terraria',
+  'stardew valley','gta','grand theft auto','red dead redemption',
+  'cyberpunk 2077','the witcher','assassin',
+  'far cry','watch dogs','need for speed','fifa','ea sports',
+  'efootball','football manager','nba 2k','wwe','ark survival',
+  'rust','valheim','hades','elden ring','dark souls','sekiro',
+  'doom','quake','overwatch','destiny','warframe','palworld',
+  'among us','roblox','rocket league','fall guys','pubg',
+  'supermarket simulator'
 ];
 
-const GAME_BLOCKLIST = [
+const NON_GAME_ENTRIES = [
   'steamworks common redistributables',
   'steam linux runtime',
   'steam linux runtime soldier',
@@ -290,27 +292,31 @@ const GAME_BLOCKLIST = [
   'proton',
   'epic games launcher',
   'riot client',
+  'riot vanguard',
   'directx runtime',
   'vulkan runtime',
   'microsoft visual c++',
   'visual c++',
-  'ue prerequisites'
+  'ue prerequisites',
+  'minecraft launcher',
+  'tlauncher',
+  'başlarken',
+  'baslarken'
 ];
 
-function looksLikeGame(name) {
+function isClearlyNonGame(name){
   const n=normalizedSearchText(name);
-  if(!n) return false;
-  if(GAME_BLOCKLIST.some(h=>n===normalizedSearchText(h)||n.includes(normalizedSearchText(h)))) return false;
-  return GAME_NAME_HINTS.some(h=>n===normalizedSearchText(h)||n.includes(normalizedSearchText(h)));
+  return NON_GAME_ENTRIES.some(x=>n===normalizedSearchText(x));
 }
 
-function isLikelyGameCandidate(name) {
+function looksLikeGame(name){
   const n=normalizedSearchText(name);
-  if(!n) return false;
-  if(GAME_BLOCKLIST.some(h=>n.includes(normalizedSearchText(h)))) return false;
-  return true;
+  if(!n || isClearlyNonGame(name)) return false;
+  return GAME_NAME_HINTS.some(x=>{
+    const h=normalizedSearchText(x);
+    return n===h || n.includes(h);
+  });
 }
-
 async function discoverSteamGames() {
   const roots = await steamLibraryPaths();
   const games = [];
@@ -327,7 +333,7 @@ async function discoverSteamGames() {
         const text=await fsp.readFile(path.join(dir,e.name),'utf8');
         const id=(text.match(/"appid"\s+"(\d+)"/i)||[])[1];
         const name=(text.match(/"name"\s+"([^"]+)"/i)||[])[1];
-        if(id&&name && isLikelyGameCandidate(name)){
+        if(id&&name && !isClearlyNonGame(name)){
           const key=id;
           if(!seen.has(key)){
             seen.add(key);
@@ -427,25 +433,27 @@ async function currentProcesses() {
     execFile(
       'powershell.exe',
       ['-NoProfile','-NonInteractive','-Command',
-       "Get-Process | Select-Object -First 300 ProcessName,Id | ConvertTo-Json -Compress"],
+       "[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false); $OutputEncoding=[System.Text.UTF8Encoding]::new($false); $p=@(Get-Process | Select-Object ProcessName,Id); [PSCustomObject]@{count=$p.Count;items=$p | Select-Object -First 300} | ConvertTo-Json -Compress"],
       {windowsHide:true,maxBuffer:4*1024*1024},
       (error,stdout)=>{
-        if(error) return resolve([]);
+        if(error) return resolve({count:0,items:[]});
         try{
-          const value=JSON.parse(String(stdout||'[]'));
-          const list=Array.isArray(value)?value:[value];
-          resolve(list.filter(x=>x?.ProcessName).map(x=>({
-            name:String(x.ProcessName)+'.exe',
-            pid:Number(x.Id)||0
-          })));
+          const value=JSON.parse(String(stdout||'{}'));
+          const list=Array.isArray(value?.items)?value.items:(value?.items?[value.items]:[]);
+          resolve({
+            count:Number(value?.count||list.length),
+            items:list.filter(x=>x?.ProcessName).map(x=>({
+              name:String(x.ProcessName)+'.exe',
+              pid:Number(x.Id)||0
+            }))
+          });
         }catch{
-          resolve([]);
+          resolve({count:0,items:[]});
         }
       }
     );
   });
 }
-
 
 async function getUsageReport() {
   const processes=await currentProcesses();
@@ -460,6 +468,24 @@ async function getUsageReport() {
     recentWindowsItems:recent,
     runningProcesses:processes
   };
+}
+
+async function discoverKnownWindowsGames() {
+  const apps=await discoverShortcutApps().catch(()=>[]);
+  const found=[];
+  const seen=new Set();
+  for(const app of apps){
+    if(!looksLikeGame(app.name)) continue;
+    const key=normalizedSearchText(app.name);
+    if(seen.has(key)) continue;
+    seen.add(key);
+    found.push({
+      name:app.name,
+      path:app.path,
+      source:'windows-app'
+    });
+  }
+  return found;
 }
 
 async function scanEnvironment() {
@@ -508,8 +534,15 @@ async function scanEnvironment() {
   const shortcutApps=await safeStep('applications',()=>discoverShortcutApps(),[]);
   profile.apps=shortcutApps.slice(0,500);
 
-  profile.games=await safeStep('steam-games',()=>discoverSteamGames(),[]);
-  profile.runningProcesses=await safeStep('processes',()=>currentProcesses(),[]);
+  const steamGames=await safeStep('steam-games',()=>discoverSteamGames(),[]);
+  const windowsGames=await safeStep('windows-games',()=>discoverKnownWindowsGames(),[]);
+  const gameMap=new Map();
+  for(const game of [...steamGames,...windowsGames]){
+    const key=normalizedSearchText(game.name);
+    if(key && !isClearlyNonGame(game.name) && !gameMap.has(key)) gameMap.set(key,game);
+  }
+  profile.games=[...gameMap.values()].slice(0,300);
+  profile.runningProcesses=await safeStep('processes',()=>currentProcesses(),{count:0,items:[]});
   profile.recentWindowsItems=await safeStep('recent-windows',()=>recentWindowsItems(),[]);
 
   environmentProfile=profile;
@@ -807,7 +840,7 @@ app.whenReady().then(async()=>{
       return {ok:false,error:error?.message||'Bilinmeyen hata'};
     }
   });
-  ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'1.9.0',mode:'secure-local-agent-pc-aware',roots:allowedRoots()}));
+  ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'2.0.0',mode:'secure-local-agent-pc-aware',roots:allowedRoots()}));
   createWindow();
   scanEnvironment().catch(()=>{});
   app.on('activate',()=>{
