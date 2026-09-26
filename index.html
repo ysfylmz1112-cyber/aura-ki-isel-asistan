@@ -187,9 +187,11 @@ async function handleDirectCommand(q) {
       (Array.isArray(profile?.runningProcesses) ? profile.runningProcesses.length : 0)
     );
 
+    const userName=String(profile?.user?.name||"sen");
+    const appUserCount=Number(profile?.applicationSummary?.userApps ?? apps.length);
     let answer =
-      "PC taraması tamamlandı kanka. " +
-      apps.length + " uygulama, " +
+      userName + " hesabı için hızlı PC taraması tamamlandı kanka. " +
+      appUserCount + " kullanıcı uygulaması, " +
       games.length + " oyun ve " +
       processCount + " çalışan işlem bulundu.";
 
