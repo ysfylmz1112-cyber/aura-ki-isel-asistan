@@ -370,7 +370,7 @@ function quickLocalAnswer(q){
     return "Selam kanka! AURA hazır.";
   if(/^(saat kaç|saat kac|saat kaç\?|saat kac\?)$/.test(x))
     return "Saat şu an " + new Date().toLocaleTimeString("tr-TR") + ".";
-  const math=x.replace(",",".").match(/^(-?\d+(?:\.\d+)?)\s*([+\-*x×÷\/] )\s*(-?\d+(?:\.\d+)?)$/i);
+  const math=x.replace(",",".").match(/^(-?\d+(?:\.\d+)?)\s*([+\-*x×÷\/])\s*(-?\d+(?:\.\d+)?)$/i);
   if(math){
     const a=Number(math[1]),op=math[2].trim(),b=Number(math[3]);
     let r=null;
