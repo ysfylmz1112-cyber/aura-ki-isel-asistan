@@ -10,7 +10,7 @@ Write-Host 'AURA FORCE UPDATE basliyor...' -ForegroundColor Cyan
 Stop-Process -Name 'electron' -Force -ErrorAction SilentlyContinue
 Start-Sleep -Milliseconds 700
 
-$base = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/c51810ebfb1310ac73d72825a4b0b4d4faccb7bb/'
+$base = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/056afd7800aa61a2213f202e1bbfff960b0bc8fe/'
 $files = @(
   @{ Local = Join-Path $repoRoot 'index.html'; Remote = $base + 'index.html'; Required = 'desktop_scan_environment' },
   @{ Local = Join-Path $repoRoot 'local-ai.js'; Remote = $base + 'local-ai.js'; Required = 'Qwen2.5-1.5B-Instruct' },
