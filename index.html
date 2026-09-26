@@ -133,6 +133,7 @@ header{background:rgba(3,9,16,.9);border-bottom-color:color-mix(in srgb,var(--a)
 </div>
 <div class="footer">AURA OS • LOCAL AI • PC AGENT • CODE MODE • WEB SEARCH • CURRENT USER ONLY</div>
 </div><script type="module">
+
 const $ = (id) => document.getElementById(id);
 const input = $("input");
 const chat = $("chat");
@@ -147,6 +148,18 @@ const countEl = $("count");
 const ttsEl = $("tts");
 const clockEl = $("clock");
 const dateEl = $("date");
+const liveAppsEl = $("liveApps");
+const liveGamesEl = $("liveGames");
+const liveProcessesEl = $("liveProcesses");
+const liveUserEl = $("liveUser");
+const usageTopEl = $("usageTop");
+const modeBtn = $("modeBtn");
+const modeBtn2 = $("codeBtn");
+const modeBadge = $("modeBadge");
+const modeBadgeTop = $("modeBadgeTop");
+const usageBtn = $("usageBtn");
+const pcBtn = $("pcBtn");
+const desktopBtn = $("desktopBtn");
 
 let history = [];
 try {
@@ -161,6 +174,66 @@ let busy = false;
 let environmentProfile = null;
 let localAIModule = null;
 let localAIPromise = null;
+let mode = localStorage.getItem("aura_mode") === "code" ? "code" : "chat";
+const themes = ["cyan","violet","emerald","amber","ice"];
+let themeIndex = Number(localStorage.getItem("aura_theme_index") || 0);
+if(!Number.isFinite(themeIndex)) themeIndex=0;
+themeIndex=((themeIndex%themes.length)+themes.length)%themes.length;
+
+function applyTheme(){
+  document.body.dataset.theme=themes[themeIndex];
+  localStorage.setItem("aura_theme_index",String(themeIndex));
+}
+
+function applyMode(){
+  const code=mode==="code";
+  modeBadge.textContent=code?"KOD":"SOHBET";
+  modeBadgeTop.textContent=code?"KOD":"SOHBET";
+  modeBtn.textContent=code?"⌘ SOHBET MODU":"⌘ KOD MODU";
+  modeBtn2.textContent=code?"SOHBETE DÖN":"KOD MODU";
+  modeBtn.classList.toggle("codeOn",code);
+  modeBtn2.classList.toggle("codeOn",code);
+  localStorage.setItem("aura_mode",mode);
+}
+
+function toggleMode(){
+  mode=mode==="code"?"chat":"code";
+  applyMode();
+  status.textContent=mode==="code"?"● KOD HAZIR":"● HAZIR";
+  subEl.textContent=mode==="code"
+    ?"Kod modu aktif · İstediğin dili ve dosyayı yaz, doğrudan çalışan kod üretirim."
+    :"PC, kod, web ve yerel AI tek merkezde.";
+  input.focus();
+}
+
+function updateLiveProfile(profile){
+  const apps=Array.isArray(profile?.apps)?profile.apps:[];
+  const games=Array.isArray(profile?.games)?profile.games:[];
+  const pc=profile?.runningProcesses;
+  const processCount=Number(pc?.count ?? (Array.isArray(pc)?pc.length:0));
+  liveAppsEl.textContent=String(apps.length);
+  liveGamesEl.textContent=String(games.length);
+  liveProcessesEl.textContent=String(processCount);
+  liveUserEl.textContent=String(profile?.user?.name||osUserFallback());
+}
+
+function osUserFallback(){
+  return "AURA";
+}
+
+function formatUsageReport(report){
+  const top=Array.isArray(report?.trackedByAura)?report.trackedByAura:[];
+  const recent=Array.isArray(report?.recentWindowsItems)?report.recentWindowsItems:[];
+  let text="Kullanıcı: "+String(report?.user||"sen")+"\n";
+  if(top.length){
+    text+="AURA ile en çok açılanlar: "+top.slice(0,6).map(x=>String(x.name)+" ("+x.count+")").join(", ")+".\n";
+  }else{
+    text+="AURA tarafından açılmış kayıtlı uygulama/oyun yok.\n";
+  }
+  if(report?.lastLaunch?.name) text+="Son AURA açılışı: "+report.lastLaunch.name+".\n";
+  if(recent.length) text+="Windows Son Öğeler örnekleri: "+recent.slice(0,6).join(", ")+".";
+  return text;
+}
 
 function esc(value) {
   return String(value).replace(/[&<>"']/g, (c) => ({
@@ -296,6 +369,26 @@ function isPCRequest(q) {
   ].includes(x);
 }
 
+function isUsageRequest(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
+  return /kullanım raporu|kullanim raporu|ne kadar kullanıyorum|ne kadar kullaniyorum|nasıl kullanıyorum|nasil kullaniyorum|hangi uygulamaları kullanıyorum|hangi uygulamalari kullaniyorum|sık kullandığım|sik kullandigim/.test(x);
+}
+
+function isSystemRequest(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
+  return /^(sistem durumu|sistem durumunu göster|sistem bilgisi|ram durumu|cpu durumu|bilgisayar durumu)\??$/.test(x);
+}
+
+function isDesktopListRequest(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
+  return /^(masaüstümde ne var|masaustumde ne var|masaüstünü göster|masaustunu goster)\??$/.test(x);
+}
+
+function looksLikeCodeRequest(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
+  return /kod yaz|kod oluştur|kod olustur|script yaz|c#|c sharp|python|javascript|typescript|html|css|unity script|unity c#/.test(x);
+}
+
 function extractOpenTarget(q) {
   const x = String(q || "").trim();
   const m = x.match(/^(.+?)\s+aç(?:ıver|ar)?$/i);
@@ -310,59 +403,64 @@ async function handleDirectCommand(q) {
   if (isPCRequest(q)) {
     const profile = await callDesktop("desktop_scan_environment", {});
     environmentProfile = profile;
-    try {
-      localStorage.setItem("aura_environment_profile", JSON.stringify(profile));
-    } catch {}
+    try { localStorage.setItem("aura_environment_profile", JSON.stringify(profile)); } catch {}
+    updateLiveProfile(profile);
 
     const apps = Array.isArray(profile?.apps) ? profile.apps : [];
     const games = Array.isArray(profile?.games) ? profile.games : [];
-    const processCount = Number(
-      profile?.runningProcesses?.count ??
-      (Array.isArray(profile?.runningProcesses) ? profile.runningProcesses.length : 0)
-    );
-
+    const processCount = Number(profile?.runningProcesses?.count ?? 0);
     const userName=String(profile?.user?.name||"sen");
     const appUserCount=Number(profile?.applicationSummary?.userApps ?? apps.length);
-    let answer =
-      userName + " hesabı için hızlı PC taraması tamamlandı kanka. " +
-      appUserCount + " kullanıcı uygulaması, " +
-      games.length + " oyun ve " +
-      processCount + " çalışan işlem bulundu.";
 
-    if (apps.length) {
-      answer += " Uygulamalardan bazıları: " +
-        apps.slice(0, 15).map((x) => x.name).filter(Boolean).join(", ") + ".";
-    }
-    if (games.length) {
-      answer += " Oyunlardan bazıları: " +
-        games.slice(0, 15).map((x) => x.name).filter(Boolean).join(", ") + ".";
-    }
+    let answer=userName+" hesabı için hızlı PC taraması tamamlandı. "+
+      appUserCount+" kullanıcı uygulaması, "+games.length+" oyun ve "+processCount+" çalışan işlem bulundu.";
+    if(apps.length) answer+=" Uygulama örnekleri: "+apps.slice(0,10).map(x=>x.name).filter(Boolean).join(", ")+".";
+    if(games.length) answer+=" Oyun örnekleri: "+games.slice(0,10).map(x=>x.name).filter(Boolean).join(", ")+".";
     return answer;
   }
 
-  const target = extractOpenTarget(q);
-  if (target) {
-    const normalized = target.toLocaleLowerCase("tr-TR");
-    const urls = {
-      "google": "https://www.google.com",
-      "youtube": "https://www.youtube.com",
-      "discord": "https://discord.com/app",
-      "github": "https://github.com",
-      "chatgpt": "https://chatgpt.com"
-    };
-
-    if (urls[normalized]) {
-      await callDesktop("desktop_open_external_url", { url: urls[normalized] });
-      return "Tamam kanka, " + target + " açıldı.";
-    }
-
-    await callDesktop("desktop_find_and_launch_app", { app: target });
-    return "Tamam kanka, " + target + " açıldı.";
+  if (isUsageRequest(q)) {
+    const report=await callDesktop("desktop_get_usage_report",{});
+    usageTopEl.textContent=formatUsageReport(report);
+    const count=Number(report?.runningProcesses?.count||0);
+    liveProcessesEl.textContent=String(count);
+    liveUserEl.textContent=String(report?.user||"AURA");
+    return formatUsageReport(report);
   }
 
+  if (isSystemRequest(q)) {
+    const info=await callDesktop("desktop_get_system_info",{});
+    return "Sistem: "+info.os+" · CPU: "+info.cpu+" · "+info.cpuCount+" çekirdek · RAM: "+info.memoryGB+" GB · Boş RAM: "+info.freeMemoryGB+" GB.";
+  }
+
+  if (isDesktopListRequest(q)) {
+    const profile=environmentProfile || await callDesktop("desktop_get_environment_profile",{});
+    environmentProfile=profile;
+    updateLiveProfile(profile);
+    const items=Array.isArray(profile?.desktop?.items)?profile.desktop.items:[];
+    if(!items.length) return "Masaüstün okunamadı veya şu anda boş görünüyor.";
+    return "Masaüstünde "+items.length+" öğe gördüm: "+items.slice(0,25).map(x=>x.name).join(", ")+".";
+  }
+
+  const target=extractOpenTarget(q);
+  if(target){
+    const normalized=target.toLocaleLowerCase("tr-TR");
+    const urls={
+      "google":"https://www.google.com",
+      "youtube":"https://www.youtube.com",
+      "discord":"https://discord.com/app",
+      "github":"https://github.com",
+      "chatgpt":"https://chatgpt.com"
+    };
+    if(urls[normalized]){
+      await callDesktop("desktop_open_external_url",{url:urls[normalized]});
+      return "Tamam kanka, "+target+" açıldı.";
+    }
+    await callDesktop("desktop_find_and_launch_app",{app:target});
+    return "Tamam kanka, "+target+" açıldı.";
+  }
   return null;
 }
-
 async function run(q) {
   q = String(q || "").trim();
   if (!q || busy) return;
@@ -377,8 +475,15 @@ async function run(q) {
   core.classList.add("active");
 
   try {
-    const direct = isPCRequest(q) || !!extractOpenTarget(q);
     const quick = quickLocalAnswer(q);
+    const modeCommand=/^(kod modu|kod modunu aç|kod modunu ac|sohbet modu|sohbet moduna dön|sohbet moduna don)$/i.test(q);
+    if(modeCommand){
+      mode=q.toLocaleLowerCase("tr-TR").includes("sohbet")?"chat":"code";
+      applyMode();
+      finish(q,mode==="code"?"Kod modu açıldı. Artık doğrudan kod üretmeye odaklanacağım.":"Sohbet modu açıldı.",false);
+      return;
+    }
+    const direct = isPCRequest(q) || isUsageRequest(q) || isSystemRequest(q) || isDesktopListRequest(q) || !!extractOpenTarget(q);
     if (quick) {
       finish(q, quick, false);
       return;
@@ -400,7 +505,8 @@ async function run(q) {
         aiEl.textContent = p?.percent != null ? p.percent + "%" : "YÜKLENİYOR";
         subEl.textContent = p?.text || "Yerel AI hazırlanıyor...";
       },
-      environmentProfile
+      environmentProfile,
+      (mode==="code" || looksLikeCodeRequest(q)) ? "code" : "chat"
     );
 
     aiEl.textContent = "YEREL";
@@ -417,6 +523,19 @@ async function run(q) {
   }
 }
 
+modeBtn.addEventListener("click",toggleMode);
+modeBtn2.addEventListener("click",toggleMode);
+
+usageBtn.addEventListener("click",()=>run("Kullanım raporumu göster"));
+pcBtn.addEventListener("click",()=>run("Bilgisayarımda neler var?"));
+desktopBtn.addEventListener("click",()=>run("Masaüstümde ne var?"));
+
+function cycleTheme(){
+  themeIndex=(themeIndex+1)%themes.length;
+  applyTheme();
+  status.textContent="● TEMA "+themes[themeIndex].toUpperCase();
+  setTimeout(()=>{if(!busy)status.textContent="● HAZIR";},900);
+}
 sendBtn.addEventListener("click", () => run(input.value));
 
 input.addEventListener("keydown", (event) => {
@@ -476,13 +595,7 @@ $("export").addEventListener("click", () => {
   setTimeout(() => URL.revokeObjectURL(link.href), 1000);
 });
 
-$("theme").addEventListener("click", () => {
-  document.body.classList.toggle("light");
-  localStorage.setItem(
-    "aura_theme",
-    document.body.classList.contains("light") ? "light" : "dark"
-  );
-});
+$("theme").addEventListener("click", cycleTheme);
 
 document.addEventListener("keydown", (event) => {
   if (event.ctrlKey && event.key.toLowerCase() === "k") {
@@ -511,6 +624,8 @@ function updateClock() {
   });
 }
 
+applyTheme();
+applyMode();
 renderHistory();
 updateClock();
 setInterval(updateClock, 1000);
@@ -534,4 +649,5 @@ setTimeout(async () => {
     subEl.textContent = "Desktop " + String(info?.version || "?") + " bağlı · PC araçları hazır.";
   } catch {}
 }, 0);
+
 </script></body></html>
