@@ -10,7 +10,7 @@ const PROD_URL = 'https://aura-ki-isel-asistan.vercel.app/';
 const ALLOWED_REMOTE_ORIGIN = 'https://aura-ki-isel-asistan.vercel.app';
 const DEV_INDEX = path.join(__dirname,'..','index.html');
 const PACKAGED_INDEX = path.join(__dirname,'renderer','index.html');
-const LOCAL_INDEX = fs.existsSync(PACKAGED_INDEX) ? PACKAGED_INDEX : DEV_INDEX;
+const LOCAL_INDEX = app.isPackaged ? PACKAGED_INDEX : DEV_INDEX;
 const PERMISSIONS_FILE = path.join(app.getPath('userData'), 'aura-permissions.json');
 let extraRoots = [];
 
