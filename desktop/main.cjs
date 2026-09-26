@@ -50,6 +50,7 @@ const USAGE_FILE = path.join(app.getPath('userData'), 'aura-usage.json');
 const PROFILE_FILE = path.join(app.getPath('userData'), 'aura-device-profile.json');
 let usageState = { launches: [], counts: {}, lastLaunch: null };
 let environmentProfile = null;
+let environmentScanPromise = null;
 
 async function loadUsageState() {
   try {
@@ -560,7 +561,14 @@ async function scanEnvironment() {
     const age=Date.now()-new Date(environmentProfile.scannedAt).getTime();
     if (Number.isFinite(age) && age < 30*1000) return environmentProfile;
   }
+  if (environmentScanPromise) return environmentScanPromise;
+  environmentScanPromise = performEnvironmentScan().finally(() => {
+    environmentScanPromise = null;
+  });
+  return environmentScanPromise;
+}
 
+async function performEnvironmentScan() {
   const home=os.homedir();
   const rootList=allowedRoots();
   const profile={
@@ -597,20 +605,21 @@ async function scanEnvironment() {
   for(const root of rootList){
     if(!uniqueRoots.some(x=>x.toLowerCase()===root.toLowerCase())) uniqueRoots.push(root);
   }
-  for(const root of uniqueRoots){
-    profile.roots.push(await safeStep(
-      'folder:'+root,
-      ()=>directorySummary(root),
-      {path:root,exists:false,error:true}
-    ));
-  }
+  const rootSummaries = await Promise.all(uniqueRoots.map(root =>
+    safeStep('folder:'+root,()=>directorySummary(root),{path:root,exists:false,error:true})
+  ));
+  profile.roots.push(...rootSummaries);
 
-  profile.desktop=await safeStep('desktop',()=>directorySummary(path.join(home,'Desktop')),{path:path.join(home,'Desktop'),exists:false,error:true});
-  profile.documents=await safeStep('documents',()=>directorySummary(path.join(home,'Documents')),{path:path.join(home,'Documents'),exists:false,error:true});
-  profile.downloads=await safeStep('downloads',()=>directorySummary(path.join(home,'Downloads')),{path:path.join(home,'Downloads'),exists:false,error:true});
-
-  const shortcutApps=await safeStep('applications',()=>discoverShortcutApps(),[]);
-  const registryApps=await safeStep('user-installed-apps',()=>discoverCurrentUserInstalledApps(),[]);
+  const [desktop,documents,downloads,shortcutApps,registryApps] = await Promise.all([
+    safeStep('desktop',()=>directorySummary(path.join(home,'Desktop')),{path:path.join(home,'Desktop'),exists:false,error:true}),
+    safeStep('documents',()=>directorySummary(path.join(home,'Documents')),{path:path.join(home,'Documents'),exists:false,error:true}),
+    safeStep('downloads',()=>directorySummary(path.join(home,'Downloads')),{path:path.join(home,'Downloads'),exists:false,error:true}),
+    safeStep('applications',()=>discoverShortcutApps(),[]),
+    safeStep('user-installed-apps',()=>discoverCurrentUserInstalledApps(),[])
+  ]);
+  profile.desktop=desktop;
+  profile.documents=documents;
+  profile.downloads=downloads;
   const combinedApps=[...shortcutApps,...registryApps];
   const userApps=combinedApps.filter(x=>!isSystemUtility(x.name));
   const systemApps=combinedApps.filter(x=>isSystemUtility(x.name));
@@ -626,17 +635,23 @@ async function scanEnvironment() {
     totalDiscovered:combinedApps.length
   };
 
-  const steamGames=await safeStep('steam-games',()=>discoverSteamGames(),[]);
+  const [steamGames,windowsGames] = await Promise.all([
+    safeStep('steam-games',()=>discoverSteamGames(),[]),
+    safeStep('windows-games',()=>discoverKnownWindowsGames(),[])
+  ]);
   const filteredSteamGames=steamGames.filter(x=>!isClearlyNonGame(x.name));
-  const windowsGames=await safeStep('windows-games',()=>discoverKnownWindowsGames(),[]);
   const gameMap=new Map();
   for(const game of [...filteredSteamGames,...windowsGames]){
     const key=normalizedSearchText(game.name);
     if(key && !isClearlyNonGame(game.name) && !gameMap.has(key)) gameMap.set(key,game);
   }
   profile.games=[...gameMap.values()].slice(0,300);
-  profile.runningProcesses=await safeStep('processes',()=>currentProcesses(),{count:0,items:[]});
-  profile.recentWindowsItems=await safeStep('recent-windows',()=>recentWindowsItems(),[]);
+  const [runningProcesses,recentItems] = await Promise.all([
+    safeStep('processes',()=>currentProcesses(),{count:0,items:[]}),
+    safeStep('recent-windows',()=>recentWindowsItems(),[])
+  ]);
+  profile.runningProcesses=runningProcesses;
+  profile.recentWindowsItems=recentItems;
 
   environmentProfile=profile;
   try{
