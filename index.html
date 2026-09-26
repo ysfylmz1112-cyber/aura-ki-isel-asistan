@@ -171,6 +171,7 @@ try {
 }
 
 let busy = false;
+let voiceInput = false;
 let environmentProfile = null;
 let localAIModule = null;
 let localAIPromise = null;
@@ -269,6 +270,22 @@ async function callLocalAI(...args) {
   return mod.askLocalAI(...args);
 }
 
+async function warmLocalModel(){
+  try{
+    const mod=await loadLocalAI();
+    if(typeof mod.warmLocalAI!=="function") return;
+    const idle=window.requestIdleCallback||((cb)=>setTimeout(cb,1200));
+    idle(()=>mod.warmLocalAI((p)=>{
+      if(!busy && p?.percent!=null){
+        aiEl.textContent=p.percent+"%";
+        subEl.textContent=p.text||"Yerel AI arka planda hazırlanıyor...";
+      }
+    }).then(()=>{
+      if(!busy){ aiEl.textContent="YEREL"; subEl.textContent="Yerel AI hazır."; }
+    }));
+  }catch{}
+}
+
 async function callDesktop(tool, args = {}) {
   if (!hasDesktopAgent()) {
     throw new Error("AURA Desktop bağlı değil.");
@@ -342,7 +359,7 @@ function finish(q, answer, usedAI = false) {
   input.disabled = false;
   status.textContent = "● HAZIR";
   core.classList.remove("active");
-  speak(answer);
+  if (voiceInput) speak(answer);
 }
 
 function quickLocalAnswer(q){
@@ -353,6 +370,16 @@ function quickLocalAnswer(q){
     return "Selam kanka! AURA hazır.";
   if(/^(saat kaç|saat kac|saat kaç\?|saat kac\?)$/.test(x))
     return "Saat şu an " + new Date().toLocaleTimeString("tr-TR") + ".";
+  const math=x.replace(",",".").match(/^(-?\d+(?:\.\d+)?)\s*([+\-*x×÷\/] )\s*(-?\d+(?:\.\d+)?)$/i);
+  if(math){
+    const a=Number(math[1]),op=math[2].trim(),b=Number(math[3]);
+    let r=null;
+    if(op==="+") r=a+b;
+    else if(op==="-") r=a-b;
+    else if(op==="*"||op.toLowerCase()==="x"||op==="×") r=a*b;
+    else if(op==="/"||op==="÷") r=b===0?"tanımsız":a/b;
+    if(r!==null) return "Sonuç: " + r;
+  }
   return null;
 }
 
@@ -536,11 +563,12 @@ function cycleTheme(){
   status.textContent="● TEMA "+themes[themeIndex].toUpperCase();
   setTimeout(()=>{if(!busy)status.textContent="● HAZIR";},900);
 }
-sendBtn.addEventListener("click", () => run(input.value));
+sendBtn.addEventListener("click", () => { voiceInput = false; run(input.value); });
 
 input.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
     event.preventDefault();
+    voiceInput = false;
     run(input.value);
   }
 });
@@ -562,7 +590,7 @@ micBtn.addEventListener("click", () => {
     status.textContent = "● DİNLİYOR";
     core.classList.add("active");
   };
-  recognition.onresult = (event) => run(event.results[0][0].transcript);
+  recognition.onresult = (event) => { voiceInput = true; run(event.results[0][0].transcript); };
   recognition.onerror = () => {
     status.textContent = "● HAZIR";
     core.classList.remove("active");
@@ -635,6 +663,8 @@ sendBtn.disabled = false;
 micBtn.disabled = false;
 status.textContent = "● HAZIR";
 input.focus();
+
+warmLocalModel();
 
 setTimeout(async () => {
   if (!hasDesktopAgent()) {
