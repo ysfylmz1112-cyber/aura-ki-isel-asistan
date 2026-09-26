@@ -418,15 +418,18 @@ async function executeTool(toolCall) {
   return desktopCall(name, parseArguments(toolCall?.function?.arguments));
 }
 
-export async function askLocalAI(message, history = [], onProgress = () => {}, environment = null) {
+export async function askLocalAI(message, history = [], onProgress = () => {}, environment = null, mode = "chat") {
   const value = String(message || "").trim();
   if (!value) throw new Error("Mesaj boş.");
 
   const localEngine = await ensureLocalAI(onProgress);
+  const modePrompt = mode === "code"
+    ? "\nKOD MODU AKTİF: Kullanıcı kod istiyorsa doğrudan uygulanabilir, tam ve tutarlı kod üret. Gereksiz uzun açıklama yapma. Dosya yolu/isimleri gerekiyorsa açıkça belirt. Kullanıcı özellikle kaydetmeni isterse masaüstü araçlarını kullan."
+    : "";
   const messages = [
     {
       role:"system",
-      content: SYSTEM_PROMPT +
+      content: SYSTEM_PROMPT + modePrompt +
         (desktopAvailable()
           ? "\nMasaüstü ajanı BAĞLI." + (environment ? "\nKısa PC özeti:\n" + compactEnvironment(environment) : "")
           : "\nMasaüstü ajanı BAĞLI DEĞİL.")
@@ -443,9 +446,9 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         messages,
         tools: desktopAvailable() ? TOOLS : undefined,
         tool_choice: desktopAvailable() ? "auto" : undefined,
-        temperature:0.55,
+        temperature:mode==="code"?0.25:0.55,
         top_p:0.9,
-        max_tokens:256,
+        max_tokens:mode==="code"?700:256,
         stream:false
       });
     } catch (firstError) {
