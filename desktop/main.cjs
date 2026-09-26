@@ -8,7 +8,9 @@ const { search } = require('duck-duck-scrape');
 
 const PROD_URL = 'https://aura-ki-isel-asistan.vercel.app/';
 const ALLOWED_REMOTE_ORIGIN = 'https://aura-ki-isel-asistan.vercel.app';
-const LOCAL_INDEX = path.join(__dirname,'..','index.html');
+const DEV_INDEX = path.join(__dirname,'..','index.html');
+const PACKAGED_INDEX = path.join(__dirname,'renderer','index.html');
+const LOCAL_INDEX = fs.existsSync(PACKAGED_INDEX) ? PACKAGED_INDEX : DEV_INDEX;
 const PERMISSIONS_FILE = path.join(app.getPath('userData'), 'aura-permissions.json');
 let extraRoots = [];
 
@@ -421,22 +423,40 @@ async function findAndLaunchGameOrApp(appName) {
   const target=String(appName||'').trim();
   if(!target || target.length>100) throw new Error('Uygulama/oyun adı geçersiz.');
 
+  let profile=environmentProfile;
+  const fresh=profile?.scannedAt && (Date.now()-new Date(profile.scannedAt).getTime()<30*1000);
+  if(!fresh){
+    profile=await scanEnvironment();
+  }
+
   const queries=expandedAppQueries(target);
-  const games=await discoverSteamGames();
+  const games=Array.isArray(profile?.games)?profile.games:[];
+  const apps=Array.isArray(profile?.apps)?profile.apps:[];
   const gameCandidates=games
     .map(g=>({...g,score:Math.max(...queries.map(q=>candidateScore(q,g.name)))}))
     .filter(x=>x.score>=120)
     .sort((a,b)=>b.score-a.score);
 
-  if(gameCandidates.length && gameCandidates[0].score>=950) return launchSteamGame(gameCandidates[0]);
+  if(gameCandidates.length && gameCandidates[0].score>=950){
+    const game=gameCandidates[0];
+    if(game.appid) return launchSteamGame(game);
+    const ok=await confirmAction('AURA — Oyun açma izni','AURA şu oyunu açacak:\n\n'+game.name);
+    if(!ok) throw new Error('Kullanıcı işlemi iptal etti.');
+    const err=await shell.openPath(game.path);
+    if(err) throw new Error(err);
+    await recordLaunch(game.name,'game',game.path);
+    return {ok:true,app:game.name,type:'game',path:game.path};
+  }
 
-  const apps=await discoverShortcutApps();
   const appCandidates=apps
     .map(a=>({...a,score:Math.max(...queries.map(q=>candidateScore(q,a.name)))}))
     .filter(x=>x.score>=100)
     .sort((a,b)=>b.score-a.score);
 
-  if(!appCandidates.length && gameCandidates.length) return launchSteamGame(gameCandidates[0]);
+  if(!appCandidates.length && gameCandidates.length){
+    const game=gameCandidates[0];
+    if(game.appid) return launchSteamGame(game);
+  }
   if(!appCandidates.length) throw new Error('Uygulama veya oyun bulunamadı: '+target);
 
   const chosen=appCandidates[0];
@@ -505,12 +525,15 @@ async function getUsageReport() {
   const top=Object.entries(usageState.counts||{})
     .map(([name,count])=>({name,count:Number(count)||0}))
     .sort((a,b)=>b.count-a.count)
-    .slice(0,30);
+    .slice(0,20);
+
   return {
+    user:os.userInfo().username,
     trackedByAura:top,
     lastLaunch:usageState.lastLaunch,
-    recentWindowsItems:recent,
-    runningProcesses:processes
+    recentWindowsItems:recent.slice(0,30),
+    runningProcesses:processes,
+    note:'AURA gerçek toplam ekran süresi ölçmez; AURA üzerinden açılanları, Windows Son Öğeler listesini ve anlık çalışan işlemleri raporlar.'
   };
 }
 
@@ -913,7 +936,7 @@ app.whenReady().then(async()=>{
       return {ok:false,error:error?.message||'Bilinmeyen hata'};
     }
   });
-  ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'2.4.0',mode:'secure-local-agent-pc-aware',roots:allowedRoots()}));
+  ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'3.0.0',mode:'secure-local-agent-pc-aware',roots:allowedRoots()}));
   createWindow();
   scanEnvironment().catch(()=>{});
   app.on('activate',()=>{
