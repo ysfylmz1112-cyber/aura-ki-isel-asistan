@@ -362,6 +362,11 @@ function finish(q, answer, usedAI = false) {
   if (voiceInput) speak(answer);
 }
 
+function isVagueCodeRequest(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
+  return /^(kod yaz|kod yazsana|bir kod yaz|bana kod yaz|script yaz|bir script yaz)$/i.test(x);
+}
+
 function quickLocalAnswer(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
   if(/^(nasılsın|nasilsin|nasılsın\?|nasilsin\?)$/.test(x))
@@ -370,6 +375,8 @@ function quickLocalAnswer(q){
     return "Selam kanka! AURA hazır.";
   if(/^(saat kaç|saat kac|saat kaç\?|saat kac\?)$/.test(x))
     return "Saat şu an " + new Date().toLocaleTimeString("tr-TR") + ".";
+  if(isVagueCodeRequest(x))
+    return "Tabii kanka. Ne yapmamı istediğini yaz: “Unity'de oyuncu hareket kodu yaz”, “Python hesap makinesi yaz” veya “HTML oyun menüsü yaz”.";
   const math=x.replace(",",".").match(/^(-?\d+(?:\.\d+)?)\s*([+\-*x×÷\/])\s*(-?\d+(?:\.\d+)?)$/i);
   if(math){
     const a=Number(math[1]),op=math[2].trim(),b=Number(math[3]);
