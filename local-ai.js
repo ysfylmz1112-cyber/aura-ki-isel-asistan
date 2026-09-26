@@ -376,10 +376,10 @@ export async function ensureLocalAI(onProgress = () => {}) {
 function cleanMessages(history) {
   return (Array.isArray(history) ? history : [])
     .filter(m => m && (m.role === "user" || m.role === "assistant"))
-    .slice(-4)
+    .slice(-2)
     .map(m => ({
       role:m.role,
-      content:String(m.content || "").slice(0,1200)
+      content:String(m.content || "").slice(0,700)
     }));
 }
 
@@ -439,7 +439,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     { role:"user", content:value }
   ];
 
-  for (let round=0; round<3; round++) {
+  for (let round=0; round<2; round++) {
     let response;
 
     try {
@@ -449,7 +449,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         tool_choice: desktopAvailable() ? "auto" : undefined,
         temperature:mode==="code"?0.25:0.55,
         top_p:0.9,
-        max_tokens:mode==="code"?700:256,
+        max_tokens:mode==="code"?520:192,
         stream:false
       });
     } catch (firstError) {
@@ -457,9 +457,9 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
 
       response = await localEngine.chat.completions.create({
         messages,
-        temperature:0.55,
-        top_p:0.9,
-        max_tokens:256,
+        temperature:0.5,
+        top_p:0.85,
+        max_tokens:192,
         stream:false
       });
     }
@@ -479,7 +479,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
       return answer;
     }
 
-    for (const call of toolCalls.slice(0,2)) {
+    for (const call of toolCalls.slice(0,1)) {
       try {
         const result = await executeTool(call);
         messages.push({
