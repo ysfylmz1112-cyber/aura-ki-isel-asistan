@@ -270,19 +270,45 @@ async function steamLibraryPaths() {
 }
 
 const GAME_NAME_HINTS = [
-  'minecraft','fortnite','valorant','league of legends','league of legends',
-  'counter-strike','cs2','apex','albion','terraria','stardew','gta',
+  'minecraft','fortnite','valorant','league of legends',
+  'counter strike','cs2','apex','albion','terraria','stardew','gta',
   'grand theft auto','red dead','cyberpunk','the witcher','witcher',
   'assassin','far cry','watch dogs','need for speed','fifa','ea sports',
   'pes','efootball','football manager','nba 2k','wwe','ark','rust',
   'valheim','hades','elden ring','dark souls','sekiro','doom','quake',
   'overwatch','destiny','warframe','palworld','among us','roblox',
-  'rocket league','fall guys','pubg','steam','epic games','riot client'
+  'rocket league','fall guys','pubg','tlauncher','minecraft launcher'
+];
+
+const GAME_BLOCKLIST = [
+  'steamworks common redistributables',
+  'steam linux runtime',
+  'steam linux runtime soldier',
+  'steam linux runtime sniper',
+  'steam runtime',
+  'steamvr',
+  'proton',
+  'epic games launcher',
+  'riot client',
+  'directx runtime',
+  'vulkan runtime',
+  'microsoft visual c++',
+  'visual c++',
+  'ue prerequisites'
 ];
 
 function looksLikeGame(name) {
   const n=normalizedSearchText(name);
+  if(!n) return false;
+  if(GAME_BLOCKLIST.some(h=>n===normalizedSearchText(h)||n.includes(normalizedSearchText(h)))) return false;
   return GAME_NAME_HINTS.some(h=>n===normalizedSearchText(h)||n.includes(normalizedSearchText(h)));
+}
+
+function isLikelyGameCandidate(name) {
+  const n=normalizedSearchText(name);
+  if(!n) return false;
+  if(GAME_BLOCKLIST.some(h=>n.includes(normalizedSearchText(h)))) return false;
+  return true;
 }
 
 async function discoverSteamGames() {
@@ -301,7 +327,7 @@ async function discoverSteamGames() {
         const text=await fsp.readFile(path.join(dir,e.name),'utf8');
         const id=(text.match(/"appid"\s+"(\d+)"/i)||[])[1];
         const name=(text.match(/"name"\s+"([^"]+)"/i)||[])[1];
-        if(id&&name){
+        if(id&&name && isLikelyGameCandidate(name)){
           const key=id;
           if(!seen.has(key)){
             seen.add(key);
@@ -781,7 +807,7 @@ app.whenReady().then(async()=>{
       return {ok:false,error:error?.message||'Bilinmeyen hata'};
     }
   });
-  ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'1.8.0',mode:'secure-local-agent-pc-aware',roots:allowedRoots()}));
+  ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'1.9.0',mode:'secure-local-agent-pc-aware',roots:allowedRoots()}));
   createWindow();
   scanEnvironment().catch(()=>{});
   app.on('activate',()=>{
