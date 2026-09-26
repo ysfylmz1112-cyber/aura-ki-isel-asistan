@@ -427,6 +427,11 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   const modePrompt = mode === "code"
     ? "\nKOD MODU AKTİF: Kullanıcı kod istiyorsa doğrudan uygulanabilir, tam ve tutarlı kod üret. Gereksiz uzun açıklama yapma. Dosya yolu/isimleri gerekiyorsa açıkça belirt. Kullanıcı özellikle kaydetmeni isterse masaüstü araçlarını kullan."
     : "";
+  const wantsTools = desktopAvailable() && (
+    mode === "code"
+      ? /dosya|kaydet|oluştur|olustur|klasör|klasor|unity|powershell|çalıştır|calistir|aç|ac/.test(value.toLocaleLowerCase("tr-TR"))
+      : /güncel|guncel|araştır|arastir|internette|web|site|dosya|klasör|klasor|uygulama|oyun|bilgisayar|masaüstü|masaustu|sistem|kullanım|kullanim/.test(value.toLocaleLowerCase("tr-TR"))
+  );
   const messages = [
     {
       role:"system",
@@ -445,8 +450,8 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     try {
       response = await localEngine.chat.completions.create({
         messages,
-        tools: desktopAvailable() ? TOOLS : undefined,
-        tool_choice: desktopAvailable() ? "auto" : undefined,
+        tools: wantsTools ? TOOLS : undefined,
+        tool_choice: wantsTools ? "auto" : undefined,
         temperature:mode==="code"?0.25:0.55,
         top_p:0.9,
         max_tokens:mode==="code"?520:192,
