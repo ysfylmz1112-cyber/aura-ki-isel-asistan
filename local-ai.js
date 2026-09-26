@@ -391,16 +391,17 @@ function compactEnvironment(environment) {
   const games=Array.isArray(environment.games)
     ? environment.games.slice(0,20).map(x=>String(x?.name||"")).filter(Boolean)
     : [];
-  const running=Array.isArray(environment.runningProcesses)
-    ? environment.runningProcesses.slice(0,20).map(x=>String(x?.name||"")).filter(Boolean)
-    : [];
+  const processItems=Array.isArray(environment.runningProcesses)
+    ? environment.runningProcesses
+    : (Array.isArray(environment.runningProcesses?.items) ? environment.runningProcesses.items : []);
+  const running=processItems.slice(0,20).map(x=>String(x?.name||"")).filter(Boolean);
   const roots=Array.isArray(environment.roots) ? environment.roots.length : 0;
   return JSON.stringify({
     scannedAt:environment.scannedAt||null,
     roots,
     appCount:Array.isArray(environment.apps)?environment.apps.length:0,
     gameCount:Array.isArray(environment.games)?environment.games.length:0,
-    runningCount:Array.isArray(environment.runningProcesses)?environment.runningProcesses.length:0,
+    runningCount:Number(environment.runningProcesses?.count ?? processItems.length),
     apps,
     games,
     running
