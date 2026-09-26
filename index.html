@@ -1,207 +1,382 @@
 <!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#050914"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><title>AURA — Kişisel Asistan</title><style>*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#02050b;color:#eefaff}body{overflow-x:hidden}.app{min-height:100vh;background:radial-gradient(circle at 50% 10%,#123c55 0,#050b13 38%,#02050b 78%)}header{height:72px;padding:0 24px;border-bottom:1px solid #183b51;background:#050b13e8;backdrop-filter:blur(16px);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:5}.brand{display:flex;align-items:center;gap:12px;font-weight:900;letter-spacing:7px;font-size:21px}.logo{width:40px;height:40px;border:1px solid #5ceaff;border-radius:50%;display:grid;place-items:center;box-shadow:0 0 28px #31dfff55}.logo:after{content:"";width:14px;height:14px;border-radius:50%;background:#02050a;box-shadow:0 0 22px #70efff}.status{font-size:11px;color:#72efbe;border:1px solid #28614d;border-radius:30px;padding:8px 12px}.layout{display:grid;grid-template-columns:235px 1fr 295px;min-height:calc(100vh - 72px)}aside{padding:20px;background:#03091288}.left{border-right:1px solid #122d3e}.right{border-left:1px solid #122d3e}.label{font-size:10px;letter-spacing:2px;color:#64849a;margin:4px 0 10px}.nav,.btn,.chip{border:1px solid #1b4056;background:#071522;color:#bfd2dd;border-radius:11px;cursor:pointer;transition:.2s}.nav{display:block;width:100%;padding:12px;text-align:left;margin:4px 0}.nav:hover,.nav.active,.btn:hover,.chip:hover{background:#0d2d44;border-color:#42c9ec;color:#fff}.panel{border:1px solid #16364b;background:#07121d;border-radius:15px;padding:14px;margin-bottom:10px;box-shadow:0 8px 30px #0003}.project{padding:12px;border:1px solid #17364a;border-radius:12px;margin:7px 0}.project small{display:block;color:#617c8f;margin-top:4px}.main{display:flex;justify-content:center;padding:20px}.hero{width:min(850px,100%);text-align:center}.core{width:370px;height:370px;margin:auto;position:relative;display:grid;place-items:center}.orbit{position:absolute;border:1px solid #49e1ff55;border-radius:50%;inset:9%;animation:spin 12s linear infinite}.orbit.two{inset:1%;border-style:dashed;border-color:#9a76ff55;animation:spin 19s linear infinite reverse}.orbit.three{inset:-7%;border-color:#49e1ff22;animation:pulse 4s infinite}.orbit.four{inset:18%;border-color:#8cefff33;animation:spin 7s linear infinite reverse}.coreball{width:148px;height:148px;border-radius:50%;background:radial-gradient(circle at 35% 28%,#313d48,#090e14 45%,#010203 78%);border:1px solid #465963;box-shadow:inset 0 0 50px #000,0 0 65px #28dcff2b;position:relative;z-index:2}.coreball:after{content:"";position:absolute;inset:34%;border-radius:50%;border:1px solid #71edff66;box-shadow:0 0 20px #3ce4ff}.active .coreball{animation:beat .55s infinite;box-shadow:inset 0 0 50px #000,0 0 110px #28dcff88}.wave{position:absolute;border:1px solid #55eaff66;border-radius:50%;inset:18%;opacity:0}.active .wave{animation:wave 1.5s infinite}.wave:nth-child(2){inset:8%;animation-delay:.25s}.wave:nth-child(3){inset:-2%;animation-delay:.5s}.wave:nth-child(4){inset:-12%;animation-delay:.75s}h1{font-size:38px;margin:0}.sub{color:#7896aa;line-height:1.5;margin:8px auto;max-width:680px}.composer{display:flex;gap:8px;background:#06101a;border:1px solid #18384d;border-radius:16px;padding:7px;margin:20px auto 9px;max-width:780px}.input{flex:1;background:transparent;border:0;outline:0;color:white;padding:12px;font-size:15px}.btn{padding:12px 15px}.btn:disabled{opacity:.45;cursor:not-allowed}.chips{display:flex;gap:7px;justify-content:center;flex-wrap:wrap}.chip{padding:8px 12px}.chat{text-align:left;max-height:330px;overflow:auto;margin:12px auto;width:min(780px,100%);scroll-behavior:smooth}.msg{background:#07131f;border:1px solid #102e40;border-left:3px solid #38d9ff;border-radius:11px;padding:11px;margin:7px 0;font-size:13px;line-height:1.45}.msg.me{border-left-color:#8b78ff}.msg.error{border-left-color:#ff6b7a}.metric{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #112a3a;font-size:12px}.metric:last-child{border:0}.ok{color:#6eeebc}.clock{font-size:26px;font-weight:800}.date{color:#668397;font-size:11px}.history{max-height:220px;overflow:auto}.historyItem{padding:9px;border:1px solid #142f40;border-radius:10px;margin:5px 0;cursor:pointer;font-size:12px}.historyItem:hover{border-color:#2c7898;background:#091b28}.danger{width:100%;background:#190a10;border-color:#592430}.tools{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}.shortcut{font-size:10px;color:#5f7d90;margin-top:8px}.footer{text-align:center;color:#496275;font-size:10px;padding:9px}@keyframes spin{to{transform:rotate(360deg)}}@keyframes pulse{50%{transform:scale(1.08);opacity:.5}}@keyframes beat{50%{transform:scale(1.06)}}@keyframes wave{0%{opacity:0;transform:scale(.5)}15%{opacity:.8}100%{opacity:0;transform:scale(1.2)}}@media(max-width:1000px){.layout{grid-template-columns:70px 1fr}.right{display:none}.left{padding:12px 8px}.nav{font-size:0;text-align:center}.project,.label{display:none}}@media(max-width:620px){.layout{display:block}.left{display:none}.core{width:270px;height:270px}.coreball{width:120px;height:120px}h1{font-size:28px}.composer{flex-wrap:wrap}.input{flex-basis:100%}.btn{flex:1}}body.light{background:#eaf5f9;color:#10202a}.light .app{background:radial-gradient(circle at 50% 10%,#d5f4ff,#f6fbfd 48%,#eaf5f9)}.light header,.light aside{background:#ffffffd9}.light .panel,.light .composer,.light .msg,.light .project,.light .nav,.light .btn,.light .chip{background:#fff;color:#17303e;border-color:#b8d2dd}.light .input{color:#10202a}.light .sub,.light .date,.light .label,.light .footer,.light .shortcut{color:#587383}</style></head><body><div class="app"><header><div class="brand"><div class="logo"></div>AURA</div><div class="status" id="status">● HAZIR</div></header><div class="layout"><aside class="left"><div class="label">MERKEZ</div><button class="nav active" id="home">◉ Ana merkez</button><button class="nav" id="memory">⌁ Sohbet geçmişi</button><button class="nav" id="voice">◌ Ses sistemi</button><button class="nav" id="settings">⚙ Ayarlar</button><button class="nav" id="about">ⓘ Hakkında</button><br><div class="label">PROJELER</div><div class="project"><b>◉ AURA</b><small>AI kişisel asistan</small></div></aside><main class="main"><section class="hero"><div class="core" id="core"><div class="orbit"></div><div class="orbit two"></div><div class="orbit three"></div><div class="orbit four"></div><i class="wave"></i><i class="wave"></i><i class="wave"></i><i class="wave"></i><div class="coreball"></div></div><h1 id="headline">Merhaba, ben AURA.</h1><div class="sub" id="sub">Sorunu yaz, AURA cevaplasın.</div><div class="composer"><input id="input" class="input" autocomplete="off" autofocus spellcheck="false" placeholder="AURA'ya bir şey sor..."><button class="btn" id="mic">🎙 Konuş</button><button class="btn" id="send">Gönder</button></div><div class="chips"><button class="chip" data-q="Saat kaç?">Saat</button><button class="chip" data-q="Bugün günlerden ne?">Tarih</button><button class="chip" data-q="Sistem durumunu göster">Sistem</button><button class="chip" data-q="Bilgisayarımda neler var?">PC</button><button class="chip" data-q="Bana bir bilmece sor">Bilmece</button><button class="chip" data-q="Beni hatırlıyor musun?">Hafıza</button><button class="chip" data-q="2+2">2+2</button></div><div class="shortcut">Enter: gönder · Ctrl+K: yaz · Esc: durdur</div><div class="chat" id="chat"></div></section></main><aside class="right"><div class="panel"><div class="label">SAAT</div><div class="clock" id="clock">--:--</div><div class="date" id="date">--</div></div><div class="panel"><div class="label">SİSTEM</div><div class="metric"><span>Arayüz</span><b class="ok">AKTİF</b></div><div class="metric"><span>Yerel AI</span><b id="ai">BEKLEMEDE</b></div><div class="metric"><span>Ses çıkışı</span><b id="tts">HAZIR</b></div><div class="metric"><span>Kayıt</span><b class="ok" id="count">0</b></div><div class="tools"><button class="btn" id="export">Dışa aktar</button><button class="btn" id="theme">Tema</button></div></div><div class="panel"><div class="label">SON SOHBETLER</div><div class="history" id="history"></div><button class="btn danger" id="clear">Geçmişi temizle</button></div></aside></div><div class="footer">AURA • CORE 8.0 • LOCAL AI • DESKTOP AGENT • WEB SEARCH • NO API KEY</div></div><script type="module">
-let localAIModule=null;
-let localAIPromise=null;
-function hasDesktopAgent(){ return !!globalThis.auraDesktop?.isDesktop; }
-function getLocalAIModel(){ return localAIModule?.getLocalAIModel?.() || "Qwen2.5-1.5B-Instruct-q4f16_1-MLC"; }
-async function loadLocalAI(){
-  if(localAIModule) return localAIModule;
-  if(!localAIPromise){
-    localAIPromise=import("./local-ai.js").then(mod=>{
-      localAIModule=mod;
+const $ = (id) => document.getElementById(id);
+const input = $("input");
+const chat = $("chat");
+const core = $("core");
+const status = $("status");
+const historyEl = $("history");
+const sendBtn = $("send");
+const micBtn = $("mic");
+const aiEl = $("ai");
+const subEl = $("sub");
+const countEl = $("count");
+const ttsEl = $("tts");
+const clockEl = $("clock");
+const dateEl = $("date");
+
+let history = [];
+try {
+  const raw = localStorage.getItem("aura_history");
+  const parsed = raw ? JSON.parse(raw) : [];
+  history = Array.isArray(parsed) ? parsed : [];
+} catch {
+  history = [];
+}
+
+let busy = false;
+let environmentProfile = null;
+let localAIModule = null;
+let localAIPromise = null;
+
+function esc(value) {
+  return String(value).replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[c]));
+}
+
+function hasDesktopAgent() {
+  return !!globalThis.auraDesktop?.isDesktop;
+}
+
+function getLocalAIModel() {
+  return localAIModule?.getLocalAIModel?.() || "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
+}
+
+async function loadLocalAI() {
+  if (localAIModule) return localAIModule;
+  if (!localAIPromise) {
+    localAIPromise = import("./local-ai.js").then((mod) => {
+      localAIModule = mod;
       return mod;
     });
   }
   return localAIPromise;
 }
-async function askLocalAI(...args){
-  const mod=await loadLocalAI();
+
+async function callLocalAI(...args) {
+  const mod = await loadLocalAI();
   return mod.askLocalAI(...args);
 }
-const $=id=>document.getElementById(id),input=$("input"),chat=$("chat"),core=$("core"),status=$("status"),historyEl=$("history"),sendBtn=$("send"),micBtn=$("mic");
-let history=[];
-try{
-  const stored=localStorage.getItem("aura_history");
-  const parsed=stored?JSON.parse(stored):[];
-  history=Array.isArray(parsed)?parsed:[];
-}catch{
-  history=[];
-  try{localStorage.removeItem("aura_history")}catch{}
-}
-let busy=false,environmentProfile=null;
-function esc(s){return String(s).replace(/[&<>\\"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'\\"':"&quot;","'":"&#39;"}[c]))}
-function render(){$("count").textContent=history.length;historyEl.innerHTML=history.slice(0,10).map((x,i)=>'<div class="historyItem" data-i="'+i+'"><b>'+esc(x.q)+'</b><small>'+esc(x.a)+'</small></div>').join('')||'<small style="color:#668397">Henüz sohbet yok.</small>';historyEl.querySelectorAll(".historyItem").forEach(e=>e.onclick=()=>run(history[+e.dataset.i].q))}
-function save(){localStorage.setItem("aura_history",JSON.stringify(history));render()}
-function solveMath(q){let x=q.toLocaleLowerCase("tr-TR").replace(/,/g,".").replace(/[?？!！=]/g,"").replace(/\s+/g," ").trim();x=x.replace(/^(hesapla\s+|sonucu\s+|sonuç\s+|kaçtır\s+)/i,"").trim();let m=x.match(/^(-?(?:\d+(?:\.\d+)?|\.\d+))\s*([+\-*/x×÷])\s*(-?(?:\d+(?:\.\d+)?|\.\d+))$/i);if(!m)return null;let a=Number(m[1]),b=Number(m[3]),op=m[2].toLowerCase(),r;if(op==="+")r=a+b;else if(op==="-")r=a-b;else if(op==="*"||op==="x"||op==="×")r=a*b;else if(op==="/"||op==="÷")r=b===0?null:a/b;else return null;return r===null?"Sıfıra bölme yapılamaz.":Number.isFinite(r)?"Sonuç: "+r:null}
-function localAnswer(q){
-  const x=q.toLocaleLowerCase("tr-TR").trim();
-  const math=solveMath(q);
-  if(math)return math;
 
-  if(/^(merhaba|selam|hey|sa|slm|mrb|selamlar)$/.test(x))
-    return "Merhaba! AURA çevrimiçi. Nasıl yardımcı olayım?";
-
-  if(/^(nasılsın|nasılsın\?|iyi misin|naber|ne haber|nasıl gidiyor)$/.test(x))
-    return "İyiyim kanka, AURA hazır. Ne konuşalım?";
-
-  if(/^(saat kaç|saat kaç\?|şu an saat kaç|kaç saat)$/.test(x) || x.includes("saat kaç"))
-    return "Saat şu anda "+new Date().toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"})+".";
-
-  if(x.includes("bugün") || x.includes("tarih") || x.includes("hangi gün") || x.includes("bugünün tarihi"))
-    return "Bugün "+new Date().toLocaleDateString("tr-TR",{weekday:"long",day:"numeric",month:"long",year:"numeric"})+".";
-
-  if(x.includes("sistem"))
-    return "AURA arayüzü, yerel hafıza, ses sistemi ve WebGPU tabanlı yerel AI katmanı aktif.";
-
-  if(x.includes("hafıza") || x.includes("hatırl"))
-    return history.length
-      ? "Bu tarayıcıda "+history.length+" sohbet kaydı bulunuyor."
-      : "Henüz kayıtlı bir sohbet yok.";
-
-  if(x.includes("bilmece"))
-    return "Bilmece: Şehirleri var ama evleri yok, ormanları var ama ağaçları yok, nehirleri var ama suyu yok. Nedir?";
-
-  if(x.includes("teşekkür") || x.includes("sağ ol") || x==="eyvallah")
-    return "Rica ederim kanka. 😎";
-
-  if(x==="adın ne" || x==="sen kimsin" || x.includes("kimsin"))
-    return "Ben AURA. API key gerektirmeden tarayıcında çalışan yerel yapay zeka asistanıyım.";
-
-  return null
-}
-function isDirectDesktopCommand(q){
-  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
-  const exact=[
-    "google aç","google'ı aç","googleyi aç","youtube aç","youtube'u aç",
-    "discord aç","github aç","chatgpt aç",
-    "bilgisayarımda neler var","bilgisayarımda neler var?",
-    "pc'de neler var","pc de neler var","uygulamalarımı göster",
-    "oyunlarımı göster","hangi oyunlarım var"
-  ];
-  return exact.includes(x) || /^.+? aç(?:ıver|ar)?$/.test(x);
-}
-
-
-async function directDesktopCommand(q){
-  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
-
-  if(!hasDesktopAgent()){
-    if(/bilgisayarımda neler var|pc['’]?de neler var|uygulamalarımı göster|oyunlarımı göster|hangi oyunlarım var/i.test(x)){
-    const r=await window.auraDesktop.call("desktop_scan_environment",{});
-    if(!r?.ok){
-      throw new Error("PC taraması başarısız: "+(r?.error||"Desktop ajanı tarama sonucunu vermedi."));
-    }
-
-    environmentProfile=r.result;
-    localStorage.setItem("aura_environment_profile",JSON.stringify(environmentProfile));
-
-    const appCount=Number(environmentProfile?.apps?.length||0);
-    const gameCount=Number(environmentProfile?.games?.length||0);
-    const running=Number(environmentProfile?.runningProcesses?.length||0);
-    const rootCount=Array.isArray(environmentProfile?.roots)?environmentProfile.roots.length:0;
-    const appNames=Array.isArray(environmentProfile?.apps)?environmentProfile.apps.slice(0,20).map(x=>x.name).filter(Boolean):[];
-    const gameNames=Array.isArray(environmentProfile?.games)?environmentProfile.games.slice(0,20).map(x=>x.name).filter(Boolean):[];
-
-    let message="PC taraması tamamlandı kanka. "+appCount+" uygulama, "+gameCount+" oyun ve "+running+" çalışan işlem bulundu. "+rootCount+" izinli konum kontrol edildi.";
-    if(appNames.length) message+=" Uygulamalar: "+appNames.join(", ")+"." ;
-    if(gameNames.length) message+=" Oyunlar: "+gameNames.join(", ")+"." ;
-    return message;
+async function callDesktop(tool, args = {}) {
+  if (!hasDesktopAgent()) {
+    throw new Error("AURA Desktop bağlı değil.");
   }
-  const urlMap={
-    "google aç":"https://www.google.com",
-    "google'ı aç":"https://www.google.com",
-    "googleyi aç":"https://www.google.com",
-    "youtube aç":"https://www.youtube.com",
-    "youtube'u aç":"https://www.youtube.com",
-    "discord aç":"https://discord.com/app",
-    "github aç":"https://github.com",
-    "chatgpt aç":"https://chatgpt.com"
+  const result = await window.auraDesktop.call(tool, args);
+  if (!result?.ok) {
+    throw new Error(result?.error || "Masaüstü işlemi başarısız.");
+  }
+  return result.result;
+}
+
+function saveHistory() {
+  try {
+    localStorage.setItem("aura_history", JSON.stringify(history.slice(0, 100)));
+  } catch {}
+  renderHistory();
+}
+
+function renderHistory() {
+  countEl.textContent = String(history.length);
+  historyEl.innerHTML = history.slice(0, 10).map((item, i) =>
+    '<div class="historyItem" data-i="' + i + '"><b>' +
+    esc(item.q) + '</b><small>' + esc(item.a) + '</small></div>'
+  ).join("") || '<small style="color:#668397">Henüz sohbet yok.</small>';
+
+  historyEl.querySelectorAll(".historyItem").forEach((item) => {
+    item.addEventListener("click", () => {
+      const q = history[Number(item.dataset.i)]?.q;
+      if (q && !busy) run(q);
+    });
+  });
+}
+
+function addMessage(kind, label, text) {
+  chat.insertAdjacentHTML(
+    "beforeend",
+    '<div class="msg ' + kind + '"><b>' + esc(label) + "</b> · " + esc(text) + "</div>"
+  );
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function speak(text) {
+  if (!window.speechSynthesis) return;
+  const u = new SpeechSynthesisUtterance(String(text));
+  u.lang = "tr-TR";
+  u.rate = 0.96;
+  ttsEl.textContent = "KONUŞUYOR";
+  core.classList.add("active");
+  u.onend = () => {
+    ttsEl.textContent = "HAZIR";
+    if (!busy) core.classList.remove("active");
   };
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
+}
 
-  if(urlMap[x]){
-    const r=await window.auraDesktop.call("desktop_open_external_url",{url:urlMap[x]});
-    if(!r?.ok) throw new Error(r?.error||"Web adresi açılamadı.");
-    return "Tamam kanka, "+x+" açıldı.";
+function finish(q, answer, usedAI = false) {
+  addMessage("", "AURA", answer);
+  history.unshift({
+    q,
+    a: answer,
+    time: Date.now(),
+    ai: usedAI,
+    localModel: usedAI ? getLocalAIModel() : ""
+  });
+  history = history.slice(0, 100);
+  saveHistory();
+  busy = false;
+  sendBtn.disabled = false;
+  micBtn.disabled = false;
+  input.disabled = false;
+  status.textContent = "● HAZIR";
+  core.classList.remove("active");
+  speak(answer);
+}
+
+function isPCRequest(q) {
+  const x = String(q).toLocaleLowerCase("tr-TR").trim();
+  return [
+    "bilgisayarımda neler var",
+    "bilgisayarımda neler var?",
+    "pc'de neler var",
+    "pc de neler var",
+    "uygulamalarımı göster",
+    "oyunlarımı göster",
+    "hangi oyunlarım var"
+  ].includes(x);
+}
+
+function extractOpenTarget(q) {
+  const x = String(q || "").trim();
+  const m = x.match(/^(.+?)\s+aç(?:ıver|ar)?$/i);
+  return m ? m[1].trim() : "";
+}
+
+async function handleDirectCommand(q) {
+  if (!hasDesktopAgent()) {
+    return "Bu özellik için AURA Desktop'ın açık olması gerekiyor.";
   }
 
-  const appMatch=x.match(/^(.+?) aç(?:ıver|ar)?$/);
-  if(appMatch){
-    const appName=appMatch[1].trim();
-    if(appName && !["google","youtube","github","chatgpt","discord"].includes(appName)){
-      const r=await window.auraDesktop.call("desktop_find_and_launch_app",{app:appName});
-      if(!r?.ok) throw new Error(r?.error||("Uygulama bulunamadı: "+appName));
-      return "Tamam kanka, "+appName+" açıldı.";
+  if (isPCRequest(q)) {
+    const profile = await callDesktop("desktop_scan_environment", {});
+    environmentProfile = profile;
+    try {
+      localStorage.setItem("aura_environment_profile", JSON.stringify(profile));
+    } catch {}
+
+    const apps = Array.isArray(profile?.apps) ? profile.apps : [];
+    const games = Array.isArray(profile?.games) ? profile.games : [];
+    const processes = Array.isArray(profile?.runningProcesses) ? profile.runningProcesses : [];
+
+    let answer =
+      "PC taraması tamamlandı kanka. " +
+      apps.length + " uygulama, " +
+      games.length + " oyun ve " +
+      processes.length + " çalışan işlem bulundu.";
+
+    if (apps.length) {
+      answer += " Uygulamalardan bazıları: " +
+        apps.slice(0, 15).map((x) => x.name).filter(Boolean).join(", ") + ".";
     }
+    if (games.length) {
+      answer += " Steam oyunlarından bazıları: " +
+        games.slice(0, 15).map((x) => x.name).filter(Boolean).join(", ") + ".";
+    }
+    return answer;
+  }
+
+  const target = extractOpenTarget(q);
+  if (target) {
+    const normalized = target.toLocaleLowerCase("tr-TR");
+    const urls = {
+      "google": "https://www.google.com",
+      "youtube": "https://www.youtube.com",
+      "discord": "https://discord.com/app",
+      "github": "https://github.com",
+      "chatgpt": "https://chatgpt.com"
+    };
+
+    if (urls[normalized]) {
+      await callDesktop("desktop_open_external_url", { url: urls[normalized] });
+      return "Tamam kanka, " + target + " açıldı.";
+    }
+
+    await callDesktop("desktop_find_and_launch_app", { app: target });
+    return "Tamam kanka, " + target + " açıldı.";
   }
 
   return null;
 }
-function speak(t){if(!window.speechSynthesis)return;let u=new SpeechSynthesisUtterance(t);u.lang="tr-TR";u.rate=.96;$("tts").textContent="KONUŞUYOR";core.classList.add("active");u.onend=()=>{$("tts").textContent="HAZIR";if(!busy)core.classList.remove("active")};speechSynthesis.cancel();speechSynthesis.speak(u)}
-function addMessage(kind,label,text){chat.insertAdjacentHTML("beforeend",'<div class="msg '+kind+'"><b>'+label+"</b> · "+esc(text)+"</div>");chat.scrollTop=chat.scrollHeight}
-function localProgress(p){status.textContent=p.percent!=null?"● MODEL "+p.percent+"%":"● MODEL HAZIRLANIYOR";$("ai").textContent=p.percent!=null?p.percent+"%":"YÜKLENİYOR";$("sub").textContent=p.text||"Yerel AI modeli hazırlanıyor..."}
-async function run(q){
-  q=String(q||"").trim();
-  if(!q)return;
 
-  const direct=isDirectDesktopCommand(q);
-  if(busy) return;
-  busy=true;sendBtn.disabled=true;micBtn.disabled=true;addMessage("me","SEN",q);input.value="";
-  status.textContent=direct?"● ÇALIŞIYOR":"● DÜŞÜNÜYOR";core.classList.add("active");
+async function run(q) {
+  q = String(q || "").trim();
+  if (!q || busy) return;
 
-  let local=localAnswer(q);
-  if(local){finish(q,local,false);return}
+  busy = true;
+  sendBtn.disabled = true;
+  micBtn.disabled = true;
+  input.disabled = false;
+  addMessage("me", "SEN", q);
+  input.value = "";
+  status.textContent = "● ÇALIŞIYOR";
+  core.classList.add("active");
 
-  if(direct){
-    try{
-      const answer=await directDesktopCommand(q);
-      if(answer){finish(q,answer,false);return}
-    }catch(e){
-      status.textContent="● HAZIR";core.classList.remove("active");addMessage("error","AURA","Masaüstü işlemi yapılamadı: "+(e?.message||"bilinmeyen hata"));busy=false;sendBtn.disabled=false;micBtn.disabled=false;return;
+  try {
+    const direct = isPCRequest(q) || !!extractOpenTarget(q);
+    if (direct) {
+      const answer = await handleDirectCommand(q);
+      finish(q, answer || "Komut çalıştırılamadı.", false);
+      return;
     }
+
+    const answer = await callLocalAI(
+      q,
+      history.slice(0, 8).reverse().flatMap((item) => [
+        { role: "user", content: item.q },
+        { role: "assistant", content: item.a }
+      ]),
+      (p) => {
+        status.textContent = p?.percent != null ? "● MODEL " + p.percent + "%" : "● MODEL";
+        aiEl.textContent = p?.percent != null ? p.percent + "%" : "YÜKLENİYOR";
+        subEl.textContent = p?.text || "Yerel AI hazırlanıyor...";
+      },
+      environmentProfile
+    );
+
+    aiEl.textContent = "YEREL";
+    subEl.textContent = "Yerel model: " + getLocalAIModel();
+    finish(q, answer, true);
+  } catch (error) {
+    busy = false;
+    sendBtn.disabled = false;
+    micBtn.disabled = false;
+    input.disabled = false;
+    status.textContent = "● HAZIR";
+    core.classList.remove("active");
+    addMessage("error", "AURA", error?.message || "Bilinmeyen hata");
   }
-
-  try{const recent=history.slice(0,8).reverse().flatMap(x=>[{role:"user",content:x.q},{role:"assistant",content:x.a}]);const answer=await askLocalAI(q,recent,localProgress,environmentProfile);$("ai").textContent="YEREL";$("sub").textContent="API key yok · Yerel model: "+getLocalAIModel();finish(q,answer,true)}catch(e){$("ai").textContent="YEREL";status.textContent="● YEREL MOD";core.classList.remove("active");addMessage("error","AURA","Yerel AI kullanılamıyor: "+(e?.message||"bilinmeyen hata")+" API key kullanılmıyor.");busy=false;sendBtn.disabled=false;micBtn.disabled=false}}
-function finish(q,a,ai){addMessage("","AURA",a);history.unshift({q,a,time:Date.now(),ai,localModel:ai?getLocalAIModel():""});history=history.slice(0,100);save();status.textContent="● HAZIR";busy=false;sendBtn.disabled=false;micBtn.disabled=false;core.classList.remove("active");speak(a)}
-sendBtn.onclick=()=>run(input.value);input.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();run(input.value)}};document.querySelectorAll(".chip").forEach(b=>b.onclick=()=>run(b.dataset.q));
-micBtn.onclick=()=>{const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R){$("sub").textContent="Tarayıcı ses tanımayı desteklemiyor.";return}const r=new R;r.lang="tr-TR";r.onstart=()=>{status.textContent="● DİNLİYOR";core.classList.add("active")};r.onresult=e=>run(e.results[0][0].transcript);r.onerror=()=>{status.textContent="● HAZIR";core.classList.remove("active")};r.onend=()=>{if(!busy)core.classList.remove("active")};r.start()};
-$("clear").onclick=()=>{if(confirm("Sohbet geçmişi silinsin mi?")){history=[];save();chat.innerHTML=""}};$("export").onclick=()=>{const text=history.slice().reverse().map(x=>"SEN: "+x.q+"\nAURA: "+x.a).join("\n\n");const blob=new Blob([text||"AURA sohbet geçmişi boş."],{type:"text/plain;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="aura-sohbet-gecmisi.txt";a.click()};$("theme").onclick=()=>{document.body.classList.toggle("light");localStorage.setItem("aura_theme",document.body.classList.contains("light")?"light":"dark")};if(localStorage.getItem("aura_theme")==="light")document.body.classList.add("light");
-
-async function hydrateEnvironmentProfile(){
-  if(!hasDesktopAgent()) return;
-  try{
-    const r=await window.auraDesktop.call("desktop_get_environment_profile",{});
-    if(r?.ok){
-      environmentProfile=r.result;
-      localStorage.setItem("aura_environment_profile",JSON.stringify(environmentProfile));
-      $("sub").textContent="PC profili hazır · "+(environmentProfile?.apps?.length||0)+" uygulama · "+(environmentProfile?.games?.length||0)+" Steam oyunu tanındı.";
-    }
-  }catch{}
 }
-try{environmentProfile=JSON.parse(localStorage.getItem("aura_environment_profile")||"null")}catch{environmentProfile=null}
-hydrateEnvironmentProfile();
 
-const navText={memory:"Son 100 konuşma bu tarayıcıda yerel olarak tutuluyor.",voice:"Türkçe mikrofon ve sesli cevap aktif.",settings:"Ayarlar: yerel hafıza, WebGPU tabanlı AI ve tema sistemi aktif.",about:"AURA — API key gerektirmeyen tarayıcı içi yerel AI asistanı.",home:"Sorunu yaz, AURA cevaplasın."};Object.keys(navText).forEach(id=>$(id).onclick=()=>{$("sub").textContent=navText[id];document.querySelectorAll(".nav").forEach(n=>n.classList.remove("active"));$(id).classList.add("active")});
-document.addEventListener("keydown",e=>{if(e.ctrlKey&&e.key.toLowerCase()==="k"){e.preventDefault();input.focus()}if(e.key==="Escape"){speechSynthesis.cancel();busy=false;sendBtn.disabled=false;micBtn.disabled=false;status.textContent="● HAZIR";core.classList.remove("active");$("tts").textContent="HAZIR"}});
-function initDesktopStatus(){
-  if(!hasDesktopAgent()){
-    $("ai").textContent="YEREL AI";
-    $("sub").textContent="API key yok · İlk AI sorusunda yerel model tarayıcıya indirilecek.";
+sendBtn.addEventListener("click", () => run(input.value));
+
+input.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    run(input.value);
+  }
+});
+
+document.querySelectorAll(".chip").forEach((button) => {
+  button.addEventListener("click", () => run(button.dataset.q || ""));
+});
+
+micBtn.addEventListener("click", () => {
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!Recognition) {
+    subEl.textContent = "Bu sistemde sesli giriş desteklenmiyor.";
     return;
   }
-  $("ai").textContent="PC + YEREL AI";
-  $("sub").textContent="Desktop bağlı · canlı PC taraması aktif · API key yok.";
-  Promise.resolve().then(async()=>{
-    try{
-      const info=await window.auraDesktop.getInfo();
-      $("sub").textContent="Desktop "+String(info?.version||"?")+" bağlı · canlı PC taraması aktif · API key yok.";
-    }catch{}
+
+  const recognition = new Recognition();
+  recognition.lang = "tr-TR";
+  recognition.onstart = () => {
+    status.textContent = "● DİNLİYOR";
+    core.classList.add("active");
+  };
+  recognition.onresult = (event) => run(event.results[0][0].transcript);
+  recognition.onerror = () => {
+    status.textContent = "● HAZIR";
+    core.classList.remove("active");
+  };
+  recognition.onend = () => {
+    if (!busy) core.classList.remove("active");
+  };
+  recognition.start();
+});
+
+$("clear").addEventListener("click", () => {
+  if (confirm("Sohbet geçmişi silinsin mi?")) {
+    history = [];
+    saveHistory();
+    chat.innerHTML = "";
+  }
+});
+
+$("export").addEventListener("click", () => {
+  const text = history.slice().reverse()
+    .map((item) => "SEN: " + item.q + "\nAURA: " + item.a)
+    .join("\n\n");
+  const blob = new Blob([text || "AURA sohbet geçmişi boş."], {
+    type: "text/plain;charset=utf-8"
+  });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "aura-sohbet-gecmisi.txt";
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+});
+
+$("theme").addEventListener("click", () => {
+  document.body.classList.toggle("light");
+  localStorage.setItem(
+    "aura_theme",
+    document.body.classList.contains("light") ? "light" : "dark"
+  );
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.ctrlKey && event.key.toLowerCase() === "k") {
+    event.preventDefault();
+    input.focus();
+  }
+  if (event.key === "Escape") {
+    speechSynthesis.cancel();
+    busy = false;
+    sendBtn.disabled = false;
+    micBtn.disabled = false;
+    input.disabled = false;
+    status.textContent = "● HAZIR";
+    core.classList.remove("active");
+  }
+});
+
+function updateClock() {
+  const now = new Date();
+  clockEl.textContent = now.toLocaleTimeString("tr-TR");
+  dateEl.textContent = now.toLocaleDateString("tr-TR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric"
   });
 }
-input.disabled=false;sendBtn.disabled=false;micBtn.disabled=false;
-initDesktopStatus();setTimeout(()=>{try{input.focus();input.disabled=false;}catch{}},150);
-input.disabled=false;
-sendBtn.disabled=false;
-micBtn.disabled=false;
-window.addEventListener("load",()=>{try{input.focus();}catch{}});
-document.addEventListener("visibilitychange",()=>{if(!document.hidden&&!busy){try{input.focus();}catch{}}});
-function clock(){let d=new Date;$("clock").textContent=d.toLocaleTimeString("tr-TR");$("date").textContent=d.toLocaleDateString("tr-TR",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}clock();setInterval(clock,1000);render();
+
+renderHistory();
+updateClock();
+setInterval(updateClock, 1000);
+
+input.disabled = false;
+sendBtn.disabled = false;
+micBtn.disabled = false;
+status.textContent = "● HAZIR";
+input.focus();
+
+setTimeout(async () => {
+  if (!hasDesktopAgent()) {
+    aiEl.textContent = "YEREL AI";
+    subEl.textContent = "API key yok · Yerel AI hazır.";
+    return;
+  }
+  aiEl.textContent = "PC + YEREL AI";
+  subEl.textContent = "Desktop bağlı · PC araçları hazır.";
+  try {
+    const info = await window.auraDesktop.getInfo();
+    subEl.textContent = "Desktop " + String(info?.version || "?") + " bağlı · PC araçları hazır.";
+  } catch {}
+}, 0);
 </script></body></html>
