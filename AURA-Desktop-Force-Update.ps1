@@ -14,13 +14,12 @@ Stop-Process -Name 'AURA' -Force -ErrorAction SilentlyContinue
 Stop-Process -Name 'electron' -Force -ErrorAction SilentlyContinue
 Start-Sleep -Milliseconds 1000
 
-$base = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/1f7d42e23c83a3b3387f05f1bb044f8c842bf69a/'
 $files = @(
-  @{ Local = Join-Path $repoRoot 'index.html'; Remote = $base + 'index.html'; Required = 'desktop_scan_environment' },
-  @{ Local = Join-Path $repoRoot 'local-ai.js'; Remote = $base + 'local-ai.js'; Required = 'Qwen2.5-1.5B-Instruct' },
-  @{ Local = Join-Path $desktopDir 'main.cjs'; Remote = $base + 'desktop/main.cjs'; Required = 'desktop_scan_environment' },
-  @{ Local = Join-Path $desktopDir 'preload.cjs'; Remote = $base + 'desktop/preload.cjs'; Required = 'auraDesktop' },
-  @{ Local = Join-Path $desktopDir 'package.json'; Remote = $base + 'desktop/package.json'; Required = 'electron-builder' }
+  @{ Local = Join-Path $repoRoot 'index.html'; Remote = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/01ec15b53457287a522e06d02d217778cb01c91a/index.html'; Required = 'desktop_scan_environment' },
+  @{ Local = Join-Path $repoRoot 'local-ai.js'; Remote = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/19ffd3835c1112f378e5148727c5870f7951a3a5/local-ai.js'; Required = 'Qwen2.5-1.5B-Instruct' },
+  @{ Local = Join-Path $desktopDir 'main.cjs'; Remote = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/8199c022fa085e9f21d6ed84a981a8c2809585d6/desktop/main.cjs'; Required = 'desktop_scan_environment' },
+  @{ Local = Join-Path $desktopDir 'preload.cjs'; Remote = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/147195b6abc4d1d234f72efc1520d09866de0e1b/desktop/preload.cjs'; Required = 'auraDesktop' },
+  @{ Local = Join-Path $desktopDir 'package.json'; Remote = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/19512350b0519cd67d523f219517cd811ce92779/desktop/package.json'; Required = 'electron-builder' }
 )
 
 foreach($item in $files){
