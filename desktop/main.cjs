@@ -533,6 +533,11 @@ async function discoverKnownWindowsGames() {
 }
 
 async function scanEnvironment() {
+  if (environmentProfile?.scannedAt) {
+    const age=Date.now()-new Date(environmentProfile.scannedAt).getTime();
+    if (Number.isFinite(age) && age < 30*1000) return environmentProfile;
+  }
+
   const home=os.homedir();
   const rootList=allowedRoots();
   const profile={
@@ -619,7 +624,10 @@ async function scanEnvironment() {
   return profile;
 }
 async function getEnvironmentProfile() {
-  if (environmentProfile) return environmentProfile;
+  if (environmentProfile?.scannedAt) {
+    const age=Date.now()-new Date(environmentProfile.scannedAt).getTime();
+    if (Number.isFinite(age) && age < 30*1000) return environmentProfile;
+  }
   try {
     const raw=await fsp.readFile(PROFILE_FILE,'utf8');
     const data=JSON.parse(raw);
@@ -905,7 +913,7 @@ app.whenReady().then(async()=>{
       return {ok:false,error:error?.message||'Bilinmeyen hata'};
     }
   });
-  ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'2.3.0',mode:'secure-local-agent-pc-aware',roots:allowedRoots()}));
+  ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'2.4.0',mode:'secure-local-agent-pc-aware',roots:allowedRoots()}));
   createWindow();
   scanEnvironment().catch(()=>{});
   app.on('activate',()=>{
