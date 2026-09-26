@@ -18,7 +18,16 @@ async function askLocalAI(...args){
   return mod.askLocalAI(...args);
 }
 const $=id=>document.getElementById(id),input=$("input"),chat=$("chat"),core=$("core"),status=$("status"),historyEl=$("history"),sendBtn=$("send"),micBtn=$("mic");
-let history=JSON.parse(localStorage.getItem("aura_history")||"[]"),busy=false,environmentProfile=null;
+let history=[];
+try{
+  const stored=localStorage.getItem("aura_history");
+  const parsed=stored?JSON.parse(stored):[];
+  history=Array.isArray(parsed)?parsed:[];
+}catch{
+  history=[];
+  try{localStorage.removeItem("aura_history")}catch{}
+}
+let busy=false,environmentProfile=null;
 function esc(s){return String(s).replace(/[&<>\\"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'\\"':"&quot;","'":"&#39;"}[c]))}
 function render(){$("count").textContent=history.length;historyEl.innerHTML=history.slice(0,10).map((x,i)=>'<div class="historyItem" data-i="'+i+'"><b>'+esc(x.q)+'</b><small>'+esc(x.a)+'</small></div>').join('')||'<small style="color:#668397">Henüz sohbet yok.</small>';historyEl.querySelectorAll(".historyItem").forEach(e=>e.onclick=()=>run(history[+e.dataset.i].q))}
 function save(){localStorage.setItem("aura_history",JSON.stringify(history));render()}
