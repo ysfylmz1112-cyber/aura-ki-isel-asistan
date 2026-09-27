@@ -175,6 +175,8 @@ let voiceInput = false;
 let voiceEnabled = localStorage.getItem("aura_voice_enabled") !== "0";
 let speaking = false;
 let environmentProfile = null;
+let auraMemory = [];
+
 let localAIModule = null;
 let localAIPromise = null;
 let mode = localStorage.getItem("aura_mode") === "code" ? "code" : "chat";
@@ -286,6 +288,40 @@ async function warmLocalModel(){
       if(!busy){ aiEl.textContent="YEREL"; subEl.textContent="Yerel AI hazır."; }
     }));
   }catch{}
+}
+
+async function loadAuraMemory(){
+  try{
+    if(hasDesktopAgent()){
+      const result=await callDesktop("desktop_memory_list",{});
+      auraMemory=Array.isArray(result?.items)?result.items:[];
+      return auraMemory;
+    }
+    const raw=localStorage.getItem("aura_memory");
+    const parsed=raw?JSON.parse(raw):[];
+    auraMemory=Array.isArray(parsed)?parsed.slice(-200):[];
+  }catch{
+    auraMemory=[];
+  }
+  return auraMemory;
+}
+
+async function saveAuraMemoryLocal(text){
+  const value=String(text||"").trim();
+  if(!value) return;
+  const normalized=value.toLocaleLowerCase("tr-TR").trim();
+  const found=auraMemory.find(x=>String(x?.text||"").toLocaleLowerCase("tr-TR").trim()===normalized);
+  if(found){found.updatedAt=new Date().toISOString();}
+  else auraMemory.push({id:"mem_"+Date.now().toString(36),text:value,tags:[],createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
+  auraMemory=auraMemory.slice(-200);
+  localStorage.setItem("aura_memory",JSON.stringify(auraMemory));
+}
+
+function memoryTextList(items){
+  const list=Array.isArray(items)?items:[];
+  if(!list.length) return "Kalıcı hafızam şu anda boş.";
+  return "Kalıcı hafızamda "+list.length+" kayıt var:\n\n"+
+    list.slice(0,30).map((x,i)=>(i+1)+". "+String(x?.text||"")).join("\n");
 }
 
 async function callDesktop(tool, args = {}) {
@@ -437,6 +473,39 @@ function isUsageRequest(q){
   return /kullanım raporu|kullanim raporu|ne kadar kullanıyorum|ne kadar kullaniyorum|nasıl kullanıyorum|nasil kullaniyorum|hangi uygulamaları kullanıyorum|hangi uygulamalari kullaniyorum|sık kullandığım|sik kullandigim/.test(x);
 }
 
+function isMemorySaveRequest(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
+  return /^(bunu )?(hatırla|hatirla|unutma)(:|$)/.test(x) || /^(hafızana|hafizana) (kaydet|ekle)/.test(x);
+}
+
+function isMemoryForgetRequest(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
+  return /^(bunu )?(unut|hafızadan sil|hafizadan sil)(:|$)/.test(x);
+}
+
+function isMemoryListRequest(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
+  return /^(hafızamda ne var|hafizamda ne var|hafızanı göster|hafizani goster|neyi hatırlıyorsun|neyi hatirliyorsun)??$/.test(x);
+}
+
+function isMemorySearchRequest(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
+  return /hafızanda.*var mı|hafizanda.*var mi|hafızada.*ara|hafizada.*ara/.test(x);
+}
+
+function extractMemoryPayload(q){
+  return String(q||"").trim()
+    .replace(/^(bunu )?(hatırla|hatirla|unutma)s*:?s*/i,"")
+    .replace(/^(hafızana|hafizana)s+(kaydet|ekle)s*:?s*/i,"")
+    .trim();
+}
+
+function extractMemoryForgetPayload(q){
+  return String(q||"").trim()
+    .replace(/^(bunu )?(unut|hafızadan sil|hafizadan sil)s*:?s*/i,"")
+    .trim();
+}
+
 function isSystemRequest(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
   return /^(sistem durumu|sistem durumunu göster|sistem bilgisi|ram durumu|cpu durumu|bilgisayar durumu)\??$/.test(x);
@@ -456,6 +525,65 @@ function extractOpenTarget(q) {
   const x = String(q || "").trim();
   const m = x.match(/^(.+?)\s+aç(?:ıver|ar)?$/i);
   return m ? m[1].trim() : "";
+}
+
+async function handleMemoryCommand(q){
+  await loadAuraMemory();
+
+  if(isMemorySaveRequest(q)){
+    const text=extractMemoryPayload(q);
+    if(!text) return "Hatırlamam için kaydedilecek bilgiyi de yaz kanka.";
+    if(hasDesktopAgent()){
+      const result=await callDesktop("desktop_memory_save",{text});
+      await loadAuraMemory();
+      return "Tamam kanka, bunu kalıcı hafızama kaydettim: "+text;
+    }
+    await saveAuraMemoryLocal(text);
+    return "Tamam kanka, bunu bu tarayıcıdaki kalıcı hafızama kaydettim: "+text;
+  }
+
+  if(isMemoryForgetRequest(q)){
+    const text=extractMemoryForgetPayload(q);
+    if(!text) return "Unutmam için hangi bilgiyi silmemi istediğini yaz.";
+    if(hasDesktopAgent()){
+      const result=await callDesktop("desktop_memory_forget",{query:text});
+      await loadAuraMemory();
+      return result?.removed
+        ? "Tamam kanka, "+result.removed+" hafıza kaydını sildim."
+        : "Eşleşen bir hafıza kaydı bulamadım.";
+    }
+    const before=auraMemory.length;
+    const n=text.toLocaleLowerCase("tr-TR").trim();
+    auraMemory=auraMemory.filter(x=>!String(x?.text||"").toLocaleLowerCase("tr-TR").includes(n));
+    localStorage.setItem("aura_memory",JSON.stringify(auraMemory));
+    return before===auraMemory.length ? "Eşleşen bir hafıza kaydı bulamadım." : "Tamam kanka, hafızadan sildim.";
+  }
+
+  if(isMemoryListRequest(q)){
+    if(hasDesktopAgent()){
+      const result=await callDesktop("desktop_memory_list",{});
+      auraMemory=Array.isArray(result?.items)?result.items:[];
+    }
+    return memoryTextList(auraMemory);
+  }
+
+  if(isMemorySearchRequest(q)){
+    const query=String(q||"")
+      .replace(/.*hafızanda\s*/i,"")
+      .replace(/.*hafizanda\s*/i,"")
+      .replace(/\s*(var mı|var mi).*$/i,"")
+      .trim();
+    if(hasDesktopAgent()){
+      const result=await callDesktop("desktop_memory_search",{query,maxResults:8});
+      return result?.items?.length
+        ? result.items.map(x=>String(x.text||"")).join("\n")
+        : "Bu konuyla eşleşen bir hafıza kaydı bulamadım.";
+    }
+    const matches=auraMemory.filter(x=>String(x?.text||"").toLocaleLowerCase("tr-TR").includes(query.toLocaleLowerCase("tr-TR")));
+    return matches.length ? matches.map(x=>String(x.text||"")).join("\n") : "Bu konuyla eşleşen bir hafıza kaydı bulamadım.";
+  }
+
+  return null;
 }
 
 async function handleDirectCommand(q) {
@@ -546,9 +674,15 @@ async function run(q) {
       finish(q,mode==="code"?"Kod modu açıldı. Artık doğrudan kod üretmeye odaklanacağım.":"Sohbet modu açıldı.",false);
       return;
     }
-    const direct = isPCRequest(q) || isUsageRequest(q) || isSystemRequest(q) || isDesktopListRequest(q) || !!extractOpenTarget(q);
+    const memoryDirect = isMemorySaveRequest(q) || isMemoryForgetRequest(q) || isMemoryListRequest(q) || isMemorySearchRequest(q);
+    const direct = memoryDirect || isPCRequest(q) || isUsageRequest(q) || isSystemRequest(q) || isDesktopListRequest(q) || !!extractOpenTarget(q);
     if (quick) {
       finish(q, quick, false);
+      return;
+    }
+    if (memoryDirect) {
+      const answer = await handleMemoryCommand(q);
+      finish(q, answer || "Hafıza işlemi tamamlanamadı.", false);
       return;
     }
     if (direct) {
@@ -569,7 +703,8 @@ async function run(q) {
         subEl.textContent = p?.text || "Yerel AI hazırlanıyor...";
       },
       environmentProfile,
-      (mode==="code" || looksLikeCodeRequest(q)) ? "code" : "chat"
+      (mode==="code" || looksLikeCodeRequest(q)) ? "code" : "chat",
+      auraMemory
     );
 
     aiEl.textContent = "YEREL";
@@ -595,6 +730,11 @@ document.querySelectorAll(".nav").forEach((button) => {
 
 modeBtn.addEventListener("click",toggleMode);
 modeBtn2.addEventListener("click",toggleMode);
+
+const memoryNav=$("memory");
+memoryNav.addEventListener("click",()=>{
+  if(!busy) run("Hafızamda ne var?");
+});
 
 const voiceBtn=$("voice");
 voiceBtn.addEventListener("click",()=>{
@@ -724,6 +864,8 @@ input.disabled = false;
 sendBtn.disabled = false;
 micBtn.disabled = false;
 status.textContent = "● HAZIR";
+loadAuraMemory().catch(()=>{});
+
 ttsEl.textContent = voiceEnabled ? "HAZIR" : "KAPALI";
 input.focus();
 
