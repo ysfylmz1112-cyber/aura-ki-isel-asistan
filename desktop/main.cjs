@@ -403,9 +403,10 @@ async function discoverShortcutApps() {
           const encoded=String(stdout||'').trim();
           const value=JSON.parse(Buffer.from(encoded,'base64').toString('utf8'));
           const list=Array.isArray(value)?value:[value];
-          resolve(list.filter(x=>x?.Name).map(x=>({
+          resolve(list.filter(x=>x?.Name && x?.AppID).map(x=>({
             name:String(x.Name),
-            path:String(x.AppID||''),
+            appId:String(x.AppID),
+            path:'shell:AppsFolder\\'+String(x.AppID),
             kind:'start-app'
           })));
         }catch{ resolve([]); }
@@ -671,6 +672,12 @@ async function findAndLaunchGameOrApp(appName) {
   if(!appCandidates.length) throw new Error('Uygulama veya oyun bulunamadı: '+target);
 
   const chosen=appCandidates[0];
+
+  if(chosen.kind==='start-app' && chosen.appId){
+    const result=await launchStartApp(chosen);
+    return {...result,matches:appCandidates.slice(0,10)};
+  }
+
   const ok=await confirmAction(
     'AURA — Uygulama/oyun açma izni',
     'AURA bunu açacak:\n\n'+chosen.name+'\n'+chosen.path+
@@ -1055,6 +1062,29 @@ async function openUnityProject(projectPath) {
   if (!ok) throw new Error('Kullanıcı işlemi iptal etti.');
   execFile(unity,['-projectPath',projectPath],{windowsHide:false});
   return {ok:true,executable:unity,projectPath};
+}
+
+async function launchStartApp(item) {
+  const appId=String(item?.appId||'').trim();
+  if(!appId) throw new Error('Windows uygulama kimliği bulunamadı.');
+  const name=String(item?.name||appId).trim();
+
+  const ok=await confirmAction(
+    'AURA — Uygulama/oyun açma izni',
+    'AURA şu Windows uygulamasını açacak:\n\n'+name
+  );
+  if(!ok) throw new Error('Kullanıcı işlemi iptal etti.');
+
+  const target='shell:AppsFolder\\'+appId;
+  const child=execFile('explorer.exe',[target],{windowsHide:false});
+
+  await new Promise((resolve,reject)=>{
+    child.once('error',reject);
+    child.once('spawn',resolve);
+  });
+
+  await recordLaunch(name,'start-app',appId);
+  return {ok:true,app:name,type:'start-app',appId};
 }
 
 async function launchApp(appName) {
