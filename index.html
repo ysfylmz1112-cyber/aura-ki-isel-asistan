@@ -220,9 +220,6 @@ const usageTopEl = $("usageTop");
 const modeBtn2 = $("codeBtn");
 const modeBadge = $("modeBadge");
 const modeBadgeTop = $("modeBadgeTop");
-const usageBtn = $("usageBtn");
-const pcBtn = $("pcBtn");
-const desktopBtn = $("desktopBtn");
 
 let history = [];
 try {
@@ -1012,20 +1009,14 @@ async function handleDirectCommand(q) {
     const result=await callDesktop("desktop_get_running_apps",{});
     const items=Array.isArray(result?.items)?result.items:[];
     if(!items.length) return "Şu anda listelenebilir çalışan kullanıcı uygulaması bulamadım.";
-    return "Şu anda çalışan uygulamalar:
-
-"+items.slice(0,30).map((x,i)=>(i+1)+". "+x.name+(x.count>1?" ×"+x.count:"")).join("
-");
+    return "Şu anda çalışan uygulamalar:\n\n"+items.slice(0,30).map((x,i)=>(i+1)+". "+x.name+(x.count>1?" ×"+x.count:"")).join("\n");
   }
 
   if (isDriveListRequest(q)) {
     const result=await callDesktop("desktop_list_drives",{});
     const items=Array.isArray(result)?result:[];
     if(!items.length) return "Sürücü bilgisi alınamadı.";
-    return "Sürücüler:
-
-"+items.slice(0,16).map(x=>String(x.device||x.drive||x.name||"Sürücü")+(x.totalGB!=null?" · "+x.freeGB+" GB boş / "+x.totalGB+" GB":"")).join("
-");
+    return "Sürücüler:\n\n"+items.slice(0,16).map(x=>String(x.device||x.drive||x.name||"Sürücü")+(x.totalGB!=null?" · "+x.freeGB+" GB boş / "+x.totalGB+" GB":"")).join("\n");
   }
 
   if (isDesktopListRequest(q)) {
