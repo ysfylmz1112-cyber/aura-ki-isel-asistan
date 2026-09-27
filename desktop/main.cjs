@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const fsp = require('fs/promises');
 const os = require('os');
-const { execFile } = require('child_process');
+const { execFile, spawn } = require('child_process');
 const { search } = require('duck-duck-scrape');
 
 const PROD_URL = 'https://aura-ki-isel-asistan.vercel.app/';
