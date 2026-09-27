@@ -493,6 +493,11 @@ function isMemorySearchRequest(q){
   return /hafızanda.*var mı|hafizanda.*var mi|hafızada.*ara|hafizada.*ara/.test(x);
 }
 
+function isMemoryClearRequest(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
+  return /^(hafızamı temizle|hafizami temizle|tüm hafızayı sil|tum hafizayi sil|hafızayı sıfırla|hafizayi sifirla)??$/.test(x);
+}
+
 function extractMemoryPayload(q){
   return String(q||"").trim()
     .replace(/^(bunu )?(hatırla|hatirla|unutma)s*:?s*/i,"")
@@ -565,6 +570,17 @@ async function handleMemoryCommand(q){
       auraMemory=Array.isArray(result?.items)?result.items:[];
     }
     return memoryTextList(auraMemory);
+  }
+
+  if(isMemoryClearRequest(q)){
+    if(hasDesktopAgent()){
+      const result=await callDesktop("desktop_memory_clear",{});
+      await loadAuraMemory();
+      return "Tamam kanka, kalıcı hafızam temizlendi.";
+    }
+    auraMemory=[];
+    localStorage.setItem("aura_memory","[]");
+    return "Tamam kanka, tarayıcı hafızam temizlendi.";
   }
 
   if(isMemorySearchRequest(q)){
@@ -674,7 +690,7 @@ async function run(q) {
       finish(q,mode==="code"?"Kod modu açıldı. Artık doğrudan kod üretmeye odaklanacağım.":"Sohbet modu açıldı.",false);
       return;
     }
-    const memoryDirect = isMemorySaveRequest(q) || isMemoryForgetRequest(q) || isMemoryListRequest(q) || isMemorySearchRequest(q);
+    const memoryDirect = isMemorySaveRequest(q) || isMemoryForgetRequest(q) || isMemoryListRequest(q) || isMemorySearchRequest(q) || isMemoryClearRequest(q);
     const direct = memoryDirect || isPCRequest(q) || isUsageRequest(q) || isSystemRequest(q) || isDesktopListRequest(q) || !!extractOpenTarget(q);
     if (quick) {
       finish(q, quick, false);
@@ -691,6 +707,7 @@ async function run(q) {
       return;
     }
 
+    await loadAuraMemory();
     const answer = await callLocalAI(
       q,
       history.slice(0, 8).reverse().flatMap((item) => [
