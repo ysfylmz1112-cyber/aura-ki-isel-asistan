@@ -27,7 +27,9 @@ const SYSTEM_PROMPT = [
   "Kullanıcı açıkça istemediği sürece dosya yazma, silme, taşıma, uygulama çalıştırma veya komut çalıştırma araçlarını kullanma.",
   "PowerShell aracı yalnızca kullanıcı açıkça bir PowerShell veya sistem komutu istediğinde kullanılmalıdır.",
   "Türkçe konuş."
-].join("\n");nst TOOLS = [
+].join("\n");
+
+const TOOLS = [
   {
     type: "function",
     function: {
