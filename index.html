@@ -172,6 +172,8 @@ try {
 
 let busy = false;
 let voiceInput = false;
+let voiceEnabled = localStorage.getItem("aura_voice_enabled") !== "0";
+let speaking = false;
 let environmentProfile = null;
 let localAIModule = null;
 let localAIPromise = null;
@@ -327,19 +329,61 @@ function addMessage(kind, label, text) {
   chat.scrollTop = chat.scrollHeight;
 }
 
-function speak(text) {
-  if (!window.speechSynthesis) return;
-  const u = new SpeechSynthesisUtterance(String(text));
-  u.lang = "tr-TR";
-  u.rate = 0.96;
+async function speak(text) {
+  if (!voiceEnabled) return;
+  const value=String(text||"").trim();
+  if(!value) return;
+  speaking=true;
   ttsEl.textContent = "KONUŞUYOR";
   core.classList.add("active");
-  u.onend = () => {
-    ttsEl.textContent = "HAZIR";
-    if (!busy) core.classList.remove("active");
+
+  if (hasDesktopAgent()) {
+    try {
+      await callDesktop("desktop_speak_text",{text:value.slice(0,4000)});
+      speaking=false;
+      ttsEl.textContent="HAZIR";
+      if(!busy) core.classList.remove("active");
+      return;
+    } catch {}
+  }
+
+  if (!window.speechSynthesis || typeof SpeechSynthesisUtterance === "undefined") {
+    speaking=false;
+    ttsEl.textContent="SES YOK";
+    if(!busy) core.classList.remove("active");
+    return;
+  }
+
+  const speakBrowser=()=>{
+    const voices=window.speechSynthesis.getVoices();
+    const u=new SpeechSynthesisUtterance(value);
+    const tr=voices.find(v=>/^tr(-|_)/i.test(String(v.lang||""))) || voices.find(v=>/turk/i.test(String(v.name||"")));
+    if(tr) u.voice=tr;
+    u.lang=tr?.lang||"tr-TR";
+    u.rate=0.98;
+    u.pitch=1;
+    u.volume=1;
+    u.onend=()=>{
+      speaking=false; ttsEl.textContent="HAZIR";
+      if(!busy) core.classList.remove("active");
+    };
+    u.onerror=()=>{
+      speaking=false; ttsEl.textContent="SES HATASI";
+      if(!busy) core.classList.remove("active");
+    };
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
   };
-  speechSynthesis.cancel();
-  speechSynthesis.speak(u);
+
+  if(window.speechSynthesis.getVoices().length) speakBrowser();
+  else {
+    const old=window.speechSynthesis.onvoiceschanged;
+    window.speechSynthesis.onvoiceschanged=()=>{
+      window.speechSynthesis.onvoiceschanged=old||null;
+      speakBrowser();
+    };
+    setTimeout(()=>{ if(!speaking) return; if(!window.speechSynthesis.speaking) speakBrowser(); },250);
+  }
 }
 
 function finish(q, answer, usedAI = false) {
@@ -359,7 +403,7 @@ function finish(q, answer, usedAI = false) {
   input.disabled = false;
   status.textContent = "● HAZIR";
   core.classList.remove("active");
-  if (voiceInput) speak(answer);
+  speak(answer);
 }
 
 function isVagueCodeRequest(q){
@@ -557,8 +601,31 @@ async function run(q) {
   }
 }
 
+document.querySelectorAll(".nav").forEach((button) => {
+  button.addEventListener("click", () => {
+    document.querySelectorAll(".nav").forEach(b=>b.classList.remove("active"));
+    button.classList.add("active");
+  });
+});
+
 modeBtn.addEventListener("click",toggleMode);
 modeBtn2.addEventListener("click",toggleMode);
+
+const voiceBtn=$("voice");
+voiceBtn.addEventListener("click",()=>{
+  voiceEnabled=!voiceEnabled;
+  localStorage.setItem("aura_voice_enabled",voiceEnabled?"1":"0");
+  if(!voiceEnabled){
+    speechSynthesis?.cancel?.();
+    ttsEl.textContent="KAPALI";
+    status.textContent="● SES KAPALI";
+  } else {
+    ttsEl.textContent="HAZIR";
+    status.textContent="● SES AÇIK";
+    speak("Ses sistemi hazır.");
+  }
+  setTimeout(()=>{if(!busy)status.textContent="● HAZIR";},900);
+});
 
 usageBtn.addEventListener("click",()=>run("Kullanım raporumu göster"));
 pcBtn.addEventListener("click",()=>run("Bilgisayarımda neler var?"));
@@ -669,6 +736,7 @@ input.disabled = false;
 sendBtn.disabled = false;
 micBtn.disabled = false;
 status.textContent = "● HAZIR";
+ttsEl.textContent = voiceEnabled ? "HAZIR" : "KAPALI";
 input.focus();
 
 warmLocalModel();
