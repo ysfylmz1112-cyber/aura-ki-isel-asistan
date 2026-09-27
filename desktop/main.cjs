@@ -49,7 +49,10 @@ async function saveExtraRoots() {
 
 const USAGE_FILE = path.join(app.getPath('userData'), 'aura-usage.json');
 const PROFILE_FILE = path.join(app.getPath('userData'), 'aura-device-profile.json');
+const MEMORY_FILE = path.join(app.getPath('userData'), 'aura-memory.json');
 let usageState = { launches: [], counts: {}, lastLaunch: null };
+let memoryState = { version:1, items:[] };
+let memoryWritePromise = Promise.resolve();
 let environmentProfile = null;
 let environmentScanPromise = null;
 
@@ -65,6 +68,111 @@ async function loadUsageState() {
   } catch {
     usageState = { launches: [], counts: {}, lastLaunch: null };
   }
+}
+
+async function loadMemoryState() {
+  try {
+    const raw=await fsp.readFile(MEMORY_FILE,'utf8');
+    const data=JSON.parse(raw);
+    memoryState={
+      version:1,
+      items:Array.isArray(data?.items)
+        ? data.items.filter(x=>x && typeof x.text==='string').slice(-200)
+        : []
+    };
+  } catch {
+    memoryState={version:1,items:[]};
+  }
+}
+
+function memorySearchScore(query,text){
+  const q=normalizedSearchText(query);
+  const t=normalizedSearchText(text);
+  if(!q||!t) return 0;
+  if(t===q) return 1000;
+  if(t.includes(q)) return 800;
+  let score=0;
+  for(const token of q.split(' ').filter(Boolean)){
+    if(t.includes(token)) score+=120;
+  }
+  return score;
+}
+
+async function saveMemoryState(){
+  memoryWritePromise=memoryWritePromise.then(async()=>{
+    await fsp.mkdir(path.dirname(MEMORY_FILE),{recursive:true});
+    await fsp.writeFile(MEMORY_FILE,JSON.stringify(memoryState,null,2),'utf8');
+  }).catch(()=>{});
+  return memoryWritePromise;
+}
+
+async function remember(text,tags=[]){
+  const value=String(text||'').trim();
+  if(!value) throw new Error('Hafızaya kaydedilecek bilgi boş.');
+  if(value.length>1200) throw new Error('Hafıza kaydı 1200 karakteri aşamaz.');
+  const normalized=normalizedSearchText(value);
+  const existing=memoryState.items.find(x=>normalizedSearchText(x.text)===normalized);
+  if(existing){
+    existing.updatedAt=new Date().toISOString();
+    existing.hits=Number(existing.hits||0)+1;
+    if(Array.isArray(tags)&&tags.length) existing.tags=[...new Set([...existing.tags,...tags.map(String)])].slice(0,12);
+  }else{
+    memoryState.items.push({
+      id:'mem_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7),
+      text:value,
+      tags:Array.isArray(tags)?tags.map(String).filter(Boolean).slice(0,12):[],
+      createdAt:new Date().toISOString(),
+      updatedAt:new Date().toISOString(),
+      hits:1
+    });
+  }
+  memoryState.items=memoryState.items.slice(-200);
+  await saveMemoryState();
+  return {ok:true,count:memoryState.items.length,remembered:value};
+}
+
+function searchMemory(query,maxResults=12){
+  const q=String(query||'').trim();
+  const items=memoryState.items
+    .map(x=>({...x,score:memorySearchScore(q,x.text+' '+(x.tags||[]).join(' '))}))
+    .filter(x=>x.score>0)
+    .sort((a,b)=>b.score-a.score || String(b.updatedAt).localeCompare(String(a.updatedAt)))
+    .slice(0,Math.max(1,Math.min(30,Number(maxResults)||12)));
+  return {query:q,count:items.length,items};
+}
+
+function listMemory(){
+  return {
+    count:memoryState.items.length,
+    items:memoryState.items.slice().reverse().slice(0,50)
+  };
+}
+
+async function forgetMemory(query){
+  const q=String(query||'').trim();
+  if(!q) throw new Error('Silinecek hafıza belirtilmedi.');
+  const normalized=normalizedSearchText(q);
+  const before=memoryState.items.length;
+  const exact=memoryState.items.filter(x=>normalizedSearchText(x.text)===normalized);
+  if(exact.length){
+    memoryState.items=memoryState.items.filter(x=>normalizedSearchText(x.text)!==normalized);
+  }else{
+    const matches=searchMemory(q,20).items;
+    if(!matches.length) return {ok:true,removed:0,message:'Eşleşen hafıza bulunamadı.'};
+    const ids=new Set(matches.slice(0,10).map(x=>x.id));
+    memoryState.items=memoryState.items.filter(x=>!ids.has(x.id));
+  }
+  await saveMemoryState();
+  return {ok:true,removed:before-memoryState.items.length,remaining:memoryState.items.length};
+}
+
+async function clearMemory(){
+  const ok=await confirmAction('AURA — Hafızayı temizleme onayı','AURA kayıtlı kalıcı hafızadaki tüm maddeleri silecek.\n\nDevam edilsin mi?');
+  if(!ok) throw new Error('Kullanıcı işlemi iptal etti.');
+  const removed=memoryState.items.length;
+  memoryState.items=[];
+  await saveMemoryState();
+  return {ok:true,removed};
 }
 
 async function saveUsageState() {
@@ -945,6 +1053,11 @@ async function handleTool(tool,args) {
     case 'desktop_scan_environment': return scanEnvironment();
     case 'desktop_get_environment_profile': return getEnvironmentProfile();
     case 'desktop_get_usage_report': return getUsageReport();
+    case 'desktop_memory_save': return remember(args.text,args.tags||[]);
+    case 'desktop_memory_search': return searchMemory(args.query,args.maxResults||12);
+    case 'desktop_memory_list': return listMemory();
+    case 'desktop_memory_forget': return forgetMemory(args.query);
+    case 'desktop_memory_clear': return clearMemory();
     case 'desktop_open_external_url': return openExternalUrl(args.url);
     case 'desktop_speak_text': return speakTextWindows(args.text);
     case 'desktop_stop_speech': return stopWindowsSpeech();
@@ -972,6 +1085,7 @@ function createWindow() {
 app.whenReady().then(async()=>{
   await loadExtraRoots();
   await loadUsageState();
+  await loadMemoryState();
   ipcMain.handle('aura:tool',async(event,payload)=>{
     try{
       const senderUrl = event?.senderFrame?.url || '';
