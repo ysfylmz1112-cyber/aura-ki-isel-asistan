@@ -820,6 +820,21 @@ function isSystemRequest(q){
   return /^(sistem durumu|sistem durumunu göster|sistem bilgisi|ram durumu|cpu durumu|bilgisayar durumu)\??$/.test(x);
 }
 
+function isRunningAppsRequest(q){
+  const n=String(q||"")
+    .toLocaleLowerCase("tr-TR")
+    .replace(/[?.!,;:]/g," ")
+    .replace(/\\s+/g," ")
+    .trim();
+
+  return /(?:^|\\s)(çalışan|calisan) (uygulamalar|uygulama|programlar|programlarım|programlarim)(?:\\s|$)/.test(n) ||
+    /(?:^|\\s)(açık|acik) (uygulamalar|uygulama|programlar|programlarım|programlarim)(?:\\s|$)/.test(n) ||
+    /hangi (uygulamalar|uygulama|programlar) (açık|acik|çalışıyor|calisiyor)/.test(n) ||
+    /(?:uygulamalar|programlar) (hangileri )?(açık|acik|çalışıyor|calisiyor)/.test(n) ||
+    /şu anda neler açık|su anda neler acik/.test(n) ||
+    /hangi programlar çalışıyor|hangi programlar calisiyor/.test(n);
+}
+
 function isDesktopListRequest(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
   return /^(masaüstümde ne var|masaustumde ne var|masaüstünü göster|masaustunu goster)\??$/.test(x);
