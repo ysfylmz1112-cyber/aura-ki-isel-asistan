@@ -1,13 +1,16 @@
 import { CreateMLCEngine } from "https://esm.run/@mlc-ai/web-llm@0.2.85";
 
-const WEB_MODEL_ID = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
-const DESKTOP_MODEL_ID = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
+const CHAT_MODEL_ID = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
+const CODE_MODEL_ID = "Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC";
+const CODE_FALLBACK_MODEL_ID = "Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC";
+const WEB_MODEL_ID = CHAT_MODEL_ID;
+const DESKTOP_MODEL_ID = CHAT_MODEL_ID;
 
 function desktopAvailable() {
   return !!globalThis.auraDesktop?.isDesktop;
 }
 
-const MODEL_ID = desktopAvailable() ? DESKTOP_MODEL_ID : WEB_MODEL_ID;
+const MODEL_ID = CHAT_MODEL_ID;
 const SYSTEM_PROMPT = [
   "Sen AURA'sın: kullanıcının kişisel, yerel ve Türkçe yapay zeka asistanısın.",
   "Doğru, net ve yararlı cevap ver. Bilmediğini uydurma.",
@@ -17,7 +20,9 @@ const SYSTEM_PROMPT = [
   "Kullanıcı bir uygulama veya oyun açmanı istediğinde genel desktop_find_and_launch_app aracını kullan. Bu araç Google gibi birkaç özel uygulamayla sınırlı değildir; yaygın uygulamaları ve Steam oyunlarını isimle bulabilir.",
   "Kullanıcı kullanım hakkında sorarsa desktop_get_usage_report kullan ve bu verinin AURA tarafından izlenen açılışlar, Windows Son Öğeler ve anlık süreç görünümü olduğunu açıkça belirt.",
   "Kullanıcı açıkça istemediği sürece dosya yazma, silme, taşıma, uygulama çalıştırma veya komut çalıştırma araçlarını kullanma.",
+  "HAFIZA: Kullanıcı açıkça 'hatırla', 'bunu kaydet', 'bunu unutma' gibi bir istek vermeden kalıcı hafızaya bilgi kaydetme. Kullanıcı 'beni hatırla', 'hafızamda ne var', 'şunu unut' derse hafıza araçlarını kullan.",
   "Unity geliştirirken proje dosyalarını okuyabilir, C# ve yapılandırma dosyaları oluşturup değiştirebilir ve Unity projesini açabilirsin.",
+  "KOD MODU: Her programlama dilinde gerçek, çalışabilir kod üret. Sözde kod verme. Kullanıcı tam dosya istediğinde dosyanın tamamını ver. Hata varsa teşhis edip düzeltilmiş tam sürümü üret. Gereksiz açıklamayı azalt.",
   "PowerShell aracı yalnızca kullanıcı açıkça geliştirici veya sistem komutu istediğinde kullanılmalıdır.",
   "Web sonuçlarını kullanırken kaynakları ayırt et ve emin olmadığın bilgiyi kesin gerçek gibi sunma.",
   "Türkçe konuş."
@@ -46,6 +51,64 @@ const TOOLS = [
       name: "desktop_get_usage_report",
       description: "AURA'nın açtığı uygulama/oyunların takip edilen açılış sayaçlarını, son açılanları ve o an çalışan Windows süreçlerinin anlık listesini verir. Tüm geçmiş Windows kullanım süresi değildir.",
       parameters: { type:"object", properties:{}, additionalProperties:false }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_memory_save",
+      description: "Kullanıcının açıkça hatırlamamı istediği bir bilgiyi kalıcı yerel hafızaya kaydeder.",
+      parameters: {
+        type:"object",
+        properties:{
+          text:{type:"string"},
+          tags:{type:"array",items:{type:"string"}}
+        },
+        required:["text"],
+        additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_memory_search",
+      description: "Kalıcı yerel hafızada bir konu arar.",
+      parameters: {
+        type:"object",
+        properties:{query:{type:"string"},maxResults:{type:"number"}},
+        required:["query"],
+        additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_memory_list",
+      description: "Kayıtlı kalıcı hafızanın son maddelerini listeler.",
+      parameters: {type:"object",properties:{},additionalProperties:false}
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_memory_forget",
+      description: "Kullanıcının açıkça unutmamı istediği bir hafıza maddesini siler.",
+      parameters: {
+        type:"object",
+        properties:{query:{type:"string"}},
+        required:["query"],
+        additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_memory_clear",
+      description: "Tüm kalıcı hafızayı, kullanıcı onayıyla temizler.",
+      parameters: {type:"object",properties:{},additionalProperties:false}
     }
   },
   {
@@ -305,6 +368,7 @@ const TOOLS = [
 let engine = null;
 let enginePromise = null;
 let activeModel = MODEL_ID;
+let activeMode = "chat";
 
 function assertWebGPU() {
   if (!navigator.gpu) {
@@ -314,19 +378,27 @@ function assertWebGPU() {
 
 async function createEngine(modelId, config, onProgress) {
   activeModel = modelId;
-  onProgress({ percent:0, text:"Yerel AI modeli hazırlanıyor: " + modelId });
+  onProgress({ percent:0, text:"Yerel AI hazırlanıyor: " + modelId });
 
-  return CreateMLCEngine(modelId, config).then(result => {
-    engine = result;
-    activeModel = modelId;
-    onProgress({ percent:100, text:"Yerel AI hazır: " + modelId });
-    return result;
-  });
+  const result = await CreateMLCEngine(modelId, config);
+  engine = result;
+  activeModel = modelId;
+  onProgress({ percent:100, text:"Yerel AI hazır: " + modelId });
+  return result;
 }
 
-export async function ensureLocalAI(onProgress = () => {}) {
+function desiredModel(mode){
+  return mode === "code" ? CODE_MODEL_ID : CHAT_MODEL_ID;
+}
+
+async function ensureLocalAI(mode = "chat", onProgress = () => {}) {
   assertWebGPU();
-  if (engine) return engine;
+  const target = desiredModel(mode);
+
+  if (engine && activeModel === target) {
+    activeMode = mode;
+    return engine;
+  }
   if (enginePromise) return enginePromise;
 
   const config = {
@@ -335,40 +407,49 @@ export async function ensureLocalAI(onProgress = () => {}) {
         const percent = typeof progress?.progress === "number"
           ? Math.max(0, Math.min(100, Math.round(progress.progress * 100)))
           : null;
-        onProgress({
-          percent,
-          text: progress?.text || "Model hazırlanıyor..."
-        });
+        onProgress({ percent, text: progress?.text || "Model hazırlanıyor..." });
       } catch {}
     }
   };
 
-  enginePromise = createEngine(MODEL_ID, config, onProgress).catch(async error => {
-    const message = String(error?.message || error);
-
-    if (
-      desktopAvailable() &&
-      MODEL_ID === DESKTOP_MODEL_ID &&
-      /memory|alloc|out of memory|device|buffer|gpu|webgpu/i.test(message)
-    ) {
-      onProgress({
-        percent:0,
-        text:"7B model bu bilgisayarda açılamadı; 3B yedek modele geçiliyor..."
-      });
-
-      try {
-        return await createEngine(WEB_MODEL_ID, config, onProgress);
-      } catch (fallbackError) {
-        engine = null;
-        enginePromise = null;
-        throw fallbackError;
+  enginePromise = (async()=>{
+    try {
+      if (engine) {
+        onProgress({percent:0,text:"AURA model değiştiriyor: "+target});
+        await engine.reload(target);
+        activeModel=target;
+      } else {
+        await createEngine(target,config,onProgress);
       }
-    }
+      activeMode=mode;
+      return engine;
+    } catch (error) {
+      const message=String(error?.message||error);
+      const memoryError=/memory|alloc|out of memory|device lost|device|buffer|gpu|webgpu/i.test(message);
 
-    engine = null;
-    enginePromise = null;
-    throw error;
-  });
+      if(mode==="code" && memoryError && target===CODE_MODEL_ID){
+        onProgress({percent:0,text:"7B kod modeli için bellek yetersiz; küçük Coder modele geçiliyor..."});
+        try {
+          if(engine) await engine.unload().catch(()=>{});
+          engine=null;
+          await createEngine(CODE_FALLBACK_MODEL_ID,config,onProgress);
+          activeMode="code";
+          return engine;
+        } catch(fallbackError) {
+          engine=null;
+          activeModel=CHAT_MODEL_ID;
+          throw fallbackError;
+        }
+      }
+
+      engine=null;
+      activeModel=CHAT_MODEL_ID;
+      activeMode="chat";
+      throw error;
+    } finally {
+      enginePromise=null;
+    }
+  })();
 
   return enginePromise;
 }
@@ -419,11 +500,19 @@ async function executeTool(toolCall) {
   return desktopCall(name, parseArguments(toolCall?.function?.arguments));
 }
 
-export async function askLocalAI(message, history = [], onProgress = () => {}, environment = null, mode = "chat") {
+function compactMemory(memory){
+  const items=Array.isArray(memory)?memory:[];
+  return items.slice(-30).map(x=>({
+    text:String(x?.text||"").slice(0,600),
+    tags:Array.isArray(x?.tags)?x.tags.slice(0,6):[]
+  })).filter(x=>x.text);
+}
+
+export async function askLocalAI(message, history = [], onProgress = () => {}, environment = null, mode = "chat", memory = []) {
   const value = String(message || "").trim();
   if (!value) throw new Error("Mesaj boş.");
 
-  const localEngine = await ensureLocalAI(onProgress);
+  const localEngine = await ensureLocalAI(mode,onProgress);
   const modePrompt = mode === "code"
     ? "\nKOD MODU AKTİF: Kullanıcı kod istiyorsa doğrudan uygulanabilir, tam ve tutarlı kod üret. Gereksiz uzun açıklama yapma. Dosya yolu/isimleri gerekiyorsa açıkça belirt. Kullanıcı özellikle kaydetmeni isterse masaüstü araçlarını kullan."
     : "";
@@ -462,9 +551,9 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
 
       response = await localEngine.chat.completions.create({
         messages,
-        temperature:0.5,
-        top_p:0.85,
-        max_tokens:192,
+        temperature:mode==="code"?0.18:0.5,
+        top_p:mode==="code"?0.82:0.85,
+        max_tokens:mode==="code"?1400:192,
         stream:false
       });
     }
@@ -510,6 +599,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
 }
 
 export function getLocalAIModel() { return activeModel; }
+export function getLocalAIMode() { return activeMode; }
 export function getWebModel() { return WEB_MODEL_ID; }
 export function getDesktopModel() { return DESKTOP_MODEL_ID; }
 export function hasDesktopAgent() { return desktopAvailable(); }
