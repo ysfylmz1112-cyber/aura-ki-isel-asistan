@@ -301,6 +301,8 @@ function updateHardwareHUD(data){
   $("hwNet").textContent=(Number.isFinite(down)||Number.isFinite(up)) ? "↓ "+(Number.isFinite(down)?down.toFixed(1):"0.0")+" Mb/s · ↑ "+(Number.isFinite(up)?up.toFixed(1):"0.0")+" Mb/s" : "—";
   $("hwTemp").textContent=Number.isFinite(Number(data.gpu?.temperatureC)) ? Math.round(Number(data.gpu.temperatureC))+" °C" : "ölçüm yok";
   setBar("hwCpuBar",cpu); setBar("hwRamBar",ram); setBar("hwDiskBar",disk); setBar("hwGpuBar",gpu);
+  const netScale=Math.min(100,Math.max(down,up)/1000*100);
+  setBar("hwNetBar",netScale);
 }
 async function refreshHardwareHUD(){
   if(!hasDesktopAgent()) return;

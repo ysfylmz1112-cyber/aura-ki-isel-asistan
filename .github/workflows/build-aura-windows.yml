@@ -1,0 +1,44 @@
+name: Build AURA Windows Installer
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - name: Prepare renderer
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path "desktop/renderer" | Out-Null
+          Copy-Item -LiteralPath "index.html" -Destination "desktop/renderer/index.html" -Force
+          Copy-Item -LiteralPath "local-ai.js" -Destination "desktop/renderer/local-ai.js" -Force
+
+      - name: Install dependencies
+        working-directory: desktop
+        run: npm ci --no-audit --no-fund
+
+      - name: Build NSIS installer
+        working-directory: desktop
+        run: npm run build:win
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: AURA-4.0.0-Windows-Installer
+          path: desktop/dist/AURA-4.0.0-Setup.exe
+          if-no-files-found: error
+          retention-days: 14
