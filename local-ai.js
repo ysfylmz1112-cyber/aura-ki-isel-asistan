@@ -12,23 +12,18 @@ function desktopAvailable() {
 
 const MODEL_ID = CHAT_MODEL_ID;
 const SYSTEM_PROMPT = [
-  "Sen AURA'sın: kullanıcının kişisel, yerel ve Türkçe yapay zeka asistanısın.",
-  "Doğru, net ve yararlı cevap ver. Bilmediğini uydurma.",
-  "Güncel bilgi gerektiğinde masaüstü ajanındaki web arama araçlarını kullan.",
-  "Masaüstü ajanı bağlıysa izinli dosya, klasör, uygulama, oyun ve Unity araçlarını kullanabilirsin. PC/uygulama/oyun işlemlerini doğrudan araçlarla yap; bunları tahmin etme.",
-  "Kullanıcı bilgisayarında neler olduğunu, uygulamaları, oyunları, masaüstünü veya klasör yapısını sorarsa desktop_get_environment_profile kullan; gerekirse desktop_scan_environment ile yenile.",
-  "Kullanıcı bir uygulama veya oyun açmanı istediğinde genel desktop_find_and_launch_app aracını kullan. Bu araç Google gibi birkaç özel uygulamayla sınırlı değildir; yaygın uygulamaları ve Steam oyunlarını isimle bulabilir.",
-  "Kullanıcı kullanım hakkında sorarsa desktop_get_usage_report kullan ve bu verinin AURA tarafından izlenen açılışlar, Windows Son Öğeler ve anlık süreç görünümü olduğunu açıkça belirt.",
+  "Sen AURA'sın: kişisel, yerel ve Türkçe bir AI asistanısın.",
+  "Önce kullanıcının ne istediğini doğru anla. Bilmediğin bilgiyi uydurma.",
+  "Güncel bilgi gerektiğinde yalnızca izin verilen web araçlarını kullan ve kaynağı ayırt et.",
+  "Kullanıcının kalıcı hafızası sana ayrıca verilebilir. Hafızayı gerçek kullanıcı bilgisi gibi kullan; yeni bilgi kaydetmeden önce açık bir hatırlama isteği gelmiş olmalı.",
+  "KOD ÜRETİM: Her yaygın programlama dilinde gerçek ve çalıştırılabilir kod üret. Pseudocode veya yarım örnek verme. İstenen dili aynen kullan. Tam dosya istenirse tam dosyayı ver. Importları, bağımlılıkları, hata yönetimini ve isim tutarlılığını düşün.",
+  "KOD DÜZELTME: Hata verildiğinde problemi kısa biçimde belirle ve düzeltilmiş tam kodu üret. Kullanıcı istemedikçe uzun eğitim metnine girme.",
+  "KOD MODU: C#, C++, C, Java, Kotlin, Swift, Python, JavaScript, TypeScript, Rust, Go, PHP, Ruby, Lua, Dart, SQL, HTML, CSS, Bash, PowerShell ve diğer yaygın dillerde kod yaz.",
+  "Masaüstü ajanı bağlıysa PC, dosya, klasör, uygulama, oyun, Unity ve sistem araçlarını yalnızca görev gerçekten gerektiriyorsa kullan.",
   "Kullanıcı açıkça istemediği sürece dosya yazma, silme, taşıma, uygulama çalıştırma veya komut çalıştırma araçlarını kullanma.",
-  "HAFIZA: Kullanıcı açıkça 'hatırla', 'bunu kaydet', 'bunu unutma' gibi bir istek vermeden kalıcı hafızaya bilgi kaydetme. Kullanıcı 'beni hatırla', 'hafızamda ne var', 'şunu unut' derse hafıza araçlarını kullan.",
-  "Unity geliştirirken proje dosyalarını okuyabilir, C# ve yapılandırma dosyaları oluşturup değiştirebilir ve Unity projesini açabilirsin.",
-  "KOD MODU: Her programlama dilinde gerçek, çalışabilir kod üret. Sözde kod verme. Kullanıcı tam dosya istediğinde dosyanın tamamını ver. Hata varsa teşhis edip düzeltilmiş tam sürümü üret. Gereksiz açıklamayı azalt.",
-  "PowerShell aracı yalnızca kullanıcı açıkça geliştirici veya sistem komutu istediğinde kullanılmalıdır.",
-  "Web sonuçlarını kullanırken kaynakları ayırt et ve emin olmadığın bilgiyi kesin gerçek gibi sunma.",
+  "PowerShell aracı yalnızca kullanıcı açıkça bir PowerShell veya sistem komutu istediğinde kullanılmalıdır.",
   "Türkçe konuş."
-].join("\n");
-
-const TOOLS = [
+].join("\n");nst TOOLS = [
   {
     type: "function",
     function: {
@@ -513,89 +508,87 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   if (!value) throw new Error("Mesaj boş.");
 
   const localEngine = await ensureLocalAI(mode,onProgress);
+  const memoryItems = compactMemory(memory);
+  const memoryContext = memoryItems.length
+    ? "\nKALICI HAFIZA:\n" + JSON.stringify(memoryItems)
+    : "\nKALICI HAFIZA: boş.";
+
   const modePrompt = mode === "code"
-    ? "\nKOD MODU AKTİF: Kullanıcı kod istiyorsa doğrudan uygulanabilir, tam ve tutarlı kod üret. Gereksiz uzun açıklama yapma. Dosya yolu/isimleri gerekiyorsa açıkça belirt. Kullanıcı özellikle kaydetmeni isterse masaüstü araçlarını kullan."
+    ? "\nKOD MODU AKTİF: Doğrudan çalışan kod üret. İstenen dili kullan. Gerekli importları ve dosya yapısını unutma."
+    : "\nSOHBET MODU AKTİF: Net, mantıklı ve doğal cevap ver.";
+
+  const pcContext = desktopAvailable() && environment
+    ? "\nPC BAĞLAM ÖZETİ:\n" + compactEnvironment(environment)
     : "";
-  const wantsTools = desktopAvailable() && (
-    mode === "code"
-      ? /dosya|kaydet|oluştur|olustur|klasör|klasor|unity|powershell|çalıştır|calistir|aç|ac/.test(value.toLocaleLowerCase("tr-TR"))
-      : /güncel|guncel|araştır|arastir|internette|web|site|dosya|klasör|klasor|uygulama|oyun|bilgisayar|masaüstü|masaustu|sistem|kullanım|kullanim/.test(value.toLocaleLowerCase("tr-TR"))
-  );
+
   const messages = [
     {
       role:"system",
-      content: SYSTEM_PROMPT + modePrompt +
-        (desktopAvailable()
-          ? "\nMasaüstü ajanı BAĞLI." + (environment ? "\nKısa PC özeti:\n" + compactEnvironment(environment) : "")
-          : "\nMasaüstü ajanı BAĞLI DEĞİL.")
+      content: SYSTEM_PROMPT + modePrompt + memoryContext + pcContext +
+        (desktopAvailable() ? "\nMasaüstü ajanı BAĞLI." : "\nMasaüstü ajanı BAĞLI DEĞİL.")
     },
-    ...cleanMessages(history),
+    ...cleanMessages(mode === "code" ? history.slice(-4) : history),
     { role:"user", content:value }
   ];
 
-  for (let round=0; round<2; round++) {
+  const wantsTools = desktopAvailable() && mode === "chat" && /güncel|guncel|araştır|arastir|internette|web|site|dosya|klasör|klasor|uygulama|oyun|bilgisayar|masaüstü|masaustu|sistem|kullanım|kullanim|hatırla|hatirla|unut/.test(
+    value.toLocaleLowerCase("tr-TR")
+  );
+
+  for(let round=0; round<2; round++){
     let response;
-
-    try {
-      response = await localEngine.chat.completions.create({
+    try{
+      response=await localEngine.chat.completions.create({
         messages,
-        tools: wantsTools ? TOOLS : undefined,
-        tool_choice: wantsTools ? "auto" : undefined,
-        temperature:mode==="code"?0.25:0.55,
-        top_p:0.9,
-        max_tokens:mode==="code"?520:192,
-        stream:false
-      });
-    } catch (firstError) {
-      if (!desktopAvailable()) throw firstError;
-
-      response = await localEngine.chat.completions.create({
-        messages,
+        tools:wantsTools?TOOLS:undefined,
+        tool_choice:wantsTools?"auto":undefined,
         temperature:mode==="code"?0.18:0.5,
         top_p:mode==="code"?0.82:0.85,
         max_tokens:mode==="code"?1400:192,
         stream:false
       });
+    }catch(firstError){
+      response=await localEngine.chat.completions.create({
+        messages,
+        temperature:mode==="code"?0.22:0.52,
+        top_p:0.84,
+        max_tokens:mode==="code"?1400:192,
+        stream:false
+      });
     }
 
-    const assistantMessage = response?.choices?.[0]?.message;
-    if (!assistantMessage) throw new Error("Yerel AI cevap üretmedi.");
-
+    const assistantMessage=response?.choices?.[0]?.message;
+    if(!assistantMessage) throw new Error("Yerel AI cevap üretmedi.");
     messages.push(assistantMessage);
 
-    const toolCalls = Array.isArray(assistantMessage.tool_calls)
-      ? assistantMessage.tool_calls
-      : [];
-
-    if (!toolCalls.length) {
-      const answer = String(assistantMessage.content || "").trim();
-      if (!answer) throw new Error("Yerel AI boş cevap verdi.");
+    const toolCalls=Array.isArray(assistantMessage.tool_calls)?assistantMessage.tool_calls:[];
+    if(!toolCalls.length){
+      const answer=String(assistantMessage.content||"").trim();
+      if(!answer) throw new Error("Yerel AI boş cevap verdi.");
       return answer;
     }
 
-    for (const call of toolCalls.slice(0,1)) {
-      try {
-        const result = await executeTool(call);
+    for(const call of toolCalls.slice(0,1)){
+      try{
+        const result=await executeTool(call);
         messages.push({
           role:"tool",
           tool_call_id:call.id,
           name:call.function.name,
           content:JSON.stringify(result).slice(0,6000)
         });
-      } catch (error) {
+      }catch(error){
         messages.push({
           role:"tool",
           tool_call_id:call.id,
           name:call.function.name,
-          content:JSON.stringify({
-            error:error?.message || "Araç hatası"
-          }).slice(0,2000)
+          content:JSON.stringify({error:error?.message||"Araç hatası"}).slice(0,2000)
         });
       }
     }
   }
 
-  return "Görevi tamamlamak için izin verilen araç adımlarının sınırına ulaştım.";
+  return "İşlem için gereken araç adımlarının sınırına ulaştım.";
 }
 
 export function getLocalAIModel() { return activeModel; }
