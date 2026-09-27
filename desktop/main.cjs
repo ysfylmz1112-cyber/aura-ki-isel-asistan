@@ -13,6 +13,7 @@ const PACKAGED_INDEX = path.join(__dirname,'renderer','index.html');
 const LOCAL_INDEX = app.isPackaged ? PACKAGED_INDEX : DEV_INDEX;
 const PERMISSIONS_FILE = path.join(app.getPath('userData'), 'aura-permissions.json');
 let extraRoots = [];
+let activeSpeechProcess = null;
 
 function normalizePath(value) { return path.resolve(String(value || '')); }
 function allowedRoots() {
@@ -868,7 +869,16 @@ async function findAndLaunchApp(appName) {
   return findAndLaunchGameOrApp(appName);
 }
 
+function stopWindowsSpeech() {
+  if (activeSpeechProcess) {
+    try { activeSpeechProcess.kill(); } catch {}
+    activeSpeechProcess = null;
+  }
+  return {ok:true};
+}
+
 function speakTextWindows(text) {
+  stopWindowsSpeech();
   return new Promise((resolve,reject)=>{
     const child=spawn(
       'powershell.exe',
@@ -877,10 +887,12 @@ function speakTextWindows(text) {
       ],
       {windowsHide:true,stdio:['pipe','ignore','pipe']}
     );
+    activeSpeechProcess = child;
     let stderr='';
     child.stderr.on('data',d=>{stderr+=String(d)});
     child.on('error',reject);
     child.on('close',code=>{
+      if(activeSpeechProcess===child) activeSpeechProcess=null;
       if(code===0) resolve({ok:true});
       else reject(new Error(stderr||('Windows ses motoru hata verdi ('+code+').')));
     });
@@ -935,6 +947,7 @@ async function handleTool(tool,args) {
     case 'desktop_get_usage_report': return getUsageReport();
     case 'desktop_open_external_url': return openExternalUrl(args.url);
     case 'desktop_speak_text': return speakTextWindows(args.text);
+    case 'desktop_stop_speech': return stopWindowsSpeech();
     case 'desktop_open_unity_project': return openUnityProject(normalizePath(args.projectPath));
     case 'desktop_web_search': return webSearch(args.query);
     case 'desktop_fetch_web_page': return fetchWebPage(args.url);
