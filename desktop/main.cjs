@@ -868,6 +868,26 @@ async function findAndLaunchApp(appName) {
   return findAndLaunchGameOrApp(appName);
 }
 
+function speakTextWindows(text) {
+  return new Promise((resolve,reject)=>{
+    const child=spawn(
+      'powershell.exe',
+      ['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-Command',
+        "$inputText=[Console]::In.ReadToEnd(); Add-Type -AssemblyName System.Speech; $s=New-Object System.Speech.Synthesis.SpeechSynthesizer; try { $voice=$s.GetInstalledVoices() | Where-Object { $_.VoiceInfo.Culture.Name -like 'tr-*' } | Select-Object -First 1; if($voice){$s.SelectVoice($voice.VoiceInfo.Name)}; $s.Rate=0; $s.Volume=100; $s.Speak($inputText) } finally { $s.Dispose() }"
+      ],
+      {windowsHide:true,stdio:['pipe','ignore','pipe']}
+    );
+    let stderr='';
+    child.stderr.on('data',d=>{stderr+=String(d)});
+    child.on('error',reject);
+    child.on('close',code=>{
+      if(code===0) resolve({ok:true});
+      else reject(new Error(stderr||('Windows ses motoru hata verdi ('+code+').')));
+    });
+    child.stdin.end(String(text||'').slice(0,4000),'utf8');
+  });
+}
+
 async function openExternalUrl(url) {
   if(!safeUrl(url)) throw new Error('Sadece HTTP/HTTPS adresleri açılabilir.');
   const ok=await confirmAction('AURA — Web adresi açma izni','AURA şu adresi varsayılan tarayıcıda açacak:\n\n'+url);
@@ -914,6 +934,7 @@ async function handleTool(tool,args) {
     case 'desktop_get_environment_profile': return getEnvironmentProfile();
     case 'desktop_get_usage_report': return getUsageReport();
     case 'desktop_open_external_url': return openExternalUrl(args.url);
+    case 'desktop_speak_text': return speakTextWindows(args.text);
     case 'desktop_open_unity_project': return openUnityProject(normalizePath(args.projectPath));
     case 'desktop_web_search': return webSearch(args.query);
     case 'desktop_fetch_web_page': return fetchWebPage(args.url);
