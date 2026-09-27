@@ -2,7 +2,7 @@
 // Global renderer helper: drive-list requests are handled by the desktop command layer.
 globalThis.isDriveListRequest = function isDriveListRequest(q) {
   const x = String(q || "").toLocaleLowerCase("tr-TR").trim();
-  return /^(sürücüleri göster|suruculeri goster|sürücüler|suruculer|diskleri göster|diskleri goster|diskler|hangi sürücüler var|hangi suruculer var|sürücülerim|suruculerim|disklerim)\\??$/.test(x);
+  return /^(sürücüleri göster|suruculeri goster|sürücüler|suruculer|diskleri göster|diskleri goster|diskler|hangi sürücüler var|hangi suruculer var|sürücülerim|suruculerim|disklerim)\??$/.test(x);
 };
 import { CreateMLCEngine } from "https://esm.run/@mlc-ai/web-llm@0.2.85";
 
