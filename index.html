@@ -329,83 +329,49 @@ function addMessage(kind, label, text) {
   chat.scrollTop = chat.scrollHeight;
 }
 
-async function speak(text) {
-  if (!voiceEnabled) return;
-  const value=String(text||"").trim();
-  if(!value) return;
-  speaking=true;
-  ttsEl.textContent = "KONUŞUYOR";
-  core.classList.add("active");
+function speak(text) {
+  if (!voiceEnabled || !window.speechSynthesis) return;
+  const value = String(text || "").trim();
+  if (!value) return;
 
-  if (hasDesktopAgent()) {
-    try {
-      await callDesktop("desktop_speak_text",{text:value.slice(0,4000)});
-      speaking=false;
-      ttsEl.textContent="HAZIR";
-      if(!busy) core.classList.remove("active");
-      return;
-    } catch {}
-  }
+  const speakNow = () => {
+    const voices = speechSynthesis.getVoices();
+    const u = new SpeechSynthesisUtterance(value);
+    const tr = voices.find(v => /^tr(-|_)/i.test(String(v.lang || ""))) ||
+      voices.find(v => /turk/i.test(String(v.name || "")));
+    if (tr) u.voice = tr;
+    u.lang = tr?.lang || "tr-TR";
+    u.rate = 0.96;
+    u.pitch = 1;
+    u.volume = 1;
 
-  if (!window.speechSynthesis || typeof SpeechSynthesisUtterance === "undefined") {
-    speaking=false;
-    ttsEl.textContent="SES YOK";
-    if(!busy) core.classList.remove("active");
-    return;
-  }
+    ttsEl.textContent = "KONUŞUYOR";
+    core.classList.add("active");
 
-  const speakBrowser=()=>{
-    const voices=window.speechSynthesis.getVoices();
-    const u=new SpeechSynthesisUtterance(value);
-    const tr=voices.find(v=>/^tr(-|_)/i.test(String(v.lang||""))) || voices.find(v=>/turk/i.test(String(v.name||"")));
-    if(tr) u.voice=tr;
-    u.lang=tr?.lang||"tr-TR";
-    u.rate=0.98;
-    u.pitch=1;
-    u.volume=1;
-    u.onend=()=>{
-      speaking=false; ttsEl.textContent="HAZIR";
-      if(!busy) core.classList.remove("active");
+    u.onend = () => {
+      ttsEl.textContent = voiceEnabled ? "HAZIR" : "KAPALI";
+      if (!busy) core.classList.remove("active");
     };
-    u.onerror=()=>{
-      speaking=false; ttsEl.textContent="SES HATASI";
-      if(!busy) core.classList.remove("active");
+    u.onerror = () => {
+      ttsEl.textContent = "HAZIR";
+      if (!busy) core.classList.remove("active");
     };
+
     speechSynthesis.cancel();
     speechSynthesis.speak(u);
   };
 
-  if(window.speechSynthesis.getVoices().length) speakBrowser();
-  else {
-    const old=window.speechSynthesis.onvoiceschanged;
-    window.speechSynthesis.onvoiceschanged=()=>{
-      window.speechSynthesis.onvoiceschanged=old||null;
-      speakBrowser();
-    };
-    setTimeout(()=>{ if(!speaking) return; if(!window.speechSynthesis.speaking) speakBrowser(); },250);
+  if (speechSynthesis.getVoices().length) {
+    speakNow();
+  } else {
+    speechSynthesis.onvoiceschanged = speakNow;
+    setTimeout(() => {
+      if (voiceEnabled && !speechSynthesis.speaking) speakNow();
+    }, 250);
   }
 }
 
 function finish(q, answer, usedAI = false) {
-  addMessage("", "AURA", answer);
-  history.unshift({
-    q,
-    a: answer,
-    time: Date.now(),
-    ai: usedAI,
-    localModel: usedAI ? getLocalAIModel() : ""
-  });
-  history = history.slice(0, 100);
-  saveHistory();
-  busy = false;
-  sendBtn.disabled = false;
-  micBtn.disabled = false;
-  input.disabled = false;
-  status.textContent = "● HAZIR";
-  core.classList.remove("active");
-  speak(answer);
-}
-
 function isVagueCodeRequest(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
   return /^(kod yaz|kod yazsana|bir kod yaz|bana kod yaz|script yaz|bir script yaz)$/i.test(x);
