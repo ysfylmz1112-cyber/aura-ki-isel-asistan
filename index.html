@@ -846,7 +846,12 @@ function extractAppControlCommand(q){
 function extractOpenTarget(q) {
   const x = String(q || "").trim();
   const m = x.match(/^(.+?)\s+aç(?:ıver|ar)?$/i);
-  return m ? String(m[1]||"").trim().replace(/['’](?:y?[ıiuü])$/i,"").replace(/(?:y[ıiuü])$/i,"") : "";
+  if(!m) return "";
+  return String(m[1]||"").trim()
+    .replace(/\s+(?:uygulamasını|uygulamasini|programını|programini|oyununu)$/i,"")
+    .replace(/['’](?:y?[ıiuü])$/i,"")
+    .replace(/(?:y[ıiuü])$/i,"")
+    .trim();
 }
 
 async function handleMemoryCommand(q){
