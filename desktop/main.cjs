@@ -2,6 +2,7 @@ const { app, BrowserWindow, dialog, ipcMain, shell, session } = require('electro
 const path = require('path');
 const fs = require('fs');
 const fsp = require('fs/promises');
+const http = require('http');
 const os = require('os');
 const { execFile, spawn } = require('child_process');
 const { search } = require('duck-duck-scrape');
@@ -14,6 +15,8 @@ const LOCAL_INDEX = app.isPackaged ? PACKAGED_INDEX : DEV_INDEX;
 const PERMISSIONS_FILE = path.join(app.getPath('userData'), 'aura-permissions.json');
 let extraRoots = [];
 let activeSpeechProcess = null;
+let localServer = null;
+let localServerPort = null;
 
 function normalizePath(value) { return path.resolve(String(value || '')); }
 function allowedRoots() {
@@ -1401,6 +1404,77 @@ async function handleTool(tool,args) {
   }
 }
 
+function localRendererRoot() {
+  return app.isPackaged ? path.join(__dirname,'renderer') : path.join(__dirname,'..');
+}
+
+function startLocalRendererServer() {
+  if (localServer && localServerPort) return Promise.resolve(localServerPort);
+  return new Promise((resolve,reject)=>{
+    const root=path.resolve(localRendererRoot());
+    const mime={
+      '.html':'text/html; charset=utf-8',
+      '.js':'text/javascript; charset=utf-8',
+      '.json':'application/json; charset=utf-8',
+      '.css':'text/css; charset=utf-8',
+      '.png':'image/png',
+      '.jpg':'image/jpeg',
+      '.jpeg':'image/jpeg',
+      '.svg':'image/svg+xml',
+      '.ico':'image/x-icon'
+    };
+    const allowed=new Set(['index.html','local-ai.js']);
+    localServer=http.createServer(async(req,res)=>{
+      try{
+        const requestPath=decodeURIComponent(String(req.url||'/').split('?')[0]);
+        const relative=requestPath==='/'?'index.html':requestPath.replace(/^\\/+/, '');
+        if(relative.includes('..') || !allowed.has(relative)){
+          res.writeHead(404,{'Cache-Control':'no-store'});
+          res.end('Not Found');
+          return;
+        }
+        const file=path.resolve(root,relative);
+        if(!file.startsWith(root+path.sep) && file!==root){
+          res.writeHead(403,{'Cache-Control':'no-store'});
+          res.end('Forbidden');
+          return;
+        }
+        const body=await fsp.readFile(file);
+        res.writeHead(200,{
+          'Content-Type':mime[path.extname(file).toLowerCase()]||'application/octet-stream',
+          'Cache-Control':'no-store',
+          'Access-Control-Allow-Origin':'*'
+        });
+        res.end(body);
+      }catch(error){
+        res.writeHead(500,{'Cache-Control':'no-store'});
+        res.end('AURA local server error');
+      }
+    });
+    localServer.once('error',reject);
+    localServer.listen(0,'127.0.0.1',()=>{
+      localServerPort=localServer.address().port;
+      resolve(localServerPort);
+    });
+  });
+}
+
+async function closeLocalRendererServer(){
+  const server=localServer;
+  localServer=null;
+  localServerPort=null;
+  if(!server)return;
+  await new Promise(resolve=>{
+    try{server.close(()=>resolve());}catch{resolve();}
+  });
+}
+
+async function loadAuraRenderer(win){
+  const port=await startLocalRendererServer();
+  const url='http://127.0.0.1:'+port+'/index.html';
+  await win.loadURL(url);
+}
+
 function createWindow() {
   const win=new BrowserWindow({width:1480,height:920,minWidth:1000,minHeight:680,backgroundColor:'#02050b',webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
   win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
@@ -1409,13 +1483,20 @@ function createWindow() {
   win.webContents.on('will-navigate',(event,url)=>{
     try{
       const u=new URL(url);
-      if(u.protocol==='file:') return;
-      if(u.origin!==ALLOWED_REMOTE_ORIGIN) event.preventDefault();
+      const isLocalRenderer=u.hostname==='127.0.0.1' && u.protocol==='http:';
+      if(u.protocol==='file:' || u.origin===ALLOWED_REMOTE_ORIGIN || isLocalRenderer) return;
+      event.preventDefault();
     }catch{ event.preventDefault(); }
+  });
+  win.webContents.on('did-fail-load',(_event,errorCode,errorDescription)=>{
+    console.error('[AURA] renderer load failed:',errorCode,errorDescription);
   });
   session.defaultSession.setPermissionRequestHandler((_wc,permission,callback)=>callback(permission==='media'));
   win.on('closed',()=>{ if(activeSpeechProcess){ try{activeSpeechProcess.kill();}catch{} activeSpeechProcess=null; } });
-  win.loadFile(LOCAL_INDEX);
+  loadAuraRenderer(win).catch(error=>{
+    console.error('[AURA] renderer start failed:',error);
+    dialog.showErrorBox('AURA başlatılamadı',String(error?.message||error));
+  });
 }
 app.whenReady().then(async()=>{
   await loadExtraRoots();
@@ -1445,4 +1526,5 @@ app.whenReady().then(async()=>{
     }
   });
 });
+app.on('before-quit',()=>{closeLocalRendererServer().catch(()=>{});});
 app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
