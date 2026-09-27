@@ -12,7 +12,9 @@ New-Item -ItemType Directory -Force -Path $repoRoot,$desktopDir,$rendererDir | O
 Write-Host 'AURA 4.4.0 - TAM WINDOWS GUNCELLEMESI' -ForegroundColor Cyan
 Write-Host 'Mevcut AURA surecleri kapatiliyor...' -ForegroundColor DarkCyan
 Stop-Process -Name 'AURA' -Force -ErrorAction SilentlyContinue
-Stop-Process -Name 'electron' -Force -ErrorAction SilentlyContinue
+Get-CimInstance Win32_Process -Filter "Name='electron.exe'" -ErrorAction SilentlyContinue |
+  Where-Object { $_.CommandLine -match 'aura-ki-isel-asistan[\\/]desktop' } |
+  ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 Start-Sleep -Milliseconds 1000
 
 $files = @(
