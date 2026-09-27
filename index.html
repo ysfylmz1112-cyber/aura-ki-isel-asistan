@@ -617,6 +617,7 @@ voiceBtn.addEventListener("click",()=>{
   localStorage.setItem("aura_voice_enabled",voiceEnabled?"1":"0");
   if(!voiceEnabled){
     speechSynthesis?.cancel?.();
+    if(hasDesktopAgent()) callDesktop("desktop_stop_speech",{}).catch(()=>{});
     ttsEl.textContent="KAPALI";
     status.textContent="● SES KAPALI";
   } else {
@@ -706,6 +707,8 @@ document.addEventListener("keydown", (event) => {
   }
   if (event.key === "Escape") {
     speechSynthesis.cancel();
+    if(hasDesktopAgent()) callDesktop("desktop_stop_speech",{}).catch(()=>{});
+    speaking=false;
     busy = false;
     sendBtn.disabled = false;
     micBtn.disabled = false;
