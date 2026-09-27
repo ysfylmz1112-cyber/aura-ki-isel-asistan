@@ -15,7 +15,7 @@ Stop-Process -Name 'electron' -Force -ErrorAction SilentlyContinue
 Start-Sleep -Milliseconds 1000
 
 $files = @(
-  @{ Local = Join-Path $repoRoot 'index.html'; Remote = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/15412c83ae9e6f81e5c485944009f3cc3594cc1e/index.html'; Required = 'desktop_scan_environment' },
+  @{ Local = Join-Path $repoRoot 'index.html'; Remote = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/695d58786c3efec8edd8c07335726dad80ed9f07/index.html'; Required = 'desktop_scan_environment' },
   @{ Local = Join-Path $repoRoot 'local-ai.js'; Remote = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/08c8fdfdd603336a6f85315bc28c0ff7c85dd1ba/local-ai.js'; Required = 'Qwen2.5-1.5B-Instruct' },
   @{ Local = Join-Path $desktopDir 'main.cjs'; Remote = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/e9f1225c9b44a1816f7dbc994340a26b05d922a3/desktop/main.cjs'; Required = 'desktop_scan_environment' },
   @{ Local = Join-Path $desktopDir 'preload.cjs'; Remote = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/e50129f189dfcde5b528634f439fc5d84786012f/desktop/preload.cjs'; Required = 'auraDesktop' },
