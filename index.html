@@ -372,6 +372,25 @@ function speak(text) {
 }
 
 function finish(q, answer, usedAI = false) {
+  addMessage("", "AURA", answer);
+  history.unshift({
+    q,
+    a: answer,
+    time: Date.now(),
+    ai: usedAI,
+    localModel: usedAI ? getLocalAIModel() : ""
+  });
+  history = history.slice(0, 100);
+  saveHistory();
+  busy = false;
+  sendBtn.disabled = false;
+  micBtn.disabled = false;
+  input.disabled = false;
+  status.textContent = "● HAZIR";
+  core.classList.remove("active");
+  speak(answer);
+}
+
 function isVagueCodeRequest(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
   return /^(kod yaz|kod yazsana|bir kod yaz|bana kod yaz|script yaz|bir script yaz)$/i.test(x);
