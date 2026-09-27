@@ -153,6 +153,27 @@ const TOOLS = [
   {
     type: "function",
     function: {
+      name: "desktop_get_weather",
+      description: "Belirtilen şehir için gerçek ve güncel hava durumunu Open-Meteo üzerinden getirir. Sıcaklık, hissedilen sıcaklık, nem, rüzgar, hava açıklaması ve günlük en yüksek/düşük değerlerini döndürür.",
+      parameters: {
+        type:"object",
+        properties:{city:{type:"string"}},
+        required:["city"],
+        additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_get_battery_status",
+      description: "Windows pil durumunu getirir. Pil yoksa masaüstü bilgisayarda kullanılamadığını belirtir.",
+      parameters: {type:"object",properties:{},additionalProperties:false}
+    }
+  },
+  {
+    type: "function",
+    function: {
       name: "desktop_find_unity_projects",
       description: "İzin verilen kullanıcı klasörlerinde Unity projelerini (Assets + ProjectSettings) bulur.",
       parameters: {
@@ -646,7 +667,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     ? "\nPC BAĞLAM ÖZETİ:\n" + compactEnvironment(environment)
     : "";
 
-  const wantsTools = desktopAvailable() && mode !== "code" && /güncel|guncel|araştır|arastir|internette|web|site|dosya|klasör|klasor|uygulama|oyun|bilgisayar|masaüstü|masaustu|sistem|kullanım|kullanim|hatırla|hatirla|unut|geçen hafta|gecen hafta|dün|dun|bugün|bugun|konuşma geçmişi|konusma gecmisi|unity|cpu|ram|gpu|disk|performans|donanım|donanim/.test(
+  const wantsTools = desktopAvailable() && mode !== "code" && /güncel|guncel|araştır|arastir|internette|web|site|dosya|klasör|klasor|uygulama|oyun|bilgisayar|masaüstü|masaustu|sistem|kullanım|kullanim|hatırla|hatirla|unut|geçen hafta|gecen hafta|dün|dun|bugün|bugun|konuşma geçmişi|konusma gecmisi|unity|cpu|ram|gpu|disk|performans|donanım|donanim|hava|sıcaklık|sicaklik|derece|pil|batarya/.test(
     value.toLocaleLowerCase("tr-TR")
   );
 
@@ -669,9 +690,9 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   for(let round=0; round<3; round++){
     const response = await localEngine.chat.completions.create({
       messages,
-      temperature:mode==="code"?0.18:0.5,
+      temperature:mode==="code"?0.16:0.45,
       top_p:mode==="code"?0.82:0.85,
-      max_tokens:mode==="code"?2400:360,
+      max_tokens:mode==="code"?1900:280,
       stream:false
     });
 
