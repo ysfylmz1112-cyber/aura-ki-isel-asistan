@@ -1194,6 +1194,113 @@ async function findUnityProjects(maxResults=20){
   return {count:found.length,items:found.slice(0,maxResults)};
 }
 
+const WEATHER_CACHE_TTL=10*60*1000;
+const weatherCache=new Map();
+
+function weatherText(code){
+  const c=Number(code);
+  const map={
+    0:'Açık',
+    1:'Çoğunlukla açık',
+    2:'Parçalı bulutlu',
+    3:'Kapalı',
+    45:'Sis',
+    48:'Kırağılı sis',
+    51:'Hafif çiseleme',
+    53:'Çiseleme',
+    55:'Yoğun çiseleme',
+    56:'Hafif dondurucu çiseleme',
+    57:'Yoğun dondurucu çiseleme',
+    61:'Hafif yağmur',
+    63:'Yağmur',
+    65:'Kuvvetli yağmur',
+    66:'Hafif dondurucu yağmur',
+    67:'Kuvvetli dondurucu yağmur',
+    71:'Hafif kar',
+    73:'Kar',
+    75:'Yoğun kar',
+    77:'Kar taneleri',
+    80:'Hafif sağanak',
+    81:'Sağanak',
+    82:'Kuvvetli sağanak',
+    85:'Hafif kar sağanağı',
+    86:'Yoğun kar sağanağı',
+    95:'Gök gürültülü fırtına',
+    96:'Dolu ihtimalli fırtına',
+    99:'Kuvvetli dolu ihtimalli fırtına'
+  };
+  return map[c] || 'Bilinmeyen hava durumu';
+}
+
+async function getWeather(city='Istanbul'){
+  const query=String(city||'Istanbul').trim().slice(0,120) || 'Istanbul';
+  const key=query.toLocaleLowerCase('tr-TR');
+  const cached=weatherCache.get(key);
+  if(cached && Date.now()-cached.at<WEATHER_CACHE_TTL) return cached.data;
+
+  const geoUrl='https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(query)+'&count=8&language=tr&format=json';
+  const geoResponse=await fetch(geoUrl,{headers:{'User-Agent':'AURA-Desktop/4.2'}});
+  if(!geoResponse.ok) throw new Error('Hava konumu bulunamadı (HTTP '+geoResponse.status+').');
+  const geo=await geoResponse.json();
+  const results=Array.isArray(geo?.results)?geo.results:[];
+  const location=results.find(x=>String(x?.country_code||'').toUpperCase()==='TR') || results[0];
+  if(!location) throw new Error('“'+query+'” için bir konum bulunamadı.');
+
+  const forecastUrl='https://api.open-meteo.com/v1/forecast?latitude='+encodeURIComponent(location.latitude)+'&longitude='+encodeURIComponent(location.longitude)+'&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,is_day&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&forecast_days=1&timezone=auto';
+  const response=await fetch(forecastUrl,{headers:{'User-Agent':'AURA-Desktop/4.2'}});
+  if(!response.ok) throw new Error('Hava verisi alınamadı (HTTP '+response.status+').');
+  const data=await response.json();
+  const current=data?.current||{};
+  const daily=data?.daily||{};
+  const out={
+    fetchedAt:new Date().toISOString(),
+    location:{
+      name:String(location.name||query),
+      country:String(location.country||''),
+      countryCode:String(location.country_code||''),
+      latitude:Number(location.latitude),
+      longitude:Number(location.longitude),
+      timezone:String(data?.timezone||location.timezone||'')
+    },
+    current:{
+      temperatureC:Number(current.temperature_2m),
+      apparentTemperatureC:Number(current.apparent_temperature),
+      humidityPercent:Number(current.relative_humidity_2m),
+      weatherCode:Number(current.weather_code),
+      description:weatherText(current.weather_code),
+      windKmh:Number(current.wind_speed_10m),
+      isDay:Number(current.is_day)===1
+    },
+    today:{
+      maxC:Number(Array.isArray(daily.temperature_2m_max)?daily.temperature_2m_max[0]:NaN),
+      minC:Number(Array.isArray(daily.temperature_2m_min)?daily.temperature_2m_min[0]:NaN),
+      precipitationProbability:Number(Array.isArray(daily.precipitation_probability_max)?daily.precipitation_probability_max[0]:NaN)
+    }
+  };
+  weatherCache.set(key,{at:Date.now(),data:out});
+  return out;
+}
+
+async function getBatteryStatus(){
+  const result=await new Promise(resolve=>{
+    const command="[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; $b=@(Get-CimInstance Win32_Battery -ErrorAction SilentlyContinue | Select-Object Name,BatteryStatus,EstimatedChargeRemaining,EstimatedRunTime); if($b.Count -eq 0){[PSCustomObject]@{available=$false}|ConvertTo-Json -Compress}else{$b | Select-Object -First 1 | Add-Member -NotePropertyName available -NotePropertyValue $true -PassThru | ConvertTo-Json -Compress}";
+    execFile('powershell.exe',['-NoProfile','-NonInteractive','-Command',command],{windowsHide:true,maxBuffer:1024*1024},(error,stdout)=>{
+      if(error) return resolve({available:false});
+      try{ resolve(JSON.parse(String(stdout||'{}'))||{available:false}); }
+      catch{ resolve({available:false}); }
+    });
+  });
+  const remaining=Number(result?.EstimatedChargeRemaining);
+  const runtime=Number(result?.EstimatedRunTime);
+  return {
+    available:result?.available===true,
+    name:String(result?.Name||''),
+    chargePercent:Number.isFinite(remaining)?remaining:null,
+    status:Number.isFinite(Number(result?.BatteryStatus))?Number(result.BatteryStatus):null,
+    estimatedRuntimeMinutes:Number.isFinite(runtime)?runtime:null
+  };
+}
+
 async function getHardwareMetrics(){
   const totalGB=Number((os.totalmem()/1024/1024/1024).toFixed(1));
   const freeGB=Number((os.freemem()/1024/1024/1024).toFixed(1));
@@ -1255,6 +1362,8 @@ function systemInfo(){
 async function handleTool(tool,args) {
   switch(tool) {
     case 'desktop_get_hardware_metrics': return getHardwareMetrics();
+    case 'desktop_get_weather': return getWeather(args.city||'Istanbul');
+    case 'desktop_get_battery_status': return getBatteryStatus();
     case 'desktop_find_unity_projects': return findUnityProjects(args.maxResults||20);
     case 'desktop_get_system_info': return systemInfo();
     case 'desktop_list_directory': return listDirectory(normalizePath(args.path));
@@ -1305,7 +1414,6 @@ function createWindow() {
     }catch{ event.preventDefault(); }
   });
   session.defaultSession.setPermissionRequestHandler((_wc,permission,callback)=>callback(permission==='media'));
-  win.webContents.session.clearCache().catch(()=>{});
   win.on('closed',()=>{ if(activeSpeechProcess){ try{activeSpeechProcess.kill();}catch{} activeSpeechProcess=null; } });
   win.loadFile(LOCAL_INDEX);
 }
@@ -1327,7 +1435,7 @@ app.whenReady().then(async()=>{
       return {ok:false,error:error?.message||'Bilinmeyen hata'};
     }
   });
-  ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'4.1.0',mode:'secure-local-agent-pc-aware-core',roots:allowedRoots(),features:['memory','conversation-memory','pc-core','hardware-hud','web-research','unity-tools','code-mode']}));
+  ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'4.2.0',mode:'secure-local-agent-pc-aware-core',roots:allowedRoots(),features:['memory','conversation-memory','pc-core','hardware-hud','weather','battery','web-research','unity-tools','code-mode']}));
   createWindow();
   scanEnvironment().catch(()=>{});
   app.on('activate',()=>{
