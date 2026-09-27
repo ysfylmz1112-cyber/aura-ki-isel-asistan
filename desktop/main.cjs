@@ -737,6 +737,31 @@ async function currentProcesses() {
   });
 }
 
+async function getRunningApps(){
+  const processes=await currentProcesses();
+  const systemNames=new Set([
+    'aura.exe','electron.exe','system','system idle process','registry.exe','smss.exe','csrss.exe',
+    'wininit.exe','services.exe','lsass.exe','svchost.exe','winlogon.exe','dwm.exe','fontdrvhost.exe',
+    'sihost.exe','ctfmon.exe','explorer.exe','searchhost.exe','startmenuexperiencehost.exe',
+    'runtimebroker.exe','applicationframehost.exe','textinputhost.exe','conhost.exe',
+    'spoolsv.exe','wmiprvse.exe','dllhost.exe','securityhealthservice.exe'
+  ]);
+  const grouped=new Map();
+  for(const item of Array.isArray(processes?.items)?processes.items:[]){
+    const name=String(item?.name||'').trim();
+    if(!name || systemNames.has(name.toLowerCase())) continue;
+    const key=name.toLowerCase();
+    const current=grouped.get(key)||{name,pids:[]};
+    if(item?.pid) current.pids.push(Number(item.pid));
+    grouped.set(key,current);
+  }
+  const items=[...grouped.values()]
+    .map(x=>({...x,count:x.pids.length}))
+    .sort((a,b)=>String(a.name).localeCompare(String(b.name),'tr-TR'))
+    .slice(0,80);
+  return {ok:true,user:os.userInfo().username,count:items.length,items};
+}
+
 async function getUsageReport() {
   const processes=await currentProcesses();
   const recent=await recentWindowsItems();
@@ -1463,6 +1488,7 @@ async function handleTool(tool,args) {
     case 'desktop_uninstall_app': return uninstallAppByName(args.app);
     case 'desktop_scan_environment': return scanEnvironment();
     case 'desktop_get_environment_profile': return getEnvironmentProfile();
+    case 'desktop_get_running_apps': return getRunningApps();
     case 'desktop_get_usage_report': return getUsageReport();
     case 'desktop_memory_save': return remember(args.text,args.tags||[]);
     case 'desktop_conversation_search': return searchConversations(args.query,args.maxResults||18);
@@ -1599,7 +1625,7 @@ app.whenReady().then(async()=>{
       return {ok:false,error:error?.message||'Bilinmeyen hata'};
     }
   });
-  ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'4.3.0',mode:'secure-local-agent-pc-aware-core',roots:allowedRoots(),features:['memory','conversation-memory','pc-core','hardware-hud','weather','battery','web-research','unity-tools','code-mode','open-app','close-app','restart-app','uninstall-app']}));
+  ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'4.4.0',mode:'secure-local-agent-pc-aware-core',roots:allowedRoots(),features:['memory','conversation-memory','pc-core','hardware-hud','weather','battery','web-research','unity-tools','code-mode','open-app','close-app','restart-app','uninstall-app','running-apps','drive-list']}));
   createWindow();
   scanEnvironment().catch(()=>{});
   app.on('activate',()=>{
