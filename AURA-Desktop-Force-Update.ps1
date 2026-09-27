@@ -3,11 +3,11 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Join-Path $env:USERPROFILE 'Desktop\aura-ki-isel-asistan'
 $desktopDir = Join-Path $repoRoot 'desktop'
 $rendererDir = Join-Path $desktopDir 'renderer'
-$desktopInstaller = Join-Path $env:USERPROFILE 'Desktop\AURA-3.1.1-Setup.exe'
+$desktopInstaller = Join-Path $env:USERPROFILE 'Desktop\AURA-3.2.0-Setup.exe'
 
 New-Item -ItemType Directory -Force -Path $repoRoot,$desktopDir,$rendererDir | Out-Null
 
-Write-Host 'AURA 3.1.1 WINDOWS INSTALLER UPDATE' -ForegroundColor Cyan
+Write-Host 'AURA 3.2.0 WINDOWS INSTALLER UPDATE' -ForegroundColor Cyan
 Write-Host 'Mevcut AURA surecleri kapatiliyor...' -ForegroundColor DarkCyan
 
 Stop-Process -Name 'AURA' -Force -ErrorAction SilentlyContinue
@@ -15,11 +15,11 @@ Stop-Process -Name 'electron' -Force -ErrorAction SilentlyContinue
 Start-Sleep -Milliseconds 1000
 
 $files = @(
-  @{ Local = Join-Path $repoRoot 'index.html'; Remote = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/d6b0b58b44906422c94dcbde1ee84ca8a914d815/index.html'; Required = 'desktop_scan_environment' },
-  @{ Local = Join-Path $repoRoot 'local-ai.js'; Remote = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/008f504c5dec99181d59512cd282599c682bb1fe/local-ai.js'; Required = 'Qwen2.5-1.5B-Instruct' },
-  @{ Local = Join-Path $desktopDir 'main.cjs'; Remote = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/d7491a03ebcd9551e66a5995949def0c09e22523/desktop/main.cjs'; Required = 'desktop_scan_environment' },
+  @{ Local = Join-Path $repoRoot 'index.html'; Remote = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/15412c83ae9e6f81e5c485944009f3cc3594cc1e/index.html'; Required = 'desktop_scan_environment' },
+  @{ Local = Join-Path $repoRoot 'local-ai.js'; Remote = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/08c8fdfdd603336a6f85315bc28c0ff7c85dd1ba/local-ai.js'; Required = 'Qwen2.5-1.5B-Instruct' },
+  @{ Local = Join-Path $desktopDir 'main.cjs'; Remote = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/e9f1225c9b44a1816f7dbc994340a26b05d922a3/desktop/main.cjs'; Required = 'desktop_scan_environment' },
   @{ Local = Join-Path $desktopDir 'preload.cjs'; Remote = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/e50129f189dfcde5b528634f439fc5d84786012f/desktop/preload.cjs'; Required = 'auraDesktop' },
-  @{ Local = Join-Path $desktopDir 'package.json'; Remote = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/1fbd84c23ac1321b1d18851442a0e9bfc387efff/desktop/package.json'; Required = 'electron-builder' }
+  @{ Local = Join-Path $desktopDir 'package.json'; Remote = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/f4f53fde5dab62dbedc687ef99aebd2a73ee7657/desktop/package.json'; Required = 'electron-builder' }
 )
 
 foreach($item in $files){
