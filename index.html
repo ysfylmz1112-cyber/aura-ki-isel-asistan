@@ -16,10 +16,6 @@ html,body{margin:0;width:100%;height:100%;background:var(--bg);color:var(--text)
 body{overflow:hidden}
 button,input{font:inherit}
 button{user-select:none}
-body[data-theme="violet"]{--accent:#b899ff;--accent2:#ff79c6}
-body[data-theme="emerald"]{--accent:#69efb6;--accent2:#66cfff}
-body[data-theme="amber"]{--accent:#ffd166;--accent2:#ff946e}
-body[data-theme="ice"]{--accent:#bfefff;--accent2:#77a7ff}
 .app{height:100vh;display:grid;grid-template-columns:248px minmax(0,1fr)}
 .sidebar{height:100vh;display:flex;flex-direction:column;min-height:0;background:linear-gradient(180deg,#0b0f15,#090d13);border-right:1px solid var(--line)}
 .sideTop{padding:18px 16px 14px}.brand{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:800;letter-spacing:3px}.logo{width:30px;height:30px;border:1px solid color-mix(in srgb,var(--accent) 72%,transparent);border-radius:50%;position:relative;box-shadow:0 0 25px color-mix(in srgb,var(--accent) 15%,transparent)}.logo:after{content:"";position:absolute;inset:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 15px var(--accent)}
@@ -76,8 +72,6 @@ body[data-theme="ice"]{--accent:#bfefff;--accent2:#77a7ff}
     <div class="sideLabel">MERKEZ</div>
     <button class="nav active" id="memory"><span class="ico">◷</span> Geçmiş</button>
     <button class="nav" id="voice"><span class="ico">◌</span> Ses sistemi</button>
-    <button class="nav" id="settings"><span class="ico">⚙</span> Sistem</button>
-    <button class="nav" id="about"><span class="ico">ⓘ</span> Hakkında</button>
   </div>
   <div class="sideDivider"></div>
   <div class="sideSection">
@@ -89,9 +83,8 @@ body[data-theme="ice"]{--accent:#bfefff;--accent2:#77a7ff}
     <div class="sideStats">
       <button class="btn" id="usageBtn">Kullanım</button>
       <button class="btn" id="pcBtn">PC Tara</button>
-      <button class="btn" id="desktopBtn">Masaüstü</button>
+      <button class="btn" id="desktopBtn">Uygulamalar</button>
       <button class="btn" id="clear">Temizle</button>
-      <button class="btn" id="export">Dışa aktar</button>
     </div>
   </div>
   <div class="sideDivider"></div>
@@ -120,7 +113,7 @@ body[data-theme="ice"]{--accent:#bfefff;--accent2:#77a7ff}
     <div id="usageTop" class="usageText">Kullanım raporu henüz alınmadı.</div>
     <div class="sideLabel" style="padding-left:0">SON SOHBETLER</div>
     <div class="history" id="history"></div>
-    <div class="footer">AURA OS 4.2 · LOCAL AI · MEMORY · PC CORE · CODE</div>
+    <div class="footer">AURA OS 4.3 · LOCAL AI · MEMORY · PC CORE · CODE</div>
   </div>
 </aside>
 
@@ -128,11 +121,9 @@ body[data-theme="ice"]{--accent:#bfefff;--accent2:#77a7ff}
   <header class="topbar">
     <div class="topLeft">
       <span class="coreDot"></span>
-      <div><div class="modelName">AURA</div><div class="modelMeta" id="sub">AURA 4.2 · Yerel AI · Hafıza · PC Core · Web · Kod</div></div>
+      <div><div class="modelName">AURA</div><div class="modelMeta" id="sub">AURA 4.3 · Yerel AI · Hafıza · PC Core · Web · Kod</div></div>
     </div>
     <div class="topActions">
-      <button class="btn" id="modeBtn">⌘ Kod</button>
-      <button class="btn" id="theme">◐ Tema</button>
       <div class="status" id="status">● HAZIR</div>
     </div>
   </header>
@@ -198,21 +189,17 @@ body[data-theme="ice"]{--accent:#bfefff;--accent2:#77a7ff}
           <input id="input" class="input" autocomplete="off" autofocus spellcheck="false" placeholder="AURA'ya mesaj yaz...">
           <button class="btn" id="mic" title="Sesli giriş">🎙</button>
           <button class="btn primary send" id="send" title="Gönder">↑</button>
-        </div>
-        <div class="commandPanel">
-          <span class="commandTag">LOCAL AI</span><span class="commandTag">PC AWARE</span><span class="commandTag">MEMORY</span><span class="commandTag">WEB RESEARCH</span><span class="commandTag">UNITY</span>
-        </div>
-        <div class="chips">
+        </div> <div class="chips">
           <button class="chip" data-q="Bilgisayarımda neler var?">PC</button>
           <button class="chip" data-q="Kullanım raporumu göster">Kullanım</button>
-          <button class="chip" data-q="Sistem durumunu göster">Sistem</button>
+          <button class="chip" data-q="Uygulamalarımı göster">Uygulamalar</button>
           <button class="chip" data-q="Chrome aç">Chrome</button>
           <button class="chip" data-q="Bugün İstanbul hava nasıl?">Hava</button>
-          <button class="chip" data-q="Güncel bilgi araştır">Web</button>
+          <button class="chip" data-q="Hava durumu">Hava</button>
           <button class="chip" data-q="Unity projelerimi bul">Unity</button>
           <button class="chip" data-q="Kod modu">Kod</button>
         </div>
-        <div class="helper">Enter gönder · Ctrl+K odakla · Esc durdur · “Minecraft aç” · “hatırla: …”</div>
+        <div class="helper">Enter gönder · Ctrl+K odakla · Esc durdur · “Chrome'u kapat” · “Chrome'u yeniden başlat” · “Spotify'yi kaldır”</div>
       </div>
     </div>
   </section>
@@ -439,18 +426,11 @@ function formatConversationResult(result){
     return (i+1)+". "+at+"\nSEN: "+String(x.user||"").slice(0,260)+"\nAURA: "+String(x.assistant||"").slice(0,320);
   }).join("\n\n");
 }
-function applyTheme(){
-  document.body.dataset.theme=themes[themeIndex];
-  localStorage.setItem("aura_theme_index",String(themeIndex));
-}
-
 function applyMode(){
   const code=mode==="code";
   modeBadge.textContent=code?"KOD":"SOHBET";
   modeBadgeTop.textContent=code?"KOD":"SOHBET";
-  modeBtn.textContent=code?"⌘ SOHBET MODU":"⌘ KOD MODU";
   modeBtn2.textContent=code?"SOHBETE DÖN":"KOD MODU";
-  modeBtn.classList.toggle("codeOn",code);
   modeBtn2.classList.toggle("codeOn",code);
   localStorage.setItem("aura_mode",mode);
 }
@@ -862,10 +842,20 @@ function looksLikeCodeRequest(q){
   return /kod yaz|kod oluştur|kod olustur|script yaz|c#|c sharp|python|javascript|typescript|html|css|unity script|unity c#/.test(x);
 }
 
+function extractAppControlCommand(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR").trim().replace(/[!?]+$/,"");
+  for(const [action,re] of [["restart",/(.+?)\s+(?:yeniden başlat|yeniden baslat|restart)$/i],["close",/(.+?)\s+(?:kapat|kapatır|kapatir)$/i],["uninstall",/(.+?)\s+(?:kaldır|kaldir|sil|uninstall)$/i]]){
+    const m=x.match(re);if(!m)continue;
+    const target=String(m[1]||"").trim().replace(/['’](?:y?[ıiuü])$/i,"").replace(/(?:y[ıiuü])$/i,"");
+    if(!target||/[\\/]/.test(target)||/\.(?:exe|msi|bat|cmd|ps1|txt|js|ts|py|cs|cpp|c)$/i.test(target))return null;
+    return {action,target};
+  }
+  return null;
+}
 function extractOpenTarget(q) {
   const x = String(q || "").trim();
   const m = x.match(/^(.+?)\s+aç(?:ıver|ar)?$/i);
-  return m ? m[1].trim() : "";
+  return m ? String(m[1]||"").trim().replace(/['’](?:y?[ıiuü])$/i,"").replace(/(?:y[ıiuü])$/i,"") : "";
 }
 
 async function handleMemoryCommand(q){
@@ -943,6 +933,12 @@ async function handleDirectCommand(q) {
     return "Bu özellik için AURA Desktop'ın açık olması gerekiyor.";
   }
 
+  const appControl=extractAppControlCommand(q);
+  if(appControl){
+    if(appControl.action==="close"){await callDesktop("desktop_close_app",{app:appControl.target});return "Tamam kanka, "+appControl.target+" kapatıldı.";}
+    if(appControl.action==="restart"){await callDesktop("desktop_restart_app",{app:appControl.target});return "Tamam kanka, "+appControl.target+" yeniden başlatıldı.";}
+    if(appControl.action==="uninstall"){await callDesktop("desktop_uninstall_app",{app:appControl.target});return "Tamam kanka, "+appControl.target+" için kaldırma işlemi başlatıldı.";}
+  }
   if (isPCRequest(q)) {
     const profile = await callDesktop("desktop_scan_environment", {});
     environmentProfile = profile;
@@ -1067,7 +1063,8 @@ async function run(q) {
       return;
     }
     const memoryDirect = isMemorySaveRequest(q) || isMemoryForgetRequest(q) || isMemoryListRequest(q) || isMemorySearchRequest(q) || isMemoryClearRequest(q);
-    const direct = memoryDirect || isPCRequest(q) || isUsageRequest(q) || isWeatherRequest(q) || isBatteryRequest(q) || isSystemRequest(q) || isHardwareRequest(q) || isUnityProjectRequest(q) || isConversationHistoryRequest(q) || isDesktopListRequest(q) || !!extractOpenTarget(q);
+    const appControl=extractAppControlCommand(q);
+  const direct = memoryDirect || isPCRequest(q) || isUsageRequest(q) || isWeatherRequest(q) || isBatteryRequest(q) || isSystemRequest(q) || isHardwareRequest(q) || isUnityProjectRequest(q) || isConversationHistoryRequest(q) || isDesktopListRequest(q) || !!appControl || !!extractOpenTarget(q);
     if (quick) {
       finish(q, quick, false);
       return;
@@ -1121,7 +1118,6 @@ document.querySelectorAll(".nav").forEach((button) => {
   });
 });
 
-modeBtn.addEventListener("click",toggleMode);
 modeBtn2.addEventListener("click",toggleMode);
 
 const memoryNav=$("memory");
@@ -1150,14 +1146,9 @@ voiceBtn.addEventListener("click",()=>{
 
 usageBtn.addEventListener("click",()=>run("Kullanım raporumu göster"));
 pcBtn.addEventListener("click",()=>run("Bilgisayarımda neler var?"));
-desktopBtn.addEventListener("click",()=>run("Masaüstümde ne var?"));
+desktopBtn.addEventListener("click",()=>run("Uygulamalarımı göster"));
 
-function cycleTheme(){
-  themeIndex=(themeIndex+1)%themes.length;
-  applyTheme();
-  status.textContent="● TEMA "+themes[themeIndex].toUpperCase();
-  setTimeout(()=>{if(!busy)status.textContent="● HAZIR";},900);
-}
+
 sendBtn.addEventListener("click", () => { voiceInput = false; run(input.value); });
 
 input.addEventListener("keydown", (event) => {
@@ -1204,22 +1195,6 @@ $("clear").addEventListener("click", () => {
   }
 });
 
-$("export").addEventListener("click", () => {
-  const text = history.slice().reverse()
-    .map((item) => "SEN: " + item.q + "\nAURA: " + item.a)
-    .join("\n\n");
-  const blob = new Blob([text || "AURA sohbet geçmişi boş."], {
-    type: "text/plain;charset=utf-8"
-  });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = "aura-sohbet-gecmisi.txt";
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
-});
-
-$("theme").addEventListener("click", cycleTheme);
-
 document.addEventListener("keydown", (event) => {
   if (event.ctrlKey && event.key.toLowerCase() === "k") {
     event.preventDefault();
@@ -1249,7 +1224,6 @@ function updateClock() {
   });
 }
 
-applyTheme();
 applyMode();
 renderHistory();
 updateClock();

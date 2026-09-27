@@ -1087,6 +1087,46 @@ async function launchStartApp(item) {
   return {ok:true,app:name,type:'start-app',appId};
 }
 
+const AURA_PROTECTED_PROCESS_NAMES=new Set(['aura.exe','electron.exe','smss.exe','csrss.exe','wininit.exe','services.exe','lsass.exe','svchost.exe','winlogon.exe','dwm.exe','system.exe','idle.exe']);
+function normalizeAppControlName(value){return String(value||'').trim().replace(/^[“”"'\s]+|[“”"'\s]+$/g,'').replace(/['’](?:y?[ıiuü])$/i,'').replace(/(?:y[ıiuü])$/i,'').replace(/\s+(?:uygulamasını|uygulamasini|programını|programini|oyununu)$/i,'').trim();}
+async function closeAppByName(appName){
+  const target=normalizeAppControlName(appName),norm=normalizedSearchText(target);
+  if(!target)throw new Error('Kapatılacak uygulama adı boş.');
+  if(norm==='aura'||norm==='electron')throw new Error('AURA kendi çalışma sürecini kapatamaz.');
+  const queries=expandedAppQueries(target),procs=await currentProcesses();
+  const matches=(procs.items||[]).filter(p=>p?.pid&&!AURA_PROTECTED_PROCESS_NAMES.has(String(p.name||'').toLowerCase())).map(p=>({p,score:Math.max(...queries.map(q=>candidateScore(q,p.name)))})).filter(x=>x.score>=520).sort((a,b)=>b.score-a.score).slice(0,30).map(x=>x.p);
+  if(!matches.length)throw new Error('Çalışan uygulama bulunamadı: '+target);
+  const preview=matches.slice(0,8).map(p=>p.name+' (PID '+p.pid+')').join('\n');
+  if(!await confirmAction('AURA — Uygulama kapatma izni','Kapatılacak uygulama:\n\n'+target+'\n\n'+preview+'\n\nDevam edilsin mi?'))throw new Error('Kullanıcı işlemi iptal etti.');
+  const ids=matches.map(p=>p.pid).join(',');
+  const command="$sid=(Get-Process -Id $PID).SessionId;$ids=@("+ids+");foreach($id in $ids){$p=Get-Process -Id $id -ErrorAction SilentlyContinue;if($p -and $p.SessionId -eq $sid){try{$p.CloseMainWindow()|Out-Null}catch{}}};Start-Sleep -Milliseconds 1200;foreach($id in $ids){$p=Get-Process -Id $id -ErrorAction SilentlyContinue;if($p -and $p.SessionId -eq $sid){try{$p.Kill()}catch{}}}";
+  await new Promise((resolve,reject)=>execFile('powershell.exe',['-NoProfile','-NonInteractive','-Command',command],{windowsHide:true,maxBuffer:1024*1024},(e,so,se)=>e&&Number(e.code)!==0?reject(new Error(String(se||so||e.message))):resolve()));
+  environmentProfile=null; return {ok:true,app:target,closed:matches.map(p=>p.pid)};
+}
+async function uninstallAppByName(appName){
+  const target=normalizeAppControlName(appName),q=String(target||'').replace(/'/g,"''");
+  if(!target)throw new Error('Kaldırılacak uygulama adı boş.');
+  if(isSystemUtility(target))throw new Error('Windows sistem araçları AURA tarafından kaldırılmaz.');
+  const command="[Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes((Get-ItemProperty 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*','HKCU:\\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*' -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -like '*"+q+"*' } | Select-Object -First 1 DisplayName,UninstallString,QuietUninstallString,Publisher,DisplayVersion | ConvertTo-Json -Compress)))";
+  const reg=await new Promise(resolve=>execFile('powershell.exe',['-NoProfile','-NonInteractive','-Command',command],{windowsHide:true,maxBuffer:1024*1024},(e,so)=>{if(e)return resolve(null);try{resolve(JSON.parse(Buffer.from(String(so||'').trim(),'base64').toString('utf8')||'null'));}catch{resolve(null);}}));
+  if(reg?.UninstallString){
+    const cmd=String(reg.QuietUninstallString||reg.UninstallString);
+    if(!await confirmAction('AURA — Uygulama kaldırma izni','Windows kaldırma aracını çalıştır:\n\n'+reg.DisplayName+(reg.Publisher?'\nYayıncı: '+reg.Publisher:'')+(reg.DisplayVersion?'\nSürüm: '+reg.DisplayVersion:'')+'\n\nDevam edilsin mi?'))throw new Error('Kullanıcı işlemi iptal etti.');
+    await new Promise((resolve,reject)=>execFile('cmd.exe',['/d','/s','/c',cmd],{windowsHide:false,maxBuffer:2*1024*1024},(e,so,se)=>e?reject(new Error(String(se||so||e.message))):resolve()));
+    environmentProfile=null; return {ok:true,app:String(reg.DisplayName),type:'user-install'};
+  }
+  const ac="[Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes((Get-AppxPackage | Where-Object { $_.Name -like '*"+q+"*' -and -not $_.IsFramework -and -not $_.NonRemovable } | Select-Object -First 1 Name,PackageFullName | ConvertTo-Json -Compress)))";
+  const appx=await new Promise(resolve=>execFile('powershell.exe',['-NoProfile','-NonInteractive','-Command',ac],{windowsHide:true,maxBuffer:1024*1024},(e,so)=>{if(e)return resolve(null);try{resolve(JSON.parse(Buffer.from(String(so||'').trim(),'base64').toString('utf8')||'null'));}catch{resolve(null);}}));
+  if(appx?.PackageFullName){
+    if(!await confirmAction('AURA — Store uygulaması kaldırma izni','Kaldırılacak uygulama:\n\n'+String(appx.Name)+'\n\nDevam edilsin mi?'))throw new Error('Kullanıcı işlemi iptal etti.');
+    const full=String(appx.PackageFullName).replace(/'/g,"''");
+    const removeCmd="Get-AppxPackage | Where-Object { $_.PackageFullName -eq '"+full+"' -and -not $_.IsFramework -and -not $_.NonRemovable } | Remove-AppxPackage -ErrorAction Stop";
+    await new Promise((resolve,reject)=>execFile('powershell.exe',['-NoProfile','-NonInteractive','-Command',removeCmd],{windowsHide:true,maxBuffer:1024*1024},(e,so,se)=>e?reject(new Error(String(se||so||e.message))):resolve()));
+    environmentProfile=null; return {ok:true,app:String(appx.Name),type:'user-appx'};
+  }
+  throw new Error('Kaldırılabilir bir uygulama bulunamadı: '+target);
+}
+
 async function launchApp(appName) {
   const name=String(appName||'').toLowerCase().trim();
   const map={
@@ -1413,6 +1453,14 @@ async function handleTool(tool,args) {
     case 'desktop_run_powershell': return runPowerShell(args.command);
     case 'desktop_launch_app': return launchApp(args.app);
     case 'desktop_find_and_launch_app': return findAndLaunchApp(args.app);
+    case 'desktop_close_app': return closeAppByName(args.app);
+    case 'desktop_restart_app': {
+      const target=normalizeAppControlName(args.app);
+      await closeAppByName(target);
+      await new Promise(r=>setTimeout(r,900));
+      return {...await findAndLaunchApp(target),restarted:true};
+    }
+    case 'desktop_uninstall_app': return uninstallAppByName(args.app);
     case 'desktop_scan_environment': return scanEnvironment();
     case 'desktop_get_environment_profile': return getEnvironmentProfile();
     case 'desktop_get_usage_report': return getUsageReport();
@@ -1551,7 +1599,7 @@ app.whenReady().then(async()=>{
       return {ok:false,error:error?.message||'Bilinmeyen hata'};
     }
   });
-  ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'4.2.0',mode:'secure-local-agent-pc-aware-core',roots:allowedRoots(),features:['memory','conversation-memory','pc-core','hardware-hud','weather','battery','web-research','unity-tools','code-mode']}));
+  ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'4.3.0',mode:'secure-local-agent-pc-aware-core',roots:allowedRoots(),features:['memory','conversation-memory','pc-core','hardware-hud','weather','battery','web-research','unity-tools','code-mode','open-app','close-app','restart-app','uninstall-app']}));
   createWindow();
   scanEnvironment().catch(()=>{});
   app.on('activate',()=>{
