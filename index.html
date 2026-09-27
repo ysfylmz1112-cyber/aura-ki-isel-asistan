@@ -34,7 +34,7 @@ body[data-theme="ice"]{--accent:#bfefff;--accent2:#77a7ff}
 .workspace{height:100%;min-height:0;display:grid;grid-template-rows:390px minmax(0,1fr)}.coreStage{position:relative;display:grid;place-items:center;overflow:hidden;background:radial-gradient(circle at 50% 46%,color-mix(in srgb,var(--accent) 9%,transparent),transparent 22%),linear-gradient(180deg,#06090e,#05070b)}.coreStage:before,.coreStage:after{content:"";position:absolute;border-radius:50%;border:1px solid color-mix(in srgb,var(--accent) 10%,transparent);pointer-events:none}.coreStage:before{width:560px;height:560px;box-shadow:0 0 120px color-mix(in srgb,var(--accent) 4%,transparent)}.coreStage:after{width:760px;height:760px;border-color:color-mix(in srgb,var(--accent2) 7%,transparent)}
 .core{width:340px;height:340px;position:relative;display:grid;place-items:center;filter:drop-shadow(0 0 36px color-mix(in srgb,var(--accent) 8%,transparent))}.coreSvg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}.coreText{position:absolute;z-index:10;text-align:center;pointer-events:none;text-shadow:0 0 22px color-mix(in srgb,var(--accent) 30%,transparent)}.coreText b{display:block;font-size:23px;letter-spacing:7px}.coreText small{display:block;color:#7f96a8;font-size:7px;letter-spacing:2.4px;margin-top:7px}.coreGlow{position:absolute;width:104px;height:104px;border-radius:50%;background:radial-gradient(circle,#d7fbff 0,#70efff 13%,#2186a2 30%,#07141c 62%,transparent 74%);box-shadow:0 0 35px color-mix(in srgb,var(--accent) 55%,transparent),0 0 90px color-mix(in srgb,var(--accent) 16%,transparent);z-index:2}.coreEnergy{position:absolute;width:58px;height:58px;border-radius:50%;border:2px solid var(--accent);box-shadow:0 0 18px var(--accent),inset 0 0 22px color-mix(in srgb,var(--accent) 50%,transparent);z-index:3;animation:energy 1.5s ease-in-out infinite}.particle{position:absolute;width:4px;height:4px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent);z-index:7}.p1{top:18%;left:50%;animation:pfloat 3.3s infinite}.p2{right:16%;top:44%;background:var(--accent2);box-shadow:0 0 10px var(--accent2);animation:pfloat 2.7s infinite .4s}.p3{left:15%;top:58%;animation:pfloat 3s infinite .7s}.p4{right:26%;bottom:16%;background:var(--ok);box-shadow:0 0 10px var(--ok);animation:pfloat 3.7s infinite 1s}.p5{left:24%;bottom:25%;background:var(--accent2);box-shadow:0 0 10px var(--accent2);animation:pfloat 4s infinite 1.3s}
 .active .coreGlow{animation:corePulse .65s ease-in-out infinite}.active .coreEnergy{animation:energyFast .45s ease-in-out infinite}.active .coreSvg{animation:coreSpin 9s linear infinite}.core:not(.active) .coreSvg{animation:coreSpin 22s linear infinite}
-.coreLabelTop{position:absolute;top:14px;left:50%;transform:translateX(-50%);font-size:7px;letter-spacing:2px;color:#667786;z-index:11}.coreLabelBottom{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);font-size:7px;letter-spacing:1.7px;color:#586a78;z-index:11}.modeBadgeTop{position:absolute;top:15px;right:22px;z-index:12;color:var(--accent);font-size:8px;letter-spacing:1.4px}
+.coreLabelTop{position:absolute;top:14px;left:50%;transform:translateX(-50%);font-size:7px;letter-spacing:2px;color:#667786;z-index:11}.coreLabelBottom{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);font-size:7px;letter-spacing:1.7px;color:#586a78;z-index:11}.modeBadgeTop{position:absolute;top:15px;right:22px;z-index:12;color:var(--accent);font-size:8px;letter-spacing:1.4px}.weatherMini{position:absolute;top:14px;left:50%;transform:translateX(-50%);min-width:180px;padding:7px 10px;border:1px solid color-mix(in srgb,var(--accent) 16%,var(--line));background:rgba(7,11,16,.78);backdrop-filter:blur(12px);border-radius:999px;display:flex;align-items:center;justify-content:center;gap:9px;z-index:22;box-shadow:0 8px 24px rgba(0,0,0,.18)}.weatherMini .weatherIcon{font-size:14px}.weatherMini span{color:#71808e;font-size:7px;letter-spacing:1.2px}.weatherMini b{font-size:13px;color:#eaf8fc}.weatherMini small{font-size:7px;color:#65737f;max-width:95px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.weatherMini[data-loading="true"]{opacity:.7}@media(max-width:760px){.weatherMini{top:11px;min-width:150px}}
 .chatStage{min-height:0;display:grid;grid-template-rows:1fr auto;border-top:1px solid var(--line);background:#06080c}.chatWrap{min-height:0;overflow:auto}.chat{width:min(820px,calc(100% - 36px));margin:0 auto;padding:18px 0 26px}.welcome{text-align:center;padding:4px 0 16px;color:#8c97a3}.welcome h1{margin:0;font-size:18px;color:#e9eef2;font-weight:650}.welcome p{margin:6px 0 0;font-size:10px;color:#626d79}.welcomeOrb{display:none}
 .msg{font-size:14px;line-height:1.7;margin:16px 0;white-space:pre-wrap}.msg b{font-size:11px;margin-right:5px}.msg:not(.me):not(.error) b{color:var(--accent)}.msg.me{max-width:72%;margin-left:auto;background:#151a21;border:1px solid #232b35;border-radius:14px;padding:10px 13px}.msg.error{color:#ffb8bf;background:#21151a;border:1px solid #45272e;border-radius:12px;padding:10px 12px}
 .composerArea{padding:9px 14px 13px;background:linear-gradient(180deg,transparent,#06080c 25%)}.composer{width:min(820px,100%);margin:0 auto;border:1px solid #2a313a;background:#11151b;border-radius:16px;padding:7px;display:flex;align-items:flex-end;gap:6px;box-shadow:0 10px 32px #0005}.modeBadge{border:0!important;background:#191e26!important;color:#78838f!important;padding:9px 8px!important;font-size:8px!important}.input{flex:1;min-width:0;min-height:42px;max-height:150px;background:transparent;border:0;outline:0;color:#f6f8fa;padding:10px 8px;font-size:14px}.input::placeholder{color:#626d79}.send{width:42px;height:42px;padding:0;display:grid;place-items:center;border-radius:11px}.chips{width:min(820px,100%);margin:8px auto 0;display:flex;gap:6px;justify-content:center;flex-wrap:wrap}.chip{padding:6px 9px;font-size:9px;background:#0e1319}.helper{text-align:center;color:#4f5a66;font-size:8px;margin-top:7px}
@@ -151,6 +151,7 @@ body[data-theme="ice"]{--accent:#bfefff;--accent2:#77a7ff}
           <div class="hudCard hideNarrow"><span>GPU SICAKLIK</span><b id="hwTemp">—</b><div class="hudSignal"><span class="miniDot"></span><span id="hwHeartbeat">CANLI</span></div></div>
         </div>
       </div>
+      <div class="weatherMini" id="weatherMini" data-loading="true"><span class="weatherIcon" id="weatherIcon">☁</span><b id="weatherTemp">—</b><small id="weatherMeta">İstanbul · hava bekleniyor</small></div>
       <div class="modeBadgeTop" id="modeBadgeTop">SOHBET</div>
       <div class="core" id="core" data-state="ready">
         <div class="dataStream" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
@@ -206,6 +207,7 @@ body[data-theme="ice"]{--accent:#bfefff;--accent2:#77a7ff}
           <button class="chip" data-q="Kullanım raporumu göster">Kullanım</button>
           <button class="chip" data-q="Sistem durumunu göster">Sistem</button>
           <button class="chip" data-q="Chrome aç">Chrome</button>
+          <button class="chip" data-q="Bugün İstanbul hava nasıl?">Hava</button>
           <button class="chip" data-q="Güncel bilgi araştır">Web</button>
           <button class="chip" data-q="Unity projelerimi bul">Unity</button>
           <button class="chip" data-q="Kod modu">Kod</button>
@@ -261,6 +263,8 @@ let environmentProfile = null;
 let auraMemory = [];
 let hardwareMetrics = null;
 let hardwareTimer = null;
+let weatherData = null;
+let weatherCity = localStorage.getItem("aura_weather_city") || "Istanbul";
 
 let localAIModule = null;
 let localAIPromise = null;
@@ -304,6 +308,108 @@ function updateHardwareHUD(data){
   const netScale=Math.min(100,Math.max(down,up)/1000*100);
   setBar("hwNetBar",netScale);
 }
+function weatherIcon(code,isDay=true){
+  const c=Number(code);
+  if(c===0) return isDay?"☀":"☾";
+  if(c===1) return isDay?"🌤":"☾";
+  if(c===2) return "⛅";
+  if(c===3) return "☁";
+  if(c===45||c===48) return "🌫";
+  if(c>=51&&c<=67) return "🌧";
+  if(c>=71&&c<=86) return "🌨";
+  if(c>=95) return "⛈";
+  return "☁";
+}
+function weatherCodeLabel(code){ 
+  const map={0:"Açık",1:"Çoğunlukla açık",2:"Parçalı bulutlu",3:"Kapalı",45:"Sis",48:"Kırağılı sis",51:"Hafif çiseleme",53:"Çiseleme",55:"Yoğun çiseleme",61:"Hafif yağmur",63:"Yağmur",65:"Kuvvetli yağmur",71:"Hafif kar",73:"Kar",75:"Yoğun kar",80:"Hafif sağanak",81:"Sağanak",82:"Kuvvetli sağanak",85:"Hafif kar sağanağı",86:"Yoğun kar sağanağı",95:"Gök gürültülü fırtına",96:"Dolu ihtimalli fırtına",99:"Kuvvetli dolu ihtimalli fırtına"};
+  return map[Number(code)] || "Bilinmeyen hava";
+}
+function updateWeatherHUD(data){
+  weatherData=data||null;
+  const mini=$("weatherMini"), temp=$("weatherTemp"), meta=$("weatherMeta"), icon=$("weatherIcon");
+  if(!mini||!temp||!meta||!icon)return;
+  if(!data?.current){
+    mini.dataset.loading="true";
+    temp.textContent="—";
+    meta.textContent=String(weatherCity||"İstanbul")+" · bekleniyor";
+    icon.textContent="☁";
+    return;
+  }
+  mini.dataset.loading="false";
+  const city=String(data.location?.name||weatherCity||"İstanbul");
+  const t=Number(data.current?.temperatureC);
+  const feels=Number(data.current?.apparentTemperatureC);
+  temp.textContent=Number.isFinite(t)?Math.round(t)+"°C":"—";
+  meta.textContent=city+" · "+weatherCodeLabel(data.current?.weatherCode)+(Number.isFinite(feels)?" · Hissedilen "+Math.round(feels)+"°":"");
+  icon.textContent=weatherIcon(data.current?.weatherCode,data.current?.isDay);
+}
+function formatWeather(data){
+  if(!data?.current) return "Hava bilgisi alınamadı.";
+  const city=String(data.location?.name||weatherCity||"İstanbul");
+  const t=Number(data.current.temperatureC), feels=Number(data.current.apparentTemperatureC), h=Number(data.current.humidityPercent), w=Number(data.current.windKmh);
+  const max=Number(data.today?.maxC), min=Number(data.today?.minC), rain=Number(data.today?.precipitationProbability);
+  let s=city+" için hava durumu: ";
+  s+=Number.isFinite(t)?Math.round(t)+" °C":"sıcaklık ölçümü yok";
+  if(Number.isFinite(feels))s+=", hissedilen "+Math.round(feels)+" °C";
+  s+=". "+weatherCodeLabel(data.current.weatherCode);
+  if(Number.isFinite(h))s+=" · Nem %"+Math.round(h);
+  if(Number.isFinite(w))s+=" · Rüzgar "+Math.round(w)+" km/sa";
+  if(Number.isFinite(min)&&Number.isFinite(max))s+=" · Bugün "+Math.round(min)+"° / "+Math.round(max)+"°";
+  if(Number.isFinite(rain))s+=" · Yağış olasılığı %"+Math.round(rain);
+  return s+".";
+}
+function extractWeatherCity(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR");
+  const known=[
+    ["istanbul","Istanbul"],["ankara","Ankara"],["izmir","Izmir"],["bursa","Bursa"],["antalya","Antalya"],
+    ["adana","Adana"],["konya","Konya"],["gaziantep","Gaziantep"],["diyarbakır","Diyarbakir"],["diyarbakir","Diyarbakir"],
+    ["kayseri","Kayseri"],["mersin","Mersin"],["trabzon","Trabzon"],["samsun","Samsun"],["eskişehir","Eskisehir"],["eskisehir","Eskisehir"],
+    ["londra","London"],["berlin","Berlin"],["paris","Paris"],["roma","Rome"],["tokyo","Tokyo"],["new york","New York"]
+  ];
+  for(const [needle,name] of known) if(x.includes(needle)) return name;
+  const cityMatch=x.match(/^(?:bugün|bugun|şu an|su an|şimdi|simdi)?\s*([^,.!?]+?)\s+(?:'?(?:da|de)|hava|havad|weather)\b/i);
+  if(cityMatch){
+    const candidate=cityMatch[1].trim().replace(/['’](?:da|de)$/i,"").trim();
+    if(candidate.length>=2 && !/^(bugün|bugun|şu an|su an|şimdi|simdi)$/.test(candidate)) return candidate;
+  }
+  const after=x.match(/hava(?:\s+durumu|\s+nasıl|\s+nasil|\s+kaç|\s+kac)?\s+(?:da|de\s+)?([^,.!?]+)$/i);
+  if(after&&after[1]&&after[1].trim().length>=2)return after[1].trim();
+  return localStorage.getItem("aura_weather_city") || "Istanbul";
+}
+function isWeatherRequest(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
+  return /(?:hava|hava durumu|sıcaklık|sicaklik|kaç derece|kac derece|weather)/.test(x) &&
+    !/(pc|gpu|cpu|işlemci|ram|donanım|donanim|ekran kartı|ekran karti)/.test(x);
+}
+function isBatteryRequest(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
+  return /^(pilim kaç|pilim kac|pil yüzde kaç|pil yuzde kac|batarya|bataryam kaç|bataryam kac|şarjım kaç|sarjim kac)??$/.test(x);
+}
+async function refreshWeather(force=false){
+  if(!hasDesktopAgent()) return null;
+  const city=String(weatherCity||"Istanbul").trim()||"Istanbul";
+  try{
+    if(!force){
+      const cached=JSON.parse(localStorage.getItem("aura_weather_cache")||"null");
+      if(cached?.data?.current && Number.isFinite(cached.at) && Date.now()-cached.at<10*60*1000){
+        updateWeatherHUD(cached.data);
+        return cached.data;
+      }
+    }
+  }catch{}
+  try{
+    const data=await callDesktop("desktop_get_weather",{city});
+    weatherCity=String(data?.location?.name||city);
+    localStorage.setItem("aura_weather_city",weatherCity);
+    localStorage.setItem("aura_weather_cache",JSON.stringify({at:Date.now(),data}));
+    updateWeatherHUD(data);
+    return data;
+  }catch(error){
+    if($("weatherMeta")) $("weatherMeta").textContent="Hava verisi alınamadı";
+    return null;
+  }
+}
+
 async function refreshHardwareHUD(){
   if(!hasDesktopAgent()) return;
   try{
@@ -856,6 +962,24 @@ async function handleDirectCommand(q) {
     return answer;
   }
 
+  if (isWeatherRequest(q)) {
+    const city=extractWeatherCity(q);
+    weatherCity=city;
+    localStorage.setItem("aura_weather_city",city);
+    const data=await refreshWeather(false);
+    return data ? formatWeather(data) : "Hava bilgisine şu anda ulaşamadım.";
+  }
+
+  if (isBatteryRequest(q)) {
+    const data=await callDesktop("desktop_get_battery_status",{});
+    if(!data?.available) return "Bu cihazda okunabilir bir pil bilgisi yok veya masaüstü bilgisayar kullanılıyor.";
+    const charge=Number(data.chargePercent);
+    const runtime=Number(data.estimatedRuntimeMinutes);
+    let answer=Number.isFinite(charge)?"Pil seviyesi %"+Math.round(charge):"Pil seviyesi okunamadı";
+    if(Number.isFinite(runtime)&&runtime>0) answer+=" · tahmini kalan süre "+Math.floor(runtime/60)+" sa "+(runtime%60)+" dk";
+    return answer+".";
+  }
+
   if (isUsageRequest(q)) {
     const report=await callDesktop("desktop_get_usage_report",{});
     usageTopEl.textContent=formatUsageReport(report);
@@ -943,7 +1067,7 @@ async function run(q) {
       return;
     }
     const memoryDirect = isMemorySaveRequest(q) || isMemoryForgetRequest(q) || isMemoryListRequest(q) || isMemorySearchRequest(q) || isMemoryClearRequest(q);
-    const direct = memoryDirect || isPCRequest(q) || isUsageRequest(q) || isSystemRequest(q) || isHardwareRequest(q) || isUnityProjectRequest(q) || isConversationHistoryRequest(q) || isDesktopListRequest(q) || !!extractOpenTarget(q);
+    const direct = memoryDirect || isPCRequest(q) || isUsageRequest(q) || isWeatherRequest(q) || isBatteryRequest(q) || isSystemRequest(q) || isHardwareRequest(q) || isUnityProjectRequest(q) || isConversationHistoryRequest(q) || isDesktopListRequest(q) || !!extractOpenTarget(q);
     if (quick) {
       finish(q, quick, false);
       return;
@@ -1138,12 +1262,14 @@ status.textContent = "● HAZIR";
 loadAuraMemory().catch(()=>{});
 updateHardwareHUD(null);
 refreshHardwareHUD().catch(()=>{});
-hardwareTimer=setInterval(()=>refreshHardwareHUD(),3000);
+setTimeout(()=>refreshWeather(false).catch(()=>{}),450);
+hardwareTimer=setInterval(()=>refreshHardwareHUD(),10000);
+setInterval(()=>refreshWeather(false).catch(()=>{}),10*60*1000);
 
 ttsEl.textContent = voiceEnabled ? "HAZIR" : "KAPALI";
 input.focus();
 
-warmLocalModel();
+setTimeout(()=>warmLocalModel(),6500);
 
 setTimeout(async () => {
   if (!hasDesktopAgent()) {
