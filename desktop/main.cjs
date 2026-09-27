@@ -1295,6 +1295,8 @@ async function handleTool(tool,args) {
 function createWindow() {
   const win=new BrowserWindow({width:1480,height:920,minWidth:1000,minHeight:680,backgroundColor:'#02050b',webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
   win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
+  win.webContents.setAudioMuted(false);
+  win.webContents.setBackgroundThrottling(false);
   win.webContents.on('will-navigate',(event,url)=>{
     try{
       const u=new URL(url);
@@ -1304,6 +1306,7 @@ function createWindow() {
   });
   session.defaultSession.setPermissionRequestHandler((_wc,permission,callback)=>callback(permission==='media'));
   win.webContents.session.clearCache().catch(()=>{});
+  win.on('closed',()=>{ if(activeSpeechProcess){ try{activeSpeechProcess.kill();}catch{} activeSpeechProcess=null; } });
   win.loadFile(LOCAL_INDEX);
 }
 app.whenReady().then(async()=>{
@@ -1324,7 +1327,7 @@ app.whenReady().then(async()=>{
       return {ok:false,error:error?.message||'Bilinmeyen hata'};
     }
   });
-  ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'4.0.0',mode:'secure-local-agent-pc-aware-core',roots:allowedRoots(),features:['memory','conversation-memory','pc-core','hardware-hud','web-research','unity-tools','code-mode']}));
+  ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'4.1.0',mode:'secure-local-agent-pc-aware-core',roots:allowedRoots(),features:['memory','conversation-memory','pc-core','hardware-hud','web-research','unity-tools','code-mode']}));
   createWindow();
   scanEnvironment().catch(()=>{});
   app.on('activate',()=>{

@@ -466,7 +466,14 @@ async function ensureLocalAI(mode = "chat", onProgress = () => {}) {
     activeMode = mode;
     return engine;
   }
-  if (enginePromise) return enginePromise;
+  if (enginePromise) {
+    const pending = enginePromise;
+    await pending;
+    if (engine && activeModel === target) {
+      activeMode = mode;
+      return engine;
+    }
+  }
 
   const config = {
     initProgressCallback: progress => {
@@ -575,6 +582,52 @@ function compactMemory(memory){
   })).filter(x=>x.text);
 }
 
+function toolDirectoryPrompt() {
+  return TOOLS.map(function(tool) {
+    const fn = tool && tool.function ? tool.function : {};
+    const schema = fn && fn.parameters && fn.parameters.properties ? fn.parameters.properties : {};
+    const keys = Object.keys(schema);
+    return "- " + String(fn.name || "") + (keys.length ? " args: " + keys.join(", ") : " args: yok") + " — " + String(fn.description || "");
+  }).join("\n");
+}
+
+function extractJsonObject(text) {
+  const raw = String(text || "").trim();
+  const candidates = [raw];
+  const first = raw.indexOf("{");
+  const last = raw.lastIndexOf("}");
+  if (first >= 0 && last > first) candidates.push(raw.slice(first, last + 1));
+  for (const candidate of candidates) {
+    try {
+      const value = JSON.parse(candidate);
+      if (value && typeof value === "object") return value;
+    } catch {}
+  }
+  return null;
+}
+
+function extractManualToolCall(text) {
+  const value = extractJsonObject(text);
+  if (!value) return null;
+  let name = value.tool || value.name || value.action || (value.function && value.function.name);
+  let args = value.args || value.arguments || value.parameters || (value.function && value.function.arguments) || {};
+  if (typeof args === "string") {
+    try { args = JSON.parse(args); } catch { return null; }
+  }
+  name = String(name || "").trim();
+  const known = TOOLS.some(function(tool) {
+    return tool && tool.function && tool.function.name === name;
+  });
+  if (!known || !args || typeof args !== "object" || Array.isArray(args)) return null;
+  return { name, args };
+}
+
+function assistantToolResultMessage(toolCall, result) {
+  return "AURA ARAÇ SONUCU\nAraç: " + toolCall.name +
+    "\nSonuç:\n" + JSON.stringify(result).slice(0, 7000) +
+    "\n\nŞimdi kullanıcının ilk isteğine göre nihai cevabı ver. Başka bir araç gerçekten gerekiyorsa yalnızca JSON formatında yeni araç çağrısı üret.";
+}
+
 export async function askLocalAI(message, history = [], onProgress = () => {}, environment = null, mode = "chat", memory = []) {
   const value = String(message || "").trim();
   if (!value) throw new Error("Mesaj boş.");
@@ -593,74 +646,62 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     ? "\nPC BAĞLAM ÖZETİ:\n" + compactEnvironment(environment)
     : "";
 
+  const wantsTools = desktopAvailable() && mode !== "code" && /güncel|guncel|araştır|arastir|internette|web|site|dosya|klasör|klasor|uygulama|oyun|bilgisayar|masaüstü|masaustu|sistem|kullanım|kullanim|hatırla|hatirla|unut|geçen hafta|gecen hafta|dün|dun|bugün|bugun|konuşma geçmişi|konusma gecmisi|unity|cpu|ram|gpu|disk|performans|donanım|donanim/.test(
+    value.toLocaleLowerCase("tr-TR")
+  );
+
+  const toolExample = JSON.stringify({tool:"desktop_tool_name", args:{}});
+  const toolProtocol = wantsTools
+    ? "\nARAÇ KULLANIMI: OpenAI tools alanı kullanılmıyor. Araç gerekiyorsa yalnızca " + toolExample + " biçiminde tek JSON nesnesi üret. JSON dışında metin yazma. Araç sonucu geldiğinde normal Türkçe cevap ver.\nKULLANILABİLEN ARAÇLAR:\n" + toolDirectoryPrompt()
+    : "";
+
   const messages = [
     {
       role:"system",
       content: SYSTEM_PROMPT + modePrompt + memoryContext + pcContext +
-        (desktopAvailable() ? "\nMasaüstü ajanı BAĞLI." : "\nMasaüstü ajanı BAĞLI DEĞİL.")
+        (desktopAvailable() ? "\nMasaüstü ajanı BAĞLI." : "\nMasaüstü ajanı BAĞLI DEĞİL.") +
+        toolProtocol
     },
     ...cleanMessages(mode === "code" ? history.slice(-4) : history),
     { role:"user", content:value }
   ];
 
-  const wantsTools = desktopAvailable() && /güncel|guncel|araştır|arastir|internette|web|site|dosya|klasör|klasor|uygulama|oyun|bilgisayar|masaüstü|masaustu|sistem|kullanım|kullanim|hatırla|hatirla|unut|geçen hafta|gecen hafta|dün|dun|bugün|bugun|konuşma geçmişi|konusma gecmisi|unity|cpu|ram|gpu|disk|performans|donanım|donanim/.test(
-    value.toLocaleLowerCase("tr-TR")
-  );
-
   for(let round=0; round<3; round++){
-    let response;
-    try{
-      response=await localEngine.chat.completions.create({
-        messages,
-        tools:wantsTools?TOOLS:undefined,
-        tool_choice:wantsTools?"auto":undefined,
-        temperature:mode==="code"?0.18:0.5,
-        top_p:mode==="code"?0.82:0.85,
-        max_tokens:mode==="code"?2400:320,
-        stream:false
-      });
-    }catch(firstError){
-      response=await localEngine.chat.completions.create({
-        messages,
-        temperature:mode==="code"?0.22:0.52,
-        top_p:0.84,
-        max_tokens:mode==="code"?2400:320,
-        stream:false
-      });
-    }
+    const response = await localEngine.chat.completions.create({
+      messages,
+      temperature:mode==="code"?0.18:0.5,
+      top_p:mode==="code"?0.82:0.85,
+      max_tokens:mode==="code"?2400:360,
+      stream:false
+    });
 
-    const assistantMessage=response?.choices?.[0]?.message;
+    const assistantMessage=response && response.choices && response.choices[0] ? response.choices[0].message : null;
     if(!assistantMessage) throw new Error("Yerel AI cevap üretmedi.");
     messages.push(assistantMessage);
 
-    const toolCalls=Array.isArray(assistantMessage.tool_calls)?assistantMessage.tool_calls:[];
-    if(!toolCalls.length){
-      const answer=String(assistantMessage.content||"").trim();
-      if(!answer) throw new Error("Yerel AI boş cevap verdi.");
-      return answer;
-    }
-
-    for(const call of toolCalls.slice(0,1)){
-      try{
-        const result=await executeTool(call);
+    if(wantsTools){
+      const manual=extractManualToolCall(assistantMessage.content);
+      if(manual){
+        let result;
+        try {
+          result=await desktopCall(manual.name,manual.args);
+        } catch(error) {
+          result={error:error && error.message ? error.message : "Araç hatası"};
+        }
         messages.push({
-          role:"tool",
-          tool_call_id:call.id,
-          name:call.function.name,
-          content:JSON.stringify(result).slice(0,6000)
+          role:"user",
+          content:assistantToolResultMessage(manual,result)
         });
-      }catch(error){
-        messages.push({
-          role:"tool",
-          tool_call_id:call.id,
-          name:call.function.name,
-          content:JSON.stringify({error:error?.message||"Araç hatası"}).slice(0,2000)
-        });
+        continue;
       }
     }
+
+    const answer=String(assistantMessage.content || "").trim();
+    if(!answer) throw new Error("Yerel AI boş cevap verdi.");
+    return answer;
   }
 
-  return "İşlem için gereken araç adımlarının sınırına ulaştım.";
+
 }
 
 export function getLocalAIModel() { return activeModel; }

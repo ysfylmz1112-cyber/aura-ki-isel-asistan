@@ -120,7 +120,7 @@ body[data-theme="ice"]{--accent:#bfefff;--accent2:#77a7ff}
     <div id="usageTop" class="usageText">Kullanım raporu henüz alınmadı.</div>
     <div class="sideLabel" style="padding-left:0">SON SOHBETLER</div>
     <div class="history" id="history"></div>
-    <div class="footer">AURA OS 4.0 · LOCAL AI · MEMORY · PC CORE · CODE</div>
+    <div class="footer">AURA OS 4.1 · LOCAL AI · MEMORY · PC CORE · CODE</div>
   </div>
 </aside>
 
@@ -128,7 +128,7 @@ body[data-theme="ice"]{--accent:#bfefff;--accent2:#77a7ff}
   <header class="topbar">
     <div class="topLeft">
       <span class="coreDot"></span>
-      <div><div class="modelName">AURA</div><div class="modelMeta" id="sub">AURA 4.0 · Yerel AI · Hafıza · PC Core · Web · Kod</div></div>
+      <div><div class="modelName">AURA</div><div class="modelMeta" id="sub">AURA 4.1 · Yerel AI · Hafıza · PC Core · Web · Kod</div></div>
     </div>
     <div class="topActions">
       <button class="btn" id="modeBtn">⌘ Kod</button>
@@ -513,46 +513,113 @@ function addMessage(kind, label, text) {
   chat.scrollTop = chat.scrollHeight;
 }
 
-function speak(text) {
-  if (!voiceEnabled || !window.speechSynthesis) return;
-  const value = String(text || "").trim();
-  if (!value) return;
+let speechFallbackTimer=null;
+let speechGeneration=0;
 
-  const speakNow = () => {
-    const voices = speechSynthesis.getVoices();
-    const u = new SpeechSynthesisUtterance(value);
-    const tr = voices.find(v => /^tr(-|_)/i.test(String(v.lang || ""))) ||
-      voices.find(v => /turk/i.test(String(v.name || "")));
-    if (tr) u.voice = tr;
-    u.lang = tr?.lang || "tr-TR";
-    u.rate = 0.96;
-    u.pitch = 1;
-    u.volume = 1;
+function getSpeechVoices(){
+  try{return Array.from(window.speechSynthesis && window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : []);}catch{return [];}
+}
 
-    ttsEl.textContent = "KONUŞUYOR";
+async function waitForSpeechVoices(timeoutMs=1800){
+  const existing=getSpeechVoices();
+  if(existing.length)return existing;
+  return await new Promise(resolve=>{
+    let done=false;
+    const finish=voices=>{
+      if(done)return;
+      done=true;
+      try{window.speechSynthesis.onvoiceschanged=null;}catch{}
+      resolve(voices||[]);
+    };
+    try{window.speechSynthesis.onvoiceschanged=()=>finish(getSpeechVoices());}catch{}
+    const started=Date.now();
+    const timer=setInterval(()=>{
+      const voices=getSpeechVoices();
+      if(voices.length||Date.now()-started>=timeoutMs){
+        clearInterval(timer);
+        finish(voices);
+      }
+    },100);
+  });
+}
+
+function nativeSpeechFallback(text,generation){
+  if(generation!==speechGeneration||!voiceEnabled||!hasDesktopAgent())return;
+  clearTimeout(speechFallbackTimer);
+  speechFallbackTimer=null;
+  callDesktop("desktop_speak_text",{text:String(text||"").slice(0,4000)}).catch(()=>{}).finally(()=>{
+    if(generation===speechGeneration&&!busy){
+      speaking=false;
+      ttsEl.textContent=voiceEnabled?"HAZIR":"KAPALI";
+      setCoreState("ready");
+    }
+  });
+}
+
+async function speak(text){
+  if(!voiceEnabled){ttsEl.textContent="KAPALI";return;}
+  const value=String(text||"").trim();
+  if(!value)return;
+
+  const generation=++speechGeneration;
+  clearTimeout(speechFallbackTimer);
+
+  if(!window.speechSynthesis){
+    ttsEl.textContent="YEDEK SES";
     setCoreState("speaking");
+    nativeSpeechFallback(value,generation);
+    return;
+  }
 
-    u.onend = () => {
-      ttsEl.textContent = voiceEnabled ? "HAZIR" : "KAPALI";
-      if (!busy) setCoreState("ready");
-    };
-    u.onerror = () => {
-      ttsEl.textContent = "HAZIR";
-      if (!busy) setCoreState("ready");
-    };
+  const voices=await waitForSpeechVoices();
+  if(generation!==speechGeneration||!voiceEnabled)return;
 
-    speechSynthesis.cancel();
-    speechSynthesis.speak(u);
+  const u=new SpeechSynthesisUtterance(value);
+  const tr=voices.find(v=>/^tr(-|_)/i.test(String(v.lang||""))) ||
+    voices.find(v=>/turk|türk/i.test(String(v.name||"")));
+  if(tr)u.voice=tr;
+  u.lang=tr && tr.lang ? tr.lang : "tr-TR";
+  u.rate=0.96;
+  u.pitch=1;
+  u.volume=1;
+
+  let started=false;
+  ttsEl.textContent="KONUŞUYOR";
+  setCoreState("speaking");
+
+  u.onstart=()=>{
+    if(generation!==speechGeneration)return;
+    started=true;
+    speaking=true;
+    clearTimeout(speechFallbackTimer);
+  };
+  u.onend=()=>{
+    if(generation!==speechGeneration)return;
+    speaking=false;
+    ttsEl.textContent=voiceEnabled?"HAZIR":"KAPALI";
+    if(!busy)setCoreState("ready");
+  };
+  u.onerror=()=>{
+    if(generation!==speechGeneration)return;
+    speaking=false;
+    if(!busy)setCoreState("ready");
+    nativeSpeechFallback(value,generation);
   };
 
-  if (speechSynthesis.getVoices().length) {
-    speakNow();
-  } else {
-    speechSynthesis.onvoiceschanged = speakNow;
-    setTimeout(() => {
-      if (voiceEnabled && !speechSynthesis.speaking) speakNow();
-    }, 250);
+  try{
+    speechSynthesis.cancel();
+    speechSynthesis.resume();
+    speechSynthesis.speak(u);
+  }catch{
+    nativeSpeechFallback(value,generation);
+    return;
   }
+
+  speechFallbackTimer=setTimeout(()=>{
+    if(!started&&generation===speechGeneration&&!speechSynthesis.speaking){
+      nativeSpeechFallback(value,generation);
+    }
+  },1200);
 }
 
 function finish(q, answer, usedAI = false) {
@@ -943,6 +1010,8 @@ voiceBtn.addEventListener("click",()=>{
   voiceEnabled=!voiceEnabled;
   localStorage.setItem("aura_voice_enabled",voiceEnabled?"1":"0");
   if(!voiceEnabled){
+    speechGeneration++;
+    clearTimeout(speechFallbackTimer);
     speechSynthesis?.cancel?.();
     if(hasDesktopAgent()) callDesktop("desktop_stop_speech",{}).catch(()=>{});
     ttsEl.textContent="KAPALI";
