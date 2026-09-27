@@ -50,9 +50,13 @@ async function saveExtraRoots() {
 const USAGE_FILE = path.join(app.getPath('userData'), 'aura-usage.json');
 const PROFILE_FILE = path.join(app.getPath('userData'), 'aura-device-profile.json');
 const MEMORY_FILE = path.join(app.getPath('userData'), 'aura-memory.json');
+const CONVERSATION_FILE = path.join(app.getPath('userData'), 'aura-conversations.json');
 let usageState = { launches: [], counts: {}, lastLaunch: null };
 let memoryState = { version:1, items:[] };
+let conversationState = { version:1, items:[] };
 let memoryWritePromise = Promise.resolve();
+let conversationWritePromise = Promise.resolve();
+let hardwareSnapshot = null;
 let environmentProfile = null;
 let environmentScanPromise = null;
 
@@ -70,7 +74,101 @@ async function loadUsageState() {
   }
 }
 
-async function loadMemoryState() {
+async function loadConversationState() {
+  try{
+    const raw=await fsp.readFile(CONVERSATION_FILE,'utf8');
+    const data=JSON.parse(raw);
+    conversationState={
+      version:1,
+      items:Array.isArray(data?.items)
+        ? data.items.filter(x=>x && typeof x.user==='string' && typeof x.assistant==='string').slice(-1200)
+        : []
+    };
+  }catch{
+    conversationState={version:1,items:[]};
+  }
+}
+
+async function saveConversationState(){
+  conversationWritePromise=conversationWritePromise.then(async()=>{
+    await fsp.mkdir(path.dirname(CONVERSATION_FILE),{recursive:true});
+    await fsp.writeFile(CONVERSATION_FILE,JSON.stringify(conversationState,null,2),'utf8');
+  }).catch(()=>{});
+  return conversationWritePromise;
+}
+
+function conversationTimeWindow(query){
+  const q=String(query||'').toLocaleLowerCase('tr-TR').trim();
+  const now=new Date();
+  let start=null,end=null,label='Tüm kayıtlı geçmiş';
+  const localMidnight=d=>{const x=new Date(d);x.setHours(0,0,0,0);return x;};
+  if(/geçen hafta|gecen hafta/.test(q)){
+    const day=(now.getDay()+6)%7;
+    const thisMonday=localMidnight(new Date(now.getTime()-day*86400000));
+    start=new Date(thisMonday.getTime()-7*86400000);
+    end=thisMonday; label='Geçen hafta';
+  }else if(/bu hafta/.test(q)){
+    const day=(now.getDay()+6)%7;
+    start=localMidnight(new Date(now.getTime()-day*86400000));
+    end=new Date(); label='Bu hafta';
+  }else if(/dün|dun/.test(q)){
+    start=localMidnight(new Date(now.getTime()-86400000));
+    end=localMidnight(now); label='Dün';
+  }else if(/bugün|bugun/.test(q)){
+    start=localMidnight(now);
+    end=new Date(); label='Bugün';
+  }else{
+    const m=q.match(/son\s+(\d+)\s+gün/);
+    if(m){
+      const days=Math.max(1,Math.min(90,Number(m[1])||1));
+      start=new Date(Date.now()-days*86400000); end=new Date(); label='Son '+days+' gün';
+    }
+  }
+  return {start:start?.toISOString()||null,end:end?.toISOString()||null,label};
+}
+
+function searchConversationScore(query,item){
+  const q=normalizedSearchText(query)
+    .replace(/gecen hafta|geçen hafta|dun|dün|bugun|bugün|bu hafta|son \d+ gun|son \d+ gün/g,' ')
+    .trim();
+  const t=normalizedSearchText(String(item?.user||'')+' '+String(item?.assistant||''));
+  if(!q) return 1;
+  return memorySearchScore(q,t);
+}
+
+function searchConversations(query,maxResults=18){
+  const q=String(query||'').trim();
+  const window=conversationTimeWindow(q);
+  const items=conversationState.items.filter(item=>{
+    const t=Date.parse(item?.at||'');
+    if(!Number.isFinite(t)) return false;
+    if(window.start && t<Date.parse(window.start)) return false;
+    if(window.end && t>=Date.parse(window.end)) return false;
+    return true;
+  }).map(item=>({...item,score:searchConversationScore(q,item)}))
+    .filter(x=>x.score>0)
+    .sort((a,b)=>b.score-a.score || String(b.at).localeCompare(String(a.at)))
+    .slice(0,Math.max(1,Math.min(50,Number(maxResults)||18)));
+  return {query:q,count:items.length,timeWindow:window,items};
+}
+
+async function logConversation(user,assistant,mode='chat'){
+  const u=String(user||'').trim();
+  const a=String(assistant||'').trim();
+  if(!u||!a) return {ok:false,logged:false};
+  conversationState.items.push({
+    id:'turn_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7),
+    at:new Date().toISOString(),
+    user:u.slice(0,2200),
+    assistant:a.slice(0,5000),
+    mode:String(mode||'chat')
+  });
+  conversationState.items=conversationState.items.slice(-1200);
+  await saveConversationState();
+  return {ok:true,logged:true,count:conversationState.items.length};
+}
+
+async function loadMemoryState(){
   try {
     const raw=await fsp.readFile(MEMORY_FILE,'utf8');
     const data=JSON.parse(raw);
@@ -1016,6 +1114,36 @@ async function openExternalUrl(url) {
   return {ok:true,url};
 }
 
+async function webResearch(query,maxResults=12) {
+  const q=String(query||'').trim();
+  if(!q || q.length>300) throw new Error('Geçersiz araştırma sorgusu.');
+  const queries=[
+    q,
+    q+' güncel',
+    q+' official',
+  ];
+  const seen=new Set();
+  const results=[];
+  for(const variant of queries){
+    const data=await search(variant);
+    for(const item of (data?.results||[])){
+      const url=String(item?.url||item?.link||'');
+      const key=(url||String(item?.title||'')).toLowerCase();
+      if(!key||seen.has(key)) continue;
+      seen.add(key);
+      results.push({
+        title:String(item?.title||'').slice(0,220),
+        url,
+        snippet:String(item?.description||'').slice(0,500),
+        query:variant
+      });
+      if(results.length>=Math.max(4,Math.min(24,Number(maxResults)||12))) break;
+    }
+    if(results.length>=Math.max(4,Math.min(24,Number(maxResults)||12))) break;
+  }
+  return {query:q,searches:queries,results};
+}
+
 async function webSearch(query) {
   const q=String(query||'').trim();
   if (!q || q.length>300) throw new Error('Geçersiz arama sorgusu.');
@@ -1030,11 +1158,104 @@ async function fetchWebPage(url) {
   const text=raw.replace(/<script\b[\s\S]*?<\/script>/gi,' ').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
   return {url,status:response.status,text:text.slice(0,30000)};
 }
-function systemInfo() {
+async function findUnityProjects(maxResults=20){
+  const roots=[
+    path.join(os.homedir(),'Desktop'),
+    path.join(os.homedir(),'Documents'),
+    path.join(os.homedir(),'Downloads'),
+    ...extraRoots
+  ].map(normalizePath);
+  const found=[];
+  const seen=new Set();
+  const skip=new Set(['node_modules','.git','Library','Temp','Logs','obj','bin','.vs','.idea']);
+  async function walk(dir,depth){
+    if(depth>6 || found.length>=maxResults) return;
+    let entries=[];
+    try{ entries=await fsp.readdir(dir,{withFileTypes:true}); }catch{return;}
+    const hasAssets=entries.some(e=>e.isDirectory()&&e.name==='Assets');
+    const hasProjectSettings=entries.some(e=>e.isDirectory()&&e.name==='ProjectSettings');
+    if(hasAssets&&hasProjectSettings){
+      const key=dir.toLowerCase();
+      if(!seen.has(key)){
+        seen.add(key);
+        found.push({name:path.basename(dir),path:dir,source:'unity-project'});
+      }
+      return;
+    }
+    for(const e of entries.filter(e=>e.isDirectory()&&!skip.has(e.name)&&!e.name.startsWith('.')).slice(0,120)){
+      if(found.length>=maxResults) break;
+      await walk(path.join(dir,e.name),depth+1);
+    }
+  }
+  for(const root of roots){
+    if(found.length>=maxResults) break;
+    await walk(root,0);
+  }
+  return {count:found.length,items:found.slice(0,maxResults)};
+}
+
+async function getHardwareMetrics(){
+  const totalGB=Number((os.totalmem()/1024/1024/1024).toFixed(1));
+  const freeGB=Number((os.freemem()/1024/1024/1024).toFixed(1));
+  const usedPercent=totalGB ? ((totalGB-freeGB)/totalGB)*100 : null;
+  let cpu={usage:null,model:os.cpus()?.[0]?.model||'Bilinmiyor',cores:os.cpus()?.length||0};
+  let disks=[];
+  let psNet={downloadBps:0,uploadBps:0};
+  try{
+    const command=[
+      "$cpu=(Get-CimInstance Win32_Processor | Measure-Object -Property LoadPercentage -Average).Average",
+      "$disks=Get-CimInstance Win32_LogicalDisk -Filter \"DriveType=3\" | Select-Object DeviceID,Size,FreeSpace",
+      "$net=Get-NetAdapterStatistics -ErrorAction SilentlyContinue | Where-Object { $_.Name } | Measure-Object -Property ReceivedBytes -Sum -Maximum; $net2=Get-NetAdapterStatistics -ErrorAction SilentlyContinue | Where-Object { $_.Name } | Measure-Object -Property SentBytes -Sum -Maximum",
+      "[pscustomobject]@{cpu=$cpu;disks=@($disks);recv=[double]$net.Sum;sent=[double]$net2.Sum} | ConvertTo-Json -Compress"
+    ].join(';');
+    const raw=await new Promise((resolve)=>{
+      execFile('powershell.exe',['-NoProfile','-NonInteractive','-Command',command],{windowsHide:true,maxBuffer:4*1024*1024},(error,stdout)=>resolve(error?'':String(stdout||'')));
+    });
+    if(raw){
+      const data=JSON.parse(raw);
+      cpu.usage=Number.isFinite(Number(data.cpu))?Number(data.cpu):null;
+      disks=(Array.isArray(data.disks)?data.disks:[data.disks]).filter(Boolean).map(d=>{
+        const size=Number(d.Size||0), free=Number(d.FreeSpace||0);
+        const used=size-free;
+        return {drive:String(d.DeviceID||'').trim(),totalGB:Number((size/1024/1024/1024).toFixed(1)),freeGB:Number((free/1024/1024/1024).toFixed(1)),usedPercent:size?used/size*100:null};
+      }).filter(d=>d.drive);
+      psNet={downloadBps:Number(data.recv||0),uploadBps:Number(data.sent||0)};
+    }
+  }catch{}
+  let gpu={name:null,usage:null,temperatureC:null,memoryUsedMB:null,memoryTotalMB:null,source:null};
+  try{
+    const nvidia=await new Promise(resolve=>execFile('nvidia-smi.exe',['--query-gpu=name,utilization.gpu,temperature.gpu,memory.used,memory.total','--format=csv,noheader,nounits'],{windowsHide:true,maxBuffer:1024*1024},(error,stdout)=>resolve(error?'':String(stdout||''))));
+    if(nvidia.trim()){
+      const parts=nvidia.trim().split(',').map(x=>x.trim());
+      gpu={name:parts[0]||null,usage:Number(parts[1]),temperatureC:Number(parts[2]),memoryUsedMB:Number(parts[3]),memoryTotalMB:Number(parts[4]),source:'nvidia-smi'};
+    }
+  }catch{}
+  const now=Date.now();
+  let downloadMbps=0,uploadMbps=0;
+  if(hardwareSnapshot?.at && Number.isFinite(psNet.downloadBps) && Number.isFinite(psNet.uploadBps)){
+    const seconds=Math.max(.25,(now-hardwareSnapshot.at)/1000);
+    downloadMbps=Math.max(0,((psNet.downloadBps-(hardwareSnapshot.recv||0))*8/seconds)/1e6);
+    uploadMbps=Math.max(0,((psNet.uploadBps-(hardwareSnapshot.sent||0))*8/seconds)/1e6);
+  }
+  hardwareSnapshot={at:now,recv:psNet.downloadBps,sent:psNet.uploadBps};
+  return {
+    timestamp:new Date().toISOString(),
+    cpu,
+    memory:{totalGB,freeGB,usedGB:Number((totalGB-freeGB).toFixed(1)),usedPercent},
+    disks,
+    gpu,
+    network:{downloadMbps,uploadMbps,receivedBytes:psNet.downloadBps,sentBytes:psNet.uploadBps},
+    temperatureSource:gpu.source||null
+  };
+}
+
+function systemInfo(){
   return {platform:process.platform,arch:process.arch,os:os.type()+' '+os.release(),hostname:os.hostname(),cpu:os.cpus()?.[0]?.model||'Bilinmiyor',cpuCount:os.cpus()?.length||0,memoryGB:Math.round(os.totalmem()/1024/1024/1024),freeMemoryGB:Math.round(os.freemem()/1024/1024/1024),home:os.homedir()};
 }
 async function handleTool(tool,args) {
   switch(tool) {
+    case 'desktop_get_hardware_metrics': return getHardwareMetrics();
+    case 'desktop_find_unity_projects': return findUnityProjects(args.maxResults||20);
     case 'desktop_get_system_info': return systemInfo();
     case 'desktop_list_directory': return listDirectory(normalizePath(args.path));
     case 'desktop_read_text_file': return {path:normalizePath(args.path),content:await readTextFile(normalizePath(args.path))};
@@ -1054,6 +1275,8 @@ async function handleTool(tool,args) {
     case 'desktop_get_environment_profile': return getEnvironmentProfile();
     case 'desktop_get_usage_report': return getUsageReport();
     case 'desktop_memory_save': return remember(args.text,args.tags||[]);
+    case 'desktop_conversation_search': return searchConversations(args.query,args.maxResults||18);
+    case 'desktop_conversation_log': return logConversation(args.user,args.assistant,args.mode||'chat');
     case 'desktop_memory_search': return searchMemory(args.query,args.maxResults||12);
     case 'desktop_memory_list': return listMemory();
     case 'desktop_memory_forget': return forgetMemory(args.query);
@@ -1062,6 +1285,7 @@ async function handleTool(tool,args) {
     case 'desktop_speak_text': return speakTextWindows(args.text);
     case 'desktop_stop_speech': return stopWindowsSpeech();
     case 'desktop_open_unity_project': return openUnityProject(normalizePath(args.projectPath));
+    case 'desktop_web_research': return webResearch(args.query,args.maxResults||12);
     case 'desktop_web_search': return webSearch(args.query);
     case 'desktop_fetch_web_page': return fetchWebPage(args.url);
     default: throw new Error('Bilinmeyen AURA aracı: '+tool);
@@ -1086,6 +1310,7 @@ app.whenReady().then(async()=>{
   await loadExtraRoots();
   await loadUsageState();
   await loadMemoryState();
+  await loadConversationState();
   ipcMain.handle('aura:tool',async(event,payload)=>{
     try{
       const senderUrl = event?.senderFrame?.url || '';
@@ -1099,7 +1324,7 @@ app.whenReady().then(async()=>{
       return {ok:false,error:error?.message||'Bilinmeyen hata'};
     }
   });
-  ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'3.2.0',mode:'secure-local-agent-pc-aware',roots:allowedRoots()}));
+  ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'4.0.0',mode:'secure-local-agent-pc-aware-core',roots:allowedRoots(),features:['memory','conversation-memory','pc-core','hardware-hud','web-research','unity-tools','code-mode']}));
   createWindow();
   scanEnvironment().catch(()=>{});
   app.on('activate',()=>{

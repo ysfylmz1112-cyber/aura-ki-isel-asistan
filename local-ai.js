@@ -15,7 +15,11 @@ const SYSTEM_PROMPT = [
   "Sen AURA'sın: kişisel, yerel ve Türkçe bir AI asistanısın.",
   "Önce kullanıcının ne istediğini doğru anla. Bilmediğin bilgiyi uydurma.",
   "Güncel bilgi gerektiğinde yalnızca izin verilen web araçlarını kullan ve kaynağı ayırt et.",
-  "Kullanıcının kalıcı hafızası sana ayrıca verilebilir. Hafızayı gerçek kullanıcı bilgisi gibi kullan; yeni bilgi kaydetmeden önce açık bir hatırlama isteği gelmiş olmalı.",
+  "Kullanıcının kalıcı hafızası ve konuşma geçmişi sana ayrıca verilebilir. Bunları gerçek bağlam olarak kullan; yeni bilgi kaydetmeden önce açık bir hatırlama isteği gelmiş olmalı.",
+  "ZAMANLI HAFIZA: Kullanıcı geçmiş konuşmalarından söz ederse konuşma geçmişi aracını kullan. 'dün', 'geçen hafta', 'bugün' gibi ifadeleri araca aynen taşı.",
+  "WEB ARAŞTIRMA: Güncel bilgi gerektiğinde araştırma aracını kullan; mümkünse birden fazla arama varyasyonu çalıştırılmış sonuçları karşılaştır ve kaynak adreslerini yanıta dahil et.",
+  "PC CORE: Canlı CPU/RAM/GPU/disk/ağ değerlerini yalnızca masaüstü aracı döndürdüğü verilerle söyle; ölçülmeyen sıcaklık veya performansı uydurma.",
+  "UNITY GELİŞTİRME: Unity projesi bulunması, proje klasörü açılması veya kod dosyası okunması istendiğinde ilgili masaüstü araçlarını kullan. Yazma/silme/komut çalıştırma gibi değişikliklerde kullanıcı onayını bekle.",
   "KOD ÜRETİM: Her yaygın programlama dilinde gerçek ve çalıştırılabilir kod üret. Pseudocode veya yarım örnek verme. İstenen dili aynen kullan. Tam dosya istenirse tam dosyayı ver. Importları, bağımlılıkları, hata yönetimini ve isim tutarlılığını düşün.",
   "KOD DÜZELTME: Hata verildiğinde problemi kısa biçimde belirle ve düzeltilmiş tam kodu üret. Kullanıcı istemedikçe uzun eğitim metnine girme.",
   "KOD MODU: C#, C++, C, Java, Kotlin, Swift, Python, JavaScript, TypeScript, Rust, Go, PHP, Ruby, Lua, Dart, SQL, HTML, CSS, Bash, PowerShell ve diğer yaygın dillerde kod yaz.",
@@ -101,9 +105,59 @@ const SYSTEM_PROMPT = [
   {
     type: "function",
     function: {
+      name: "desktop_conversation_search",
+      description: "Kalıcı AURA konuşma geçmişinde bugünün, dünün, geçen haftanın veya sorgunun geçtiği eski konuşmaları arar. Kullanıcı 'geçen hafta ne demiştim?' gibi zaman ifadeleri kullanıyorsa tarih aralığını aracın kendisi yorumlar.",
+      parameters: {
+        type:"object",
+        properties:{query:{type:"string"},maxResults:{type:"number"}},
+        required:["query"],
+        additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_conversation_log",
+      description: "AURA sohbetindeki bir kullanıcı ve asistan mesajını yerel konuşma geçmişine kaydeder. Normalde arayüz tarafından otomatik kullanılır.",
+      parameters: {
+        type:"object",
+        properties:{
+          user:{type:"string"},
+          assistant:{type:"string"},
+          mode:{type:"string"}
+        },
+        required:["user","assistant"],
+        additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
       name: "desktop_memory_clear",
       description: "Tüm kalıcı hafızayı, kullanıcı onayıyla temizler.",
       parameters: {type:"object",properties:{},additionalProperties:false}
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_get_hardware_metrics",
+      description: "Canlı PC Core verileri döndürür: CPU kullanımı, RAM kullanımı, disk kullanımı, NVIDIA GPU kullanım/sıcaklık/bellek bilgisi bulunabiliyorsa ve ağ aktarım hızı.",
+      parameters: { type:"object", properties:{}, additionalProperties:false }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_find_unity_projects",
+      description: "İzin verilen kullanıcı klasörlerinde Unity projelerini (Assets + ProjectSettings) bulur.",
+      parameters: {
+        type:"object",
+        properties:{maxResults:{type:"number"}},
+        additionalProperties:false
+      }
     }
   },
   {
@@ -335,6 +389,22 @@ const SYSTEM_PROMPT = [
   {
     type: "function",
     function: {
+      name: "desktop_web_research",
+      description: "Güncel bir konu hakkında birden fazla sorguyla internet araştırması yapar, sonuçları birleştirir ve kaynak URL'lerini döndürür.",
+      parameters: {
+        type:"object",
+        properties:{
+          query:{type:"string"},
+          maxResults:{type:"number"}
+        },
+        required:["query"],
+        additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
       name: "desktop_web_search",
       description: "İnternette güncel bilgi arar.",
       parameters: {
@@ -531,11 +601,11 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     { role:"user", content:value }
   ];
 
-  const wantsTools = desktopAvailable() && mode === "chat" && /güncel|guncel|araştır|arastir|internette|web|site|dosya|klasör|klasor|uygulama|oyun|bilgisayar|masaüstü|masaustu|sistem|kullanım|kullanim|hatırla|hatirla|unut/.test(
+  const wantsTools = desktopAvailable() && /güncel|guncel|araştır|arastir|internette|web|site|dosya|klasör|klasor|uygulama|oyun|bilgisayar|masaüstü|masaustu|sistem|kullanım|kullanim|hatırla|hatirla|unut|geçen hafta|gecen hafta|dün|dun|bugün|bugun|konuşma geçmişi|konusma gecmisi|unity|cpu|ram|gpu|disk|performans|donanım|donanim/.test(
     value.toLocaleLowerCase("tr-TR")
   );
 
-  for(let round=0; round<2; round++){
+  for(let round=0; round<3; round++){
     let response;
     try{
       response=await localEngine.chat.completions.create({
@@ -544,7 +614,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         tool_choice:wantsTools?"auto":undefined,
         temperature:mode==="code"?0.18:0.5,
         top_p:mode==="code"?0.82:0.85,
-        max_tokens:mode==="code"?1400:192,
+        max_tokens:mode==="code"?2400:320,
         stream:false
       });
     }catch(firstError){
@@ -552,7 +622,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         messages,
         temperature:mode==="code"?0.22:0.52,
         top_p:0.84,
-        max_tokens:mode==="code"?1400:192,
+        max_tokens:mode==="code"?2400:320,
         stream:false
       });
     }
