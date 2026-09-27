@@ -1410,6 +1410,7 @@ function localRendererRoot() {
 
 function startLocalRendererServer() {
   if (localServer && localServerPort) return Promise.resolve(localServerPort);
+
   return new Promise((resolve,reject)=>{
     const root=path.resolve(localRendererRoot());
     const mime={
@@ -1424,33 +1425,37 @@ function startLocalRendererServer() {
       '.ico':'image/x-icon'
     };
     const allowed=new Set(['index.html','local-ai.js']);
+
     localServer=http.createServer(async(req,res)=>{
       try{
         const requestPath=decodeURIComponent(String(req.url||'/').split('?')[0]);
-        const relative=requestPath==='/'?'index.html':requestPath.replace(/^\\/+/, '');
-        if(relative.includes('..') || !allowed.has(relative)){
+        const relative=requestPath==='/' ? 'index.html' : requestPath.split('/').filter(Boolean).join('/');
+
+        if(!allowed.has(relative)){
           res.writeHead(404,{'Cache-Control':'no-store'});
           res.end('Not Found');
           return;
         }
+
         const file=path.resolve(root,relative);
-        if(!file.startsWith(root+path.sep) && file!==root){
+        if(file!==path.resolve(root,'index.html') && file!==path.resolve(root,'local-ai.js')){
           res.writeHead(403,{'Cache-Control':'no-store'});
           res.end('Forbidden');
           return;
         }
+
         const body=await fsp.readFile(file);
         res.writeHead(200,{
           'Content-Type':mime[path.extname(file).toLowerCase()]||'application/octet-stream',
-          'Cache-Control':'no-store',
-          'Access-Control-Allow-Origin':'*'
+          'Cache-Control':'no-store'
         });
         res.end(body);
-      }catch(error){
+      }catch{
         res.writeHead(500,{'Cache-Control':'no-store'});
         res.end('AURA local server error');
       }
     });
+
     localServer.once('error',reject);
     localServer.listen(0,'127.0.0.1',()=>{
       localServerPort=localServer.address().port;
@@ -1506,7 +1511,7 @@ app.whenReady().then(async()=>{
   ipcMain.handle('aura:tool',async(event,payload)=>{
     try{
       const senderUrl = event?.senderFrame?.url || '';
-      const isLocal = senderUrl.startsWith('file://');
+      const isLocal = senderUrl.startsWith('file://') || (()=>{ try { return new URL(senderUrl).hostname === '127.0.0.1' && new URL(senderUrl).protocol === 'http:'; } catch { return false; } })();
       const isRemote = (()=>{ try { return new URL(senderUrl).origin === ALLOWED_REMOTE_ORIGIN; } catch { return false; } })();
       if(!isLocal && !isRemote){
         return {ok:false,error:'Yetkisiz pencere.'};
