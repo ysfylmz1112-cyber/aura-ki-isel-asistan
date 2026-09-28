@@ -706,13 +706,17 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   ];
 
   for(let round=0; round<3; round++){
-    const response = await localEngine.chat.completions.create({
+    const responsePromise = localEngine.chat.completions.create({
       messages,
       temperature:mode==="code"?0.16:0.45,
       top_p:mode==="code"?0.82:0.85,
       max_tokens:mode==="code"?1900:280,
       stream:false
     });
+    const response = await Promise.race([
+      responsePromise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Yerel AI yanıtı zaman aşımına uğradı. Model henüz hazır olmayabilir; tekrar dene.")), 90000))
+    ]);
 
     const assistantMessage=response && response.choices && response.choices[0] ? response.choices[0].message : null;
     if(!assistantMessage) throw new Error("Yerel AI cevap üretmedi.");
