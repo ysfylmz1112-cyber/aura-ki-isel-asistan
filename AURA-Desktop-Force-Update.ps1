@@ -4,7 +4,7 @@ $repoRoot = Join-Path $env:USERPROFILE 'Desktop\aura-ki-isel-asistan'
 $desktopDir = Join-Path $repoRoot 'desktop'
 $rendererDir = Join-Path $desktopDir 'renderer'
 $desktopInstaller = Join-Path $env:USERPROFILE 'Desktop\AURA-4.4.0-Setup.exe'
-$releaseCommit = '85925bd49b1eca8a4d3581c028dc1a17602b40a6'
+$releaseCommit = 'acdd341ebb02853d1d75f28919f0c88f0446b3c1'
 $rawBase = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/' + $releaseCommit + '/'
 
 New-Item -ItemType Directory -Force -Path $repoRoot,$desktopDir,$rendererDir | Out-Null
