@@ -1314,14 +1314,6 @@ micBtn.addEventListener("click", () => {  const Recognition = window.SpeechRecog
   recognition.start();
 });
 
-$("clear").addEventListener("click", () => {
-  if (confirm("Sohbet geçmişi silinsin mi?")) {
-    history = [];
-    saveHistory();
-    chat.innerHTML = "";
-  }
-});
-
 document.addEventListener("keydown", (event) => {
   if (event.ctrlKey && event.key.toLowerCase() === "k") {
     event.preventDefault();
