@@ -1253,6 +1253,43 @@ function speakTextWindows(text) {
   });
 }
 
+async function openCamera(){
+  try{
+    await shell.openExternal('microsoft.windows.camera:');
+    return {ok:true,message:'Kamera uygulaması açıldı.'};
+  }catch{
+    const camera=path.join(process.env.WINDIR||'C:\\Windows','System32','Camera.exe');
+    if(fs.existsSync(camera)){
+      execFile(camera,{windowsHide:false});
+      return {ok:true,message:'Kamera uygulaması açıldı.'};
+    }
+    throw new Error('Windows Kamera uygulaması bulunamadı.');
+  }
+}
+
+async function openWindowsUtility(kind){
+  const map={
+    screenshot:{uri:'ms-screenclip:',message:'Ekran alıntısı aracı açıldı.'},
+    settings:{uri:'ms-settings:',message:'Windows Ayarları açıldı.'},
+    taskmanager:{exe:'taskmgr.exe',message:'Görev Yöneticisi açıldı.'},
+    calculator:{exe:'calc.exe',message:'Hesap Makinesi açıldı.'},
+    notepad:{exe:'notepad.exe',message:'Not Defteri açıldı.'},
+    downloads:{path:path.join(os.homedir(),'Downloads'),message:'İndirilenler klasörü açıldı.'},
+    desktop:{path:path.join(os.homedir(),'Desktop'),message:'Masaüstü açıldı.'},
+    documents:{path:path.join(os.homedir(),'Documents'),message:'Belgeler açıldı.'}
+  };
+  const item=map[String(kind||'').toLowerCase()];
+  if(!item) throw new Error('Bilinmeyen Windows aracı.');
+  if(item.uri){
+    await shell.openExternal(item.uri);
+  }else if(item.path){
+    await shell.openPath(item.path);
+  }else{
+    execFile(item.exe,{windowsHide:false});
+  }
+  return {ok:true,message:item.message};
+}
+
 async function openExternalUrl(url) {
   if(!safeUrl(url)) throw new Error('Sadece HTTP/HTTPS adresleri açılabilir.');
   const ok=await confirmAction('AURA — Web adresi açma izni','AURA şu adresi varsayılan tarayıcıda açacak:\n\n'+url);
@@ -1533,6 +1570,8 @@ async function handleTool(tool,args) {
     case 'desktop_get_hardware_metrics': return getHardwareMetrics();
     case 'desktop_get_weather': return getWeather(args.city||'Istanbul');
     case 'desktop_get_battery_status': return getBatteryStatus();
+    case 'desktop_open_camera': return openCamera();
+    case 'desktop_open_windows_utility': return openWindowsUtility(args.kind);
     case 'desktop_find_unity_projects': return findUnityProjects(args.maxResults||20);
     case 'desktop_get_system_info': return await systemInfo();
     case 'desktop_list_directory': return listDirectory(normalizePath(args.path));
