@@ -1676,3 +1676,142 @@ function startLocalRendererServer() {
       resolve(localServerPort);
     });
   });
+}
+
+async function closeLocalRendererServer(){
+  const server=localServer;
+  localServer=null;
+  localServerPort=null;
+  if(!server)return;
+  await new Promise(resolve=>{
+    try{server.close(()=>resolve());}catch{resolve();}
+  });
+}
+
+async function loadAuraRenderer(win){
+  const port=await startLocalRendererServer();
+  await win.loadURL('http://127.0.0.1:'+port+'/index.html');
+}
+
+function createWindow(){
+  const win=new BrowserWindow({
+    width:1480,
+    height:920,
+    minWidth:1000,
+    minHeight:680,
+    backgroundColor:'#02050b',
+    webPreferences:{
+      preload:path.join(__dirname,'preload.cjs'),
+      contextIsolation:true,
+      nodeIntegration:false,
+      sandbox:true
+    }
+  });
+
+  win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
+  win.webContents.setAudioMuted(false);
+  win.webContents.setBackgroundThrottling(false);
+
+  win.webContents.on('will-navigate',(event,url)=>{
+    try{
+      const u=new URL(url);
+      const isLocalRenderer=u.hostname==='127.0.0.1' && u.protocol==='http:';
+      if(u.protocol==='file:' || u.origin===ALLOWED_REMOTE_ORIGIN || isLocalRenderer) return;
+      event.preventDefault();
+    }catch{
+      event.preventDefault();
+    }
+  });
+
+  win.webContents.on('did-fail-load',(_event,errorCode,errorDescription)=>{
+    console.error('[AURA] renderer load failed:',errorCode,errorDescription);
+  });
+
+  session.defaultSession.setPermissionRequestHandler((_wc,permission,callback)=>{
+    callback(permission==='media');
+  });
+
+  win.on('closed',()=>{
+    if(activeSpeechProcess){
+      try{activeSpeechProcess.kill();}catch{}
+      activeSpeechProcess=null;
+    }
+  });
+
+  loadAuraRenderer(win).catch(error=>{
+    console.error('[AURA] renderer start failed:',error);
+    dialog.showErrorBox('AURA başlatılamadı',String(error?.message||error));
+  });
+}
+
+app.whenReady().then(async()=>{
+  await loadExtraRoots();
+  await loadUsageState();
+  await loadMemoryState();
+  await loadConversationState();
+
+  ipcMain.handle('aura:tool',async(event,payload)=>{
+    try{
+      const senderUrl=event?.senderFrame?.url || '';
+      const isLocal=(()=>{
+        try{
+          const u=new URL(senderUrl);
+          return u.protocol==='file:' || (u.hostname==='127.0.0.1' && u.protocol==='http:');
+        }catch{
+          return false;
+        }
+      })();
+      const isRemote=(()=>{
+        try{return new URL(senderUrl).origin===ALLOWED_REMOTE_ORIGIN;}
+        catch{return false;}
+      })();
+
+      if(!isLocal && !isRemote){
+        return {ok:false,error:'Yetkisiz pencere.'};
+      }
+
+      return {
+        ok:true,
+        result:await handleTool(payload?.tool,payload?.args||{})
+      };
+    }catch(error){
+      return {ok:false,error:error?.message||'Bilinmeyen hata'};
+    }
+  });
+
+  ipcMain.handle('aura:desktop-info',async()=>({
+    connected:true,
+    version:'4.6.0',
+    mode:'secure-local-agent-pc-aware-core',
+    roots:allowedRoots(),
+    features:[
+      'memory',
+      'conversation-memory',
+      'pc-core',
+      'hardware-hud',
+      'weather',
+      'battery',
+      'web-research',
+      'unity-tools',
+      'code-mode'
+    ]
+  }));
+
+  createWindow();
+  scanEnvironment().catch(()=>{});
+
+  app.on('activate',()=>{
+    if(BrowserWindow.getAllWindows().length===0){
+      createWindow();
+      scanEnvironment().catch(()=>{});
+    }
+  });
+});
+
+app.on('before-quit',()=>{
+  closeLocalRendererServer().catch(()=>{});
+});
+
+app.on('window-all-closed',()=>{
+  if(process.platform!=='darwin') app.quit();
+});
