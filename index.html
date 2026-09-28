@@ -876,16 +876,7 @@ function isRunningAppsRequest(q){
     /hangi programlar çalışıyor|hangi programlar calisiyor/.test(n);
 }
 
-// AURA 4.6 compatibility: keep the drive command safe even if an older renderer is cached.
-if (typeof window !== "undefined" && typeof window.isDriveListRequest !== "function") {
-  window.isDriveListRequest = function(q){
-    const x=String(q||"").toLocaleLowerCase("tr-TR").replace(/[?.!,;:]/g," ").replace(/\s+/g," ").trim();
-    return /^(sürücüler|suruculer|sürücüleri göster|suruculeri goster|diskler|diskleri göster|diskleri goster|disklerim|sürücülerim)$/.test(x) ||
-      /^(hangi|neler|ne) (sürücüler|suruculer|diskler)( var| bulunuyor)?$/.test(x) ||
-      /^(sürücü|surucu) (listesi|listele|liste)$/.test(x);
-  };
-}
-function isDriveListRequest(q){
+function safeDriveListRequest(q){
   const x=String(q||"")
     .toLocaleLowerCase("tr-TR")
     .replace(/[?.!,;:]/g," ")
@@ -1015,9 +1006,7 @@ async function handleMemoryCommand(q){
 }
 
 async function handleDirectCommand(q) {
-  const driveRequest = typeof globalThis.isDriveListRequest === "function"
-    ? globalThis.isDriveListRequest(q)
-    : /^(sürücüler|suruculer|sürücülerim|suruculerim|diskler|disklerim|sürücüleri göster|suruculeri goster|diskleri göster|diskleri goster)$/i.test(String(q||"").trim());
+  const driveRequest = safeDriveListRequest(q);
   if (!hasDesktopAgent()) {
     return "Bu özellik için AURA Desktop'ın açık olması gerekiyor.";
   }
@@ -1179,7 +1168,7 @@ async function run(q) {
     const memoryDirect = isMemorySaveRequest(q) || isMemoryForgetRequest(q) || isMemoryListRequest(q) || isMemorySearchRequest(q) || isMemoryClearRequest(q);
     const appControl=extractAppControlCommand(q);
   const utilityRequest=isWindowsUtilityRequest(q);
-    const driveRequest=typeof globalThis.isDriveListRequest==="function" && globalThis.isDriveListRequest(q);
+    const driveRequest=safeDriveListRequest(q);
     const direct = memoryDirect || isCameraRequest(q) || !!utilityRequest || isPCRequest(q) || isUsageRequest(q) || isWeatherRequest(q) || isBatteryRequest(q) || isSystemRequest(q) || isHardwareRequest(q) || isUnityProjectRequest(q) || isConversationHistoryRequest(q) || isDesktopListRequest(q) || isRunningAppsRequest(q) || driveRequest || !!appControl || !!extractOpenTarget(q);
     if (quick) {
       finish(q, quick, false);
