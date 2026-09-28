@@ -5,9 +5,9 @@ $desktopDir = Join-Path $repoRoot 'desktop'
 $rendererDir = Join-Path $desktopDir 'renderer'
 $desktopInstaller = Join-Path $env:USERPROFILE 'Desktop\AURA-4.8.0-Setup.exe'
 $releaseCommits = @{
-  index = '7c457e2afa8d4c9f16b28731f9a4b3ec56816a6f'
+  index = '84b06f0b265c428dff4c4bfb9912e98f2461d60e'
   localAI = '626bddd79fc530cbf1cfcc057762ed99dc6d5987'
-  main = '0abb7bbdbb5bf4fcd4a854de162116182e2edc'
+  main = 'db4ecac68d5d23c0c0837bce802ce3b2bfbff87d'
   preload = '587cde2a08e508376e0dba1ee44018d03d0440bb'
   package = 'c1de14135d370583757ec0579efc385d9c12c787'
 }
