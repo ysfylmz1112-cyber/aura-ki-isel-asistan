@@ -4,12 +4,18 @@ $repoRoot = Join-Path $env:USERPROFILE 'Desktop\aura-ki-isel-asistan'
 $desktopDir = Join-Path $repoRoot 'desktop'
 $rendererDir = Join-Path $desktopDir 'renderer'
 $desktopInstaller = Join-Path $env:USERPROFILE 'Desktop\AURA-4.8.0-Setup.exe'
-$releaseCommit = '07dda16139cdde5b3f3620f926e5b08cfb3f1fa1'
-$rawBase = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/' + $releaseCommit + '/'
+$releaseCommits = @{
+  index = '7c457e2afa8d4c9f16b28731f9a4b3ec56816a6f'
+  localAI = '626bddd79fc530cbf1cfcc057762ed99dc6d5987'
+  main = '0abb7bbdbb5bf4fcd4a854de162116182e2edc'
+  preload = '587cde2a08e508376e0dba1ee44018d03d0440bb'
+  package = 'c1de14135d370583757ec0579efc385d9c12c787'
+}
+$rawBase = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/'
 
 New-Item -ItemType Directory -Force -Path $repoRoot,$desktopDir,$rendererDir | Out-Null
 
-Write-Host 'AURA 4.8.0 - TAM WINDOWS GUNCELLEMESI' -ForegroundColor Cyan
+Write-Host 'AURA 4.9.0 - TAM WINDOWS GUNCELLEMESI' -ForegroundColor Cyan
 Write-Host 'Mevcut AURA surecleri kapatiliyor...' -ForegroundColor DarkCyan
 Stop-Process -Name 'AURA' -Force -ErrorAction SilentlyContinue
 Get-CimInstance Win32_Process -Filter "Name='electron.exe'" -ErrorAction SilentlyContinue |
@@ -65,7 +71,7 @@ Copy-Item -LiteralPath $built.FullName -Destination $desktopInstaller -Force
 
 Write-Host ''
 Write-Host '========================================' -ForegroundColor Green
-Write-Host 'AURA 4.8.0 HAZIR' -ForegroundColor Green
+Write-Host 'AURA 4.9.0 HAZIR' -ForegroundColor Green
 Write-Host ('Kurulum: ' + $desktopInstaller) -ForegroundColor Green
 Write-Host ('Boyut: ' + [math]::Round($built.Length/1MB,1) + ' MB') -ForegroundColor Green
 Write-Host 'Qwen yerel AI + uygulama kontrolu + hafiza + PC HUD + telefon kumandasi + web + Unity + kod modu aktif.' -ForegroundColor Green
