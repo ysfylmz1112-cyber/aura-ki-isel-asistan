@@ -272,7 +272,9 @@ function updateHardwareHUD(data){
   const down=Number(data.network?.downloadMbps);
   const up=Number(data.network?.uploadMbps);
   $("hwCpu").textContent=Number.isFinite(cpu)?Math.round(cpu)+"%":"—";
-  $("hwRam").textContent=Number.isFinite(ram)?Math.round(ram)+"% · "+String(data.memory?.usedGB??"—")+" / "+String(data.memory?.totalGB??"—")+" GB":"—";
+  $("hwRam").textContent=Number.isFinite(ram)
+    ? Math.round(ram)+"% · "+String(data.memory?.usedGB??"—")+" / "+String(data.memory?.totalGB??"—")+" GB · "+String(data.memory?.freeGB??"—")+" GB boş"
+    : "—";
   $("hwDisk").textContent=Number.isFinite(disk)?Math.round(disk)+"% · "+String(data.disks?.[0]?.drive||"C:")+"":"—";
   $("hwGpu").textContent=data.gpu?.name ? String(data.gpu.name).slice(0,20)+(Number.isFinite(gpu)?" · "+Math.round(gpu)+"%":"") : "Yok / hazır değil";
   $("hwNet").textContent=(Number.isFinite(down)||Number.isFinite(up)) ? "↓ "+(Number.isFinite(down)?down.toFixed(1):"0.0")+" Mb/s · ↑ "+(Number.isFinite(up)?up.toFixed(1):"0.0")+" Mb/s" : "—";
