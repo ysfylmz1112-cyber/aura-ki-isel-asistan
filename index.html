@@ -59,6 +59,11 @@ button{user-select:none}
 .commandTag{border:1px solid #17212b;background:#0b1016;color:#64717d;border-radius:999px;padding:5px 8px;font-size:8px}
 @media(max-width:1100px){.hudCol{width:150px}.hudCard{min-width:135px}.hudRail{inset:12px}.hudRail .hideNarrow{display:none}}
 @media(max-width:760px){.hudRail{display:none}.commandPanel{width:calc(100% - 22px)}}
+.qrModal{position:fixed;inset:0;z-index:1000;display:none;place-items:center;padding:18px;background:rgba(0,0,0,.72);backdrop-filter:blur(14px)}
+.qrModal.open{display:grid}
+.qrPanel{width:min(430px,100%);padding:18px;border:1px solid #2a3945;border-radius:20px;background:#090f15;box-shadow:0 30px 90px #000b}
+.qrHead{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.qrHead b{display:block;font-size:12px;letter-spacing:1px}.qrHead small{display:block;color:#71808d;font-size:9px;margin-top:5px}.qrClose{border:0;background:#151c24;color:#dce9ef;width:30px;height:30px;border-radius:9px;font-size:20px;cursor:pointer}
+.qrImage{display:block;width:min(320px,80vw);height:min(320px,80vw);margin:18px auto;border-radius:12px;background:#fff;padding:8px}.qrUrl{padding:10px;border:1px solid #1b2933;background:#050a0f;color:#8ddff0;border-radius:10px;font-size:10px;line-height:1.45;word-break:break-all}.qrActions{display:flex;gap:8px;margin-top:10px}.qrActions .btn{flex:1}.qrHint{margin-top:10px;color:#5e6d78;font-size:8px;line-height:1.5}
 
 @media(max-width:900px){.app{grid-template-columns:0 1fr}.sidebar{display:none}.workspace{grid-template-rows:330px minmax(0,1fr)}.core{width:290px;height:290px}.chat{width:min(820px,calc(100% - 22px))}}
 </style>
@@ -104,7 +109,7 @@ button{user-select:none}
     <div id="usageTop" class="usageText">Kullanım raporu henüz alınmadı.</div>
     <div class="sideLabel" style="padding-left:0">SON SOHBETLER</div>
     <div class="history" id="history"></div>
-    <div class="footer">AURA OS 4.7 · LOCAL AI · MEMORY · PC CORE · PHONE · CODE</div>
+    <div class="footer">AURA OS 4.9 · LOCAL AI · MEMORY · PC CORE · PHONE · WEB · CODE</div>
   </div>
 </aside>
 
@@ -112,7 +117,7 @@ button{user-select:none}
   <header class="topbar">
     <div class="topLeft">
       <span class="coreDot"></span>
-      <div><div class="modelName">AURA</div><div class="modelMeta" id="sub">AURA 4.7 · Yerel AI · Hafıza · PC Core · Telefon · Web · Kod</div></div>
+      <div><div class="modelName">AURA</div><div class="modelMeta" id="sub">AURA 4.9 · Yerel AI · Hafıza · PC Core · Telefon · Web · Kod</div></div>
     </div>
     <div class="topActions">
       <button class="btn" id="phoneBtn" title="Telefon kumandası">📱 Telefon</button>
@@ -204,8 +209,21 @@ button{user-select:none}
     </div>
   </section>
 </main>
-</div><script type="module">
-function isDriveListRequest(q){
+</div>
+<div class="qrModal" id="qrModal" aria-hidden="true">
+  <div class="qrPanel">
+    <div class="qrHead"><div><b>📱 AURA TELEFON KUMANDASI</b><small>Aynı Wi‑Fi ağına bağlan, QR'ı okut.</small></div><button class="qrClose" id="qrClose">×</button></div>
+    <img id="qrImage" class="qrImage" alt="AURA telefon bağlantı QR kodu">
+    <div class="qrUrl" id="qrUrl">Adres hazırlanıyor...</div>
+    <div class="qrActions">
+      <button class="btn primary" id="qrCopy">Adresi Kopyala</button>
+      <button class="btn" id="qrRefresh">QR Yenile</button>
+    </div>
+    <div class="qrHint">QR ve adres, AURA Desktop'ın yerel telefon sunucusuna bağlanır. İnternete açık bir kontrol servisi kullanılmaz.</div>
+  </div>
+</div>
+<script type="module">
+globalThis.isDriveListRequest = function isDriveListRequest(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
   return /^(sürücüleri göster|suruculeri goster|sürücüler|suruculer|diskleri göster|diskleri goster|diskler|hangi sürücüler var|hangi suruculer var|sürücülerim|suruculerim|disklerim)\\??$/.test(x);
 }
@@ -527,7 +545,7 @@ function getLocalAIModel() {
 async function loadLocalAI() {
   if (localAIModule) return localAIModule;
   if (!localAIPromise) {
-    localAIPromise = import("./local-ai.js?v=4.8.0").then((mod) => {
+    localAIPromise = import("./local-ai.js?v=4.9.0").then((mod) => {
       localAIModule = mod;
       return mod;
     });
@@ -1258,24 +1276,27 @@ voiceBtn.addEventListener("click",()=>{
 });
 
 
-const phoneBtn = $("phoneBtn");
-if(phoneBtn){
-  phoneBtn.addEventListener("click",async()=>{
-    if(!hasDesktopAgent()){ addMessage("error","AURA","Telefon kumandası için AURA Desktop açık olmalı."); return; }
-    try{
-      const info=await callDesktop("desktop_get_remote_control",{});
-      if(info?.url){
-        const ok=confirm("Telefonundan AURA'yı yönetmek için bu adresi telefonunda aç:\n\n"+info.url+"\n\nAynı Wi‑Fi ağında olmalısınız.\n\nAdresi panoya kopyalayayım mı?");
-        if(ok && navigator.clipboard) await navigator.clipboard.writeText(info.url);
-        addMessage("ai","AURA","Telefon kumandası hazır. 📱\n\n"+info.url);
-      }else{
-        addMessage("error","AURA","Telefon kumandası başlatılamadı.");
-      }
-    }catch(error){
-      addMessage("error","AURA","Telefon kumandası: "+String(error?.message||error));
-    }
-  });
+const qrModal=$("qrModal"), qrImage=$("qrImage"), qrUrl=$("qrUrl"), qrClose=$("qrClose"), qrCopy=$("qrCopy"), qrRefresh=$("qrRefresh");
+let remoteQrInfo=null;
+async function openRemoteQr(){
+  if(!hasDesktopAgent()){ addMessage("error","AURA","Telefon kumandası için AURA Desktop açık olmalı."); return; }
+  try{
+    remoteQrInfo=await callDesktop("desktop_get_remote_qr",{});
+    if(!remoteQrInfo?.dataUrl) throw new Error("QR oluşturulamadı.");
+    qrImage.src=remoteQrInfo.dataUrl;
+    qrUrl.textContent=remoteQrInfo.url||"";
+    qrModal.classList.add("open");
+    qrModal.setAttribute("aria-hidden","false");
+  }catch(error){ addMessage("error","AURA","Telefon QR'ı: "+String(error?.message||error)); }
 }
+function closeRemoteQr(){qrModal.classList.remove("open");qrModal.setAttribute("aria-hidden","true");}
+if(phoneBtn) phoneBtn.addEventListener("click",openRemoteQr);
+if(qrClose) qrClose.addEventListener("click",closeRemoteQr);
+if(qrRefresh) qrRefresh.addEventListener("click",openRemoteQr);
+if(qrCopy) qrCopy.addEventListener("click",async()=>{
+  if(remoteQrInfo?.url && navigator.clipboard){await navigator.clipboard.writeText(remoteQrInfo.url);qrCopy.textContent="Kopyalandı ✓";setTimeout(()=>qrCopy.textContent="Adresi Kopyala",1200);}
+});
+if(qrModal) qrModal.addEventListener("click",e=>{if(e.target===qrModal)closeRemoteQr();});
 sendBtn.addEventListener("click", () => { voiceInput = false; run(input.value); });
 
 input.addEventListener("keydown", (event) => {
@@ -1319,6 +1340,7 @@ document.addEventListener("keydown", (event) => {
     input.focus();
   }
   if (event.key === "Escape") {
+    if(qrModal?.classList.contains("open")) closeRemoteQr();
     speechSynthesis.cancel();
     if(hasDesktopAgent()) callDesktop("desktop_stop_speech",{}).catch(()=>{});
     speaking=false;
