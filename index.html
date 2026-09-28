@@ -1015,6 +1015,9 @@ async function handleMemoryCommand(q){
 }
 
 async function handleDirectCommand(q) {
+  const driveRequest = typeof globalThis.isDriveListRequest === "function"
+    ? globalThis.isDriveListRequest(q)
+    : /^(sürücüler|suruculer|sürücülerim|suruculerim|diskler|disklerim|sürücüleri göster|suruculeri goster|diskleri göster|diskleri goster)\\??$/i.test(String(q||"").trim());
   if (!hasDesktopAgent()) {
     return "Bu özellik için AURA Desktop'ın açık olması gerekiyor.";
   }
