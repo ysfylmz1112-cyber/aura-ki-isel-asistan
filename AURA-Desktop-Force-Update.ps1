@@ -3,13 +3,13 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Join-Path $env:USERPROFILE 'Desktop\aura-ki-isel-asistan'
 $desktopDir = Join-Path $repoRoot 'desktop'
 $rendererDir = Join-Path $desktopDir 'renderer'
-$desktopInstaller = Join-Path $env:USERPROFILE 'Desktop\AURA-4.6.0-Setup.exe'
-$releaseCommit = '60f4de8c4685131290cb01781ec376c686af5cd5'
+$desktopInstaller = Join-Path $env:USERPROFILE 'Desktop\AURA-4.7.0-Setup.exe'
+$releaseCommit = 'd2d51b617499db83e10c28ad70fda099537dd648'
 $rawBase = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/' + $releaseCommit + '/'
 
 New-Item -ItemType Directory -Force -Path $repoRoot,$desktopDir,$rendererDir | Out-Null
 
-Write-Host 'AURA 4.6.0 - TAM WINDOWS GUNCELLEMESI' -ForegroundColor Cyan
+Write-Host 'AURA 4.7.0 - TAM WINDOWS GUNCELLEMESI' -ForegroundColor Cyan
 Write-Host 'Mevcut AURA surecleri kapatiliyor...' -ForegroundColor DarkCyan
 Stop-Process -Name 'AURA' -Force -ErrorAction SilentlyContinue
 Get-CimInstance Win32_Process -Filter "Name='electron.exe'" -ErrorAction SilentlyContinue |
@@ -18,11 +18,11 @@ Get-CimInstance Win32_Process -Filter "Name='electron.exe'" -ErrorAction Silentl
 Start-Sleep -Milliseconds 1000
 
 $files = @(
-  @{ Local = Join-Path $repoRoot 'index.html'; Remote = $rawBase + 'index.html'; Required = 'AURA OS 4.6'; Name = 'arayuz' },
+  @{ Local = Join-Path $repoRoot 'index.html'; Remote = $rawBase + 'index.html'; Required = 'AURA OS 4.7'; Name = 'arayuz' },
   @{ Local = Join-Path $repoRoot 'local-ai.js'; Remote = $rawBase + 'local-ai.js'; Required = 'Qwen2.5-1.5B-Instruct'; Name = 'yerel-ai' },
   @{ Local = Join-Path $desktopDir 'main.cjs'; Remote = $rawBase + 'desktop/main.cjs'; Required = "app.whenReady"; Name = 'desktop-core' },
   @{ Local = Join-Path $desktopDir 'preload.cjs'; Remote = $rawBase + 'desktop/preload.cjs'; Required = 'auraDesktop'; Name = 'preload' },
-  @{ Local = Join-Path $desktopDir 'package.json'; Remote = $rawBase + 'desktop/package.json'; Required = '4.6.0'; Name = 'paket' }
+  @{ Local = Join-Path $desktopDir 'package.json'; Remote = $rawBase + 'desktop/package.json'; Required = '4.7.0'; Name = 'paket' }
 )
 
 foreach($item in $files){
@@ -51,7 +51,7 @@ if(Test-Path '.\dist'){
   Remove-Item '.\dist' -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-Write-Host 'AURA 4.6.0 Setup EXE olusturuluyor...' -ForegroundColor Cyan
+Write-Host 'AURA 4.7.0 Setup EXE olusturuluyor...' -ForegroundColor Cyan
 npm run build:win
 if($LASTEXITCODE -ne 0){ throw 'AURA Setup EXE derlemesi basarisiz oldu.' }
 
@@ -65,10 +65,10 @@ Copy-Item -LiteralPath $built.FullName -Destination $desktopInstaller -Force
 
 Write-Host ''
 Write-Host '========================================' -ForegroundColor Green
-Write-Host 'AURA 4.6.0 HAZIR' -ForegroundColor Green
+Write-Host 'AURA 4.7.0 HAZIR' -ForegroundColor Green
 Write-Host ('Kurulum: ' + $desktopInstaller) -ForegroundColor Green
 Write-Host ('Boyut: ' + [math]::Round($built.Length/1MB,1) + ' MB') -ForegroundColor Green
-Write-Host 'Qwen yerel AI + uygulama kontrolu + hafiza + PC HUD + web + Unity + kod modu aktif.' -ForegroundColor Green
+Write-Host 'Qwen yerel AI + uygulama kontrolu + hafiza + PC HUD + telefon kumandasi + web + Unity + kod modu aktif.' -ForegroundColor Green
 Write-Host '========================================' -ForegroundColor Green
 
 Start-Process -FilePath $desktopInstaller
