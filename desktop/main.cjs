@@ -397,8 +397,7 @@ async function discoverShortcutApps() {
       'powershell.exe',
       ['-NoProfile','-NonInteractive','-Command',command],
       {windowsHide:true,maxBuffer:4*1024*1024},
-      (error,stdout)=>{
-        if(error) return resolve([]);
+      (error,stdout)=>{        if(error) return resolve([]);
         try{
           const encoded=String(stdout||'').trim();
           const value=JSON.parse(Buffer.from(encoded,'base64').toString('utf8'));
@@ -635,6 +634,18 @@ async function findAndLaunchGameOrApp(appName) {
   const target=String(appName||'').trim();
   if(!target || target.length>100) throw new Error('Uygulama/oyun adı geçersiz.');
 
+  // Yaygın isim/küçük yazım hataları için doğrudan Windows StartApps eşleşmesi.
+  const directAliases={whatsapp:'WhatsApp',whatsap:'WhatsApp',chrome:'Google Chrome',edge:'Microsoft Edge',discord:'Discord'};
+  const aliasName=directAliases[normalizedSearchText(target)];
+  if(aliasName){
+    const ps="$items=@(Get-StartApps | Where-Object { $_.Name -like '*"+aliasName.replace(/'/g,"''")+"*' } | Select-Object -First 1 Name,AppID); if($items.Count){$items|ConvertTo-Json -Compress}else{'null'}";
+    const raw=await new Promise(resolve=>execFile('powershell.exe',['-NoProfile','-NonInteractive','-Command',ps],{windowsHide:true,maxBuffer:1024*1024},(e,so)=>resolve(e?'':String(so||''))));
+    try{
+      const item=JSON.parse(raw||'null');
+      if(item?.AppID) return launchStartApp({name:String(item.Name||aliasName),appId:String(item.AppID)});
+    }catch{}
+  }
+
   let profile=environmentProfile;
   const fresh=profile?.scannedAt && (Date.now()-new Date(profile.scannedAt).getTime()<30*1000);
   if(!fresh){
@@ -797,8 +808,7 @@ async function listDrives() {
             const free=Number(x.FreeSpace||0);
             return {
               drive:String(x.DeviceID||''),
-              device:String(x.DeviceID||''),
-              name:String(x.VolumeName||''),
+              device:String(x.DeviceID||''),              name:String(x.VolumeName||''),
               totalGB:Number((total/1024/1024/1024).toFixed(1)),
               freeGB:Number((free/1024/1024/1024).toFixed(1)),
               usedPercent:total ? Number((((total-free)/total)*100).toFixed(1)) : null
@@ -1197,8 +1207,7 @@ async function launchApp(appName) {
   const ok=await confirmAction('AURA — Uygulama açma izni','AURA şu uygulamayı açacak:\n\n'+name);
   if (!ok) throw new Error('Kullanıcı işlemi iptal etti.');
   execFile(file,{windowsHide:false});
-  return {ok:true,app:name};
-}
+  return {ok:true,app:name};}
 
 
 async function findAndLaunchApp(appName) {
@@ -1598,74 +1607,3 @@ function startLocalRendererServer() {
       resolve(localServerPort);
     });
   });
-}
-
-async function closeLocalRendererServer(){
-  const server=localServer;
-  localServer=null;
-  localServerPort=null;
-  if(!server)return;
-  await new Promise(resolve=>{
-    try{server.close(()=>resolve());}catch{resolve();}
-  });
-}
-
-async function loadAuraRenderer(win){
-  const port=await startLocalRendererServer();
-  const url='http://127.0.0.1:'+port+'/index.html';
-  await win.loadURL(url);
-}
-
-function createWindow() {
-  const win=new BrowserWindow({width:1480,height:920,minWidth:1000,minHeight:680,backgroundColor:'#02050b',webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
-  win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
-  win.webContents.setAudioMuted(false);
-  win.webContents.setBackgroundThrottling(false);
-  win.webContents.on('will-navigate',(event,url)=>{
-    try{
-      const u=new URL(url);
-      const isLocalRenderer=u.hostname==='127.0.0.1' && u.protocol==='http:';
-      if(u.protocol==='file:' || u.origin===ALLOWED_REMOTE_ORIGIN || isLocalRenderer) return;
-      event.preventDefault();
-    }catch{ event.preventDefault(); }
-  });
-  win.webContents.on('did-fail-load',(_event,errorCode,errorDescription)=>{
-    console.error('[AURA] renderer load failed:',errorCode,errorDescription);
-  });
-  session.defaultSession.setPermissionRequestHandler((_wc,permission,callback)=>callback(permission==='media'));
-  win.on('closed',()=>{ if(activeSpeechProcess){ try{activeSpeechProcess.kill();}catch{} activeSpeechProcess=null; } });
-  loadAuraRenderer(win).catch(error=>{
-    console.error('[AURA] renderer start failed:',error);
-    dialog.showErrorBox('AURA başlatılamadı',String(error?.message||error));
-  });
-}
-app.whenReady().then(async()=>{
-  await loadExtraRoots();
-  await loadUsageState();
-  await loadMemoryState();
-  await loadConversationState();
-  ipcMain.handle('aura:tool',async(event,payload)=>{
-    try{
-      const senderUrl = event?.senderFrame?.url || '';
-      const isLocal = senderUrl.startsWith('file://') || (()=>{ try { return new URL(senderUrl).hostname === '127.0.0.1' && new URL(senderUrl).protocol === 'http:'; } catch { return false; } })();
-      const isRemote = (()=>{ try { return new URL(senderUrl).origin === ALLOWED_REMOTE_ORIGIN; } catch { return false; } })();
-      if(!isLocal && !isRemote){
-        return {ok:false,error:'Yetkisiz pencere.'};
-      }
-      return {ok:true,result:await handleTool(payload?.tool,payload?.args||{})};
-    }catch(error){
-      return {ok:false,error:error?.message||'Bilinmeyen hata'};
-    }
-  });
-  ipcMain.handle('aura:desktop-info',async()=>({connected:true,version:'4.4.0',mode:'secure-local-agent-pc-aware-core',roots:allowedRoots(),features:['memory','conversation-memory','pc-core','hardware-hud','weather','battery','web-research','unity-tools','code-mode','open-app','close-app','restart-app','uninstall-app','running-apps','drive-list']}));
-  createWindow();
-  scanEnvironment().catch(()=>{});
-  app.on('activate',()=>{
-    if(BrowserWindow.getAllWindows().length===0){
-      createWindow();
-      scanEnvironment().catch(()=>{});
-    }
-  });
-});
-app.on('before-quit',()=>{closeLocalRendererServer().catch(()=>{});});
-app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
