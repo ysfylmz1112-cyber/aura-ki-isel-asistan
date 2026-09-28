@@ -835,6 +835,19 @@ function isRunningAppsRequest(q){
     /hangi programlar çalışıyor|hangi programlar calisiyor/.test(n);
 }
 
+function isDriveListRequest(q){
+  const x=String(q||"")
+    .toLocaleLowerCase("tr-TR")
+    .replace(/[?.!,;:]/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+
+  return /^(sürücüler|suruculer|sürücüleri göster|suruculeri goster|diskler|diskleri göster|diskleri goster|disklerim|sürücülerim)\\??$/.test(x) ||
+    /(?:hangi|neler|ne) (sürücüler|suruculer|diskler)(?: var|bulunuyor|bulunuyor\??)?$/.test(x) ||
+    /sürücü (listesi|listele|liste)/.test(x) ||
+    /surucu (listesi|listele|liste)/.test(x);
+}
+
 function isDesktopListRequest(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
   return /^(masaüstümde ne var|masaustumde ne var|masaüstünü göster|masaustunu goster)\??$/.test(x);
