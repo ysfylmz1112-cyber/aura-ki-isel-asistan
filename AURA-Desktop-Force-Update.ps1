@@ -24,11 +24,11 @@ Get-CimInstance Win32_Process -Filter "Name='electron.exe'" -ErrorAction Silentl
 Start-Sleep -Milliseconds 1000
 
 $files = @(
-  @{ Local = Join-Path $repoRoot 'index.html'; Remote = $rawBase + 'index.html'; Required = 'AURA OS 4.7'; Name = 'arayuz' },
-  @{ Local = Join-Path $repoRoot 'local-ai.js'; Remote = $rawBase + 'local-ai.js'; Required = 'Qwen2.5-1.5B-Instruct'; Name = 'yerel-ai' },
-  @{ Local = Join-Path $desktopDir 'main.cjs'; Remote = $rawBase + 'desktop/main.cjs'; Required = "app.whenReady"; Name = 'desktop-core' },
-  @{ Local = Join-Path $desktopDir 'preload.cjs'; Remote = $rawBase + 'desktop/preload.cjs'; Required = 'auraDesktop'; Name = 'preload' },
-  @{ Local = Join-Path $desktopDir 'package.json'; Remote = $rawBase + 'desktop/package.json'; Required = '4.8.0'; Name = 'paket' }
+  @{ Local = Join-Path $repoRoot 'index.html'; Remote = $rawBase + $releaseCommits.index + '/index.html'; Required = 'AURA 4.9'; Name = 'arayuz' },
+  @{ Local = Join-Path $repoRoot 'local-ai.js'; Remote = $rawBase + $releaseCommits.localAI + '/local-ai.js'; Required = 'AURA 4.9'; Name = 'yerel-ai' },
+  @{ Local = Join-Path $desktopDir 'main.cjs'; Remote = $rawBase + $releaseCommits.main + '/desktop/main.cjs'; Required = 'app.whenReady'; Name = 'desktop-core' },
+  @{ Local = Join-Path $desktopDir 'preload.cjs'; Remote = $rawBase + $releaseCommits.preload + '/desktop/preload.cjs'; Required = 'auraDesktop'; Name = 'preload' },
+  @{ Local = Join-Path $desktopDir 'package.json'; Remote = $rawBase + $releaseCommits.package + '/desktop/package.json'; Required = '4.9.0'; Name = 'paket' }
 )
 
 foreach($item in $files){
