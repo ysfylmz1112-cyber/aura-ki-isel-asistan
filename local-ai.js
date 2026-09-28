@@ -18,6 +18,7 @@ function desktopAvailable() {
 
 const MODEL_ID = CHAT_MODEL_ID;
 const SYSTEM_PROMPT = [
+  "AURA 4.9: Telefon kumandası AURA Desktop içindeki yerel, token korumalı sunucudur; telefon üzerinden gelen komutlar da masaüstü onay mekanizmalarını aşmamalıdır.",
   "Sen AURA'sın: kişisel, yerel ve Türkçe bir AI asistanısın.",
   "Önce kullanıcının ne istediğini doğru anla. Bilmediğin bilgiyi uydurma.",
   "Güncel bilgi gerektiğinde yalnızca izin verilen web araçlarını kullan ve kaynağı ayırt et.",
@@ -710,7 +711,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
       messages,
       temperature:mode==="code"?0.16:0.45,
       top_p:mode==="code"?0.82:0.85,
-      max_tokens:mode==="code"?1900:280,
+      max_tokens:mode==="code"?2200:320,
       stream:false
     });
     const response = await Promise.race([
