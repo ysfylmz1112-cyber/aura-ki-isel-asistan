@@ -7,6 +7,7 @@ const crypto = require('crypto');
 const os = require('os');
 const { execFile, spawn } = require('child_process');
 const { search } = require('duck-duck-scrape');
+const QRCode = require('qrcode');
 
 const PROD_URL = 'https://aura-ki-isel-asistan.vercel.app/';
 const ALLOWED_REMOTE_ORIGIN = 'https://aura-ki-isel-asistan.vercel.app';
@@ -1574,6 +1575,7 @@ async function handleTool(tool,args) {
   switch(tool) {
     case 'desktop_get_hardware_metrics': return getHardwareMetrics();
     case 'desktop_get_remote_control': return getRemoteControlInfo();
+    case 'desktop_get_remote_qr': return getRemoteControlQr();
     case 'desktop_get_weather': return getWeather(args.city||'Istanbul');
     case 'desktop_get_battery_status': return getBatteryStatus();
     case 'desktop_open_camera': return openCamera();
@@ -1706,12 +1708,18 @@ document.getElementById('cmd').addEventListener('keydown',e=>{if(e.key==='Enter'
 }
 function remoteCommand(command){
   const q=String(command||'').toLocaleLowerCase('tr-TR').trim();
+  if(/^(pc tara|bilgisayarımı tara|bilgisayarimi tara|sistemi tara)$/.test(q)) return ['desktop_scan_environment',{}];
+  if(/^(pc durumu|bilgisayar durumu|sistem durumu|donanım|donanim|performans)$/.test(q)) return ['desktop_get_hardware_metrics',{}];
   if(/^(kamera|kamerayı aç|kamerayi ac|kamera aç|kamera ac|webcam|webcamı aç|webcami ac|cam aç|cam ac)$/.test(q)) return ['desktop_open_camera',{}];
   if(/^(görev yöneticisi|gorev yoneticisi|task manager|taskmgr)$/.test(q)) return ['desktop_open_windows_utility',{kind:'taskmanager'}];
   if(/^(hesap makinesi|calculator)$/.test(q)) return ['desktop_open_windows_utility',{kind:'calculator'}];
   if(/^(not defteri|notepad)$/.test(q)) return ['desktop_open_windows_utility',{kind:'notepad'}];
   if(/^(masaüstü|desktop|masaüstünü aç|masaustunu ac)$/.test(q)) return ['desktop_open_windows_utility',{kind:'desktop'}];
   if(/^(ayarlar|windows ayarları|windows ayarlari|ayarlari ac)$/.test(q)) return ['desktop_open_windows_utility',{kind:'settings'}];
+  const close=q.match(/^(.+?)\\s+(kapat|kapatın|kapatir|kapatır)$/);
+  if(close) return ['desktop_close_app',{app:close[1].trim()}];
+  const restart=q.match(/^(.+?)\\s+(yeniden başlat|yeniden baslat|restart)$/);
+  if(restart) return ['desktop_restart_app',{app:restart[1].trim()}];
   const m=q.match(/^(.+?)\\s+aç$/);
   if(m) return ['desktop_find_and_launch_app',{app:m[1].trim().replace(/['’](?:y?[ıiuü])$/i,'').replace(/(?:y[ıiuü])$/i,'')}];
   return null;
@@ -1748,7 +1756,26 @@ async function startRemoteControlServer(){
   });
   await new Promise((resolve,reject)=>{remoteServer.once('error',reject);remoteServer.listen(0,'0.0.0.0',()=>{remoteServerPort=remoteServer.address().port;resolve();});});
 }
-function getRemoteControlInfo(){const ip=getLanAddress();return {enabled:Boolean(remoteServerPort),ip,port:remoteServerPort,url:remoteServerPort?('http://'+ip+':'+remoteServerPort+'/?token='+remoteControlToken):null};}
+function getRemoteControlInfo(){
+  const ip=getLanAddress();
+  return {
+    enabled:Boolean(remoteServerPort),
+    ip,
+    port:remoteServerPort,
+    url:remoteServerPort?('http://'+ip+':'+remoteServerPort+'/?token='+remoteControlToken):null
+  };
+}
+async function getRemoteControlQr(){
+  const info=getRemoteControlInfo();
+  if(!info.url) throw new Error('Telefon kumandası henüz başlatılmadı.');
+  const dataUrl=await QRCode.toDataURL(info.url,{
+    errorCorrectionLevel:'M',
+    margin:1,
+    width:420,
+    color:{dark:'#07131b',light:'#ffffff'}
+  });
+  return {...info,dataUrl};
+}
 async function stopRemoteControlServer(){const server=remoteServer;remoteServer=null;remoteServerPort=null;if(!server)return;await new Promise(resolve=>{try{server.close(()=>resolve());}catch{resolve();}});}
 
 async function closeLocalRendererServer(){
@@ -1855,7 +1882,7 @@ app.whenReady().then(async()=>{
 
   ipcMain.handle('aura:desktop-info',async()=>({
     connected:true,
-    version:'4.8.0',
+    version:'4.9.0',
     mode:'secure-local-agent-pc-aware-core',
     roots:allowedRoots(),
     features:[
@@ -1868,7 +1895,8 @@ app.whenReady().then(async()=>{
       'web-research',
       'unity-tools',
       'code-mode',
-      'phone-remote-control'
+      'phone-remote-control',
+      'qr-phone-pairing'
     ]
   }));
 
