@@ -734,6 +734,8 @@ function quickLocalAnswer(q){
     return "İyiyim kanka, hazırım. Ne yapmamı istersin?";
   if(/^(merhaba|selam|selamlar|sa|slm|mrb)$/.test(x))
     return "Selam kanka! AURA hazır.";
+  if(/^(aura|aura\?|hey aura|hey aura\?)$/.test(x))
+    return "Buradayım kanka. AURA hazır ve seni dinliyor.";
   if(/^(saat kaç|saat kac|saat kaç\?|saat kac\?)$/.test(x))
     return "Saat şu an " + new Date().toLocaleTimeString("tr-TR") + ".";
   if(isVagueCodeRequest(x))
@@ -1136,13 +1138,15 @@ async function run(q) {
     subEl.textContent = "Yerel model: " + getLocalAIModel();
     finish(q, answer, true);
   } catch (error) {
+    console.error("[AURA] cevap üretme hatası:", error);
     busy = false;
     sendBtn.disabled = false;
     micBtn.disabled = false;
     input.disabled = false;
     status.textContent = "● HAZIR";
     setCoreState("ready");
-    addMessage("error", "AURA", error?.message || "Bilinmeyen hata");
+    const message = String(error?.message || "Bilinmeyen hata");
+    addMessage("error", "AURA", "Cevap motorunda bir sorun oluştu: " + message);
   }
 }
 
