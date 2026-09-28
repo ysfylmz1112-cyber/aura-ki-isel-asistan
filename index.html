@@ -104,7 +104,7 @@ button{user-select:none}
     <div id="usageTop" class="usageText">Kullanım raporu henüz alınmadı.</div>
     <div class="sideLabel" style="padding-left:0">SON SOHBETLER</div>
     <div class="history" id="history"></div>
-    <div class="footer">AURA OS 4.5 · LOCAL AI · MEMORY · PC CORE · CODE</div>
+    <div class="footer">AURA OS 4.6 · LOCAL AI · MEMORY · PC CORE · CODE</div>
   </div>
 </aside>
 
@@ -112,7 +112,7 @@ button{user-select:none}
   <header class="topbar">
     <div class="topLeft">
       <span class="coreDot"></span>
-      <div><div class="modelName">AURA</div><div class="modelMeta" id="sub">AURA 4.5 · Yerel AI · Hafıza · PC Core · Web · Kod</div></div>
+      <div><div class="modelName">AURA</div><div class="modelMeta" id="sub">AURA 4.6 · Yerel AI · Hafıza · PC Core · Web · Kod</div></div>
     </div>
     <div class="topActions">
       <div class="status" id="status">● HAZIR</div>
@@ -876,6 +876,15 @@ function isRunningAppsRequest(q){
     /hangi programlar çalışıyor|hangi programlar calisiyor/.test(n);
 }
 
+// AURA 4.6 compatibility: keep the drive command safe even if an older renderer is cached.
+if (typeof window !== "undefined" && typeof window.isDriveListRequest !== "function") {
+  window.isDriveListRequest = function(q){
+    const x=String(q||"").toLocaleLowerCase("tr-TR").replace(/[?.!,;:]/g," ").replace(/\s+/g," ").trim();
+    return /^(sürücüler|suruculer|sürücüleri göster|suruculeri goster|diskler|diskleri göster|diskleri goster|disklerim|sürücülerim)$/.test(x) ||
+      /^(hangi|neler|ne) (sürücüler|suruculer|diskler)( var| bulunuyor)?$/.test(x) ||
+      /^(sürücü|surucu) (listesi|listele|liste)$/.test(x);
+  };
+}
 function isDriveListRequest(q){
   const x=String(q||"")
     .toLocaleLowerCase("tr-TR")
