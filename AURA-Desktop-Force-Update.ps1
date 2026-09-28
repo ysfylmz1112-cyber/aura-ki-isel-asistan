@@ -4,7 +4,7 @@ $repoRoot = Join-Path $env:USERPROFILE 'Desktop\aura-ki-isel-asistan'
 $desktopDir = Join-Path $repoRoot 'desktop'
 $rendererDir = Join-Path $desktopDir 'renderer'
 $desktopInstaller = Join-Path $env:USERPROFILE 'Desktop\AURA-4.6.0-Setup.exe'
-$releaseCommit = 'e92adcbf8882c9b9ec709b792e1674b01f99468c'
+$releaseCommit = '60f4de8c4685131290cb01781ec376c686af5cd5'
 $rawBase = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/' + $releaseCommit + '/'
 
 New-Item -ItemType Directory -Force -Path $repoRoot,$desktopDir,$rendererDir | Out-Null
@@ -20,7 +20,7 @@ Start-Sleep -Milliseconds 1000
 $files = @(
   @{ Local = Join-Path $repoRoot 'index.html'; Remote = $rawBase + 'index.html'; Required = 'AURA OS 4.6'; Name = 'arayuz' },
   @{ Local = Join-Path $repoRoot 'local-ai.js'; Remote = $rawBase + 'local-ai.js'; Required = 'Qwen2.5-1.5B-Instruct'; Name = 'yerel-ai' },
-  @{ Local = Join-Path $desktopDir 'main.cjs'; Remote = $rawBase + 'desktop/main.cjs'; Required = "desktop_open_camera"; Name = 'desktop-core' },
+  @{ Local = Join-Path $desktopDir 'main.cjs'; Remote = $rawBase + 'desktop/main.cjs'; Required = "app.whenReady"; Name = 'desktop-core' },
   @{ Local = Join-Path $desktopDir 'preload.cjs'; Remote = $rawBase + 'desktop/preload.cjs'; Required = 'auraDesktop'; Name = 'preload' },
   @{ Local = Join-Path $desktopDir 'package.json'; Remote = $rawBase + 'desktop/package.json'; Required = '4.6.0'; Name = 'paket' }
 )
