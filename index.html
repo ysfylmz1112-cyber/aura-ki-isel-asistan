@@ -204,6 +204,11 @@ button{user-select:none}
   </section>
 </main>
 </div><script type="module">
+function isDriveListRequest(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
+  return /^(sürücüleri göster|suruculeri goster|sürücüler|suruculer|diskleri göster|diskleri goster|diskler|hangi sürücüler var|hangi suruculer var|sürücülerim|suruculerim|disklerim)\\??$/.test(x);
+}
+
 
 const $ = (id) => document.getElementById(id);
 const input = $("input");
