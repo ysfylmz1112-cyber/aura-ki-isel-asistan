@@ -104,7 +104,7 @@ button{user-select:none}
     <div id="usageTop" class="usageText">Kullanım raporu henüz alınmadı.</div>
     <div class="sideLabel" style="padding-left:0">SON SOHBETLER</div>
     <div class="history" id="history"></div>
-    <div class="footer">AURA OS 4.4 · LOCAL AI · MEMORY · PC CORE · CODE</div>
+    <div class="footer">AURA OS 4.5 · LOCAL AI · MEMORY · PC CORE · CODE</div>
   </div>
 </aside>
 
@@ -112,7 +112,7 @@ button{user-select:none}
   <header class="topbar">
     <div class="topLeft">
       <span class="coreDot"></span>
-      <div><div class="modelName">AURA</div><div class="modelMeta" id="sub">AURA 4.4 · Yerel AI · Hafıza · PC Core · Web · Kod</div></div>
+      <div><div class="modelName">AURA</div><div class="modelMeta" id="sub">AURA 4.5 · Yerel AI · Hafıza · PC Core · Web · Kod</div></div>
     </div>
     <div class="topActions">
       <div class="status" id="status">● HAZIR</div>
@@ -172,7 +172,14 @@ button{user-select:none}
     </div>
 
     <div class="chatStage">
-      <div class="chatWrap"><div class="chat" id="chat">
+      <div class="chatWrap"><div class="commandPanel" id="commandPanel">
+  <button class="commandTag" data-cmd="kamera aç">📷 Kamera</button>
+  <button class="commandTag" data-cmd="ekran görüntüsü al">▣ Ekran</button>
+  <button class="commandTag" data-cmd="görev yöneticisi">◈ Görevler</button>
+  <button class="commandTag" data-cmd="ayarlar">⚙ Ayarlar</button>
+  <button class="commandTag" data-cmd="indirilenler">↓ İndirilenler</button>
+</div>
+<div class="chat" id="chat">
         <div class="welcome"><h1>Nasıl yardımcı olabilirim?</h1><p>Hafıza · Kod · PC · Web · Yerel AI</p></div>
       </div></div>
       <div class="composerArea">
@@ -881,6 +888,22 @@ function isDriveListRequest(q){
     /^(sürücü|surucu) (listesi|listele|liste)$/.test(x);
 }
 
+function isCameraRequest(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
+  return /^(kamera|kamerayı aç|kamerayi ac|kamera aç|kamera ac|webcam|webcamı aç|webcami ac)$/.test(x);
+}
+function isWindowsUtilityRequest(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
+  if(/^(ekran görüntüsü al|ekran goruntusu al|ekran görüntüsü|ekran goruntusu|kırpma aracı|kirpma araci)$/.test(x)) return "screenshot";
+  if(/^(ayarlar|windows ayarları|windows ayarlari|ayarları aç|ayarlari ac)$/.test(x)) return "settings";
+  if(/^(görev yöneticisi|gorev yoneticisi|task manager|taskmgr)$/.test(x)) return "taskmanager";
+  if(/^(indirilenler|downloads|indirilenleri aç|indirilenleri ac)$/.test(x)) return "downloads";
+  if(/^(masaüstü|desktop|masaüstünü aç|masaustunu ac)$/.test(x)) return "desktop";
+  if(/^(belgeler|documents|belgeleri aç|belgeleri ac)$/.test(x)) return "documents";
+  if(/^(hesap makinesi|calculator)$/.test(x)) return "calculator";
+  if(/^(not defteri|notepad)$/.test(x)) return "notepad";
+  return null;
+}
 function isDesktopListRequest(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
   return /^(masaüstümde ne var|masaustumde ne var|masaüstünü göster|masaustunu goster)\??$/.test(x);
@@ -993,6 +1016,17 @@ async function handleDirectCommand(q) {
     if(appControl.action==="restart"){await callDesktop("desktop_restart_app",{app:appControl.target});return "Tamam kanka, "+appControl.target+" yeniden başlatıldı.";}
     if(appControl.action==="uninstall"){await callDesktop("desktop_uninstall_app",{app:appControl.target});return "Tamam kanka, "+appControl.target+" için kaldırma işlemi başlatıldı.";}
   }
+  if (isCameraRequest(q)) {
+    await callDesktop("desktop_open_camera",{});
+    return "Kamera açıldı kanka. 📷";
+  }
+
+  const utilityRequest=isWindowsUtilityRequest(q);
+  if(utilityRequest){
+    const result=await callDesktop("desktop_open_windows_utility",{kind:utilityRequest});
+    return result?.message || "Tamam kanka, açtım.";
+  }
+
   if (isPCRequest(q)) {
     const profile = await callDesktop("desktop_scan_environment", {});
     environmentProfile = profile;
@@ -1073,7 +1107,7 @@ async function handleDirectCommand(q) {
     return "Şu anda çalışan uygulamalar:\n\n"+items.slice(0,30).map((x,i)=>(i+1)+". "+x.name+(x.count>1?" ×"+x.count:"")).join("\n");
   }
 
-  if (isDriveListRequest(q)) {
+  if (driveRequest) {
     const result=await callDesktop("desktop_list_drives",{});
     const items=Array.isArray(result)?result:[];
     if(!items.length) return "Sürücü bilgisi alınamadı.";
@@ -1132,7 +1166,9 @@ async function run(q) {
     }
     const memoryDirect = isMemorySaveRequest(q) || isMemoryForgetRequest(q) || isMemoryListRequest(q) || isMemorySearchRequest(q) || isMemoryClearRequest(q);
     const appControl=extractAppControlCommand(q);
-  const direct = memoryDirect || isPCRequest(q) || isUsageRequest(q) || isWeatherRequest(q) || isBatteryRequest(q) || isSystemRequest(q) || isHardwareRequest(q) || isUnityProjectRequest(q) || isConversationHistoryRequest(q) || isDesktopListRequest(q) || isRunningAppsRequest(q) || isDriveListRequest(q) || !!appControl || !!extractOpenTarget(q);
+  const utilityRequest=isWindowsUtilityRequest(q);
+    const driveRequest=typeof isDriveListRequest==="function" && isDriveListRequest(q);
+    const direct = memoryDirect || isCameraRequest(q) || !!utilityRequest || isPCRequest(q) || isUsageRequest(q) || isWeatherRequest(q) || isBatteryRequest(q) || isSystemRequest(q) || isHardwareRequest(q) || isUnityProjectRequest(q) || isConversationHistoryRequest(q) || isDesktopListRequest(q) || isRunningAppsRequest(q) || driveRequest || !!appControl || !!extractOpenTarget(q);
     if (quick) {
       finish(q, quick, false);
       return;
@@ -1289,6 +1325,9 @@ function updateClock() {
   });
 }
 
+document.querySelectorAll(".commandTag").forEach((el)=>{
+  el.addEventListener("click",()=>{ input.value=el.dataset.cmd||""; input.focus(); run(input.value); });
+});
 applyMode();
 renderHistory();
 updateClock();
