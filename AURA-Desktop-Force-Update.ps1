@@ -22,7 +22,7 @@ $files = @(
   @{ Local = Join-Path $repoRoot 'local-ai.js'; Remote = $rawBase + 'local-ai.js'; Required = 'Qwen2.5-1.5B-Instruct'; Name = 'yerel-ai' },
   @{ Local = Join-Path $desktopDir 'main.cjs'; Remote = $rawBase + 'desktop/main.cjs'; Required = "app.whenReady"; Name = 'desktop-core' },
   @{ Local = Join-Path $desktopDir 'preload.cjs'; Remote = $rawBase + 'desktop/preload.cjs'; Required = 'auraDesktop'; Name = 'preload' },
-  @{ Local = Join-Path $desktopDir 'package.json'; Remote = $rawBase + 'desktop/package.json'; Required = '4.7.0'; Name = 'paket' }
+  @{ Local = Join-Path $desktopDir 'package.json'; Remote = $rawBase + 'desktop/package.json'; Required = '4.8.0'; Name = 'paket' }
 )
 
 foreach($item in $files){
