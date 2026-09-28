@@ -797,37 +797,6 @@ async function getUsageReport() {
   };
 }
 
-async function listDrives() {
-  const command = "[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; Get-CimInstance Win32_LogicalDisk -Filter \"DriveType=3\" | Select-Object DeviceID,VolumeName,Size,FreeSpace | ConvertTo-Json -Compress";
-  return await new Promise(resolve => {
-    execFile(
-      'powershell.exe',
-      ['-NoProfile','-NonInteractive','-Command',command],
-      { windowsHide:true, maxBuffer:2*1024*1024 },
-      (error, stdout) => {
-        if(error) return resolve([]);
-        try {
-          const value=JSON.parse(String(stdout||'[]'));
-          const list=Array.isArray(value)?value:(value?[value]:[]);
-          resolve(list.filter(x=>x?.DeviceID).map(x=>{
-            const total=Number(x.Size||0);
-            const free=Number(x.FreeSpace||0);
-            return {
-              drive:String(x.DeviceID||''),
-              device:String(x.DeviceID||''),              name:String(x.VolumeName||''),
-              totalGB:Number((total/1024/1024/1024).toFixed(1)),
-              freeGB:Number((free/1024/1024/1024).toFixed(1)),
-              usedPercent:total ? Number((((total-free)/total)*100).toFixed(1)) : null
-            };
-          }));
-        } catch {
-          resolve([]);
-        }
-      }
-    );
-  });
-}
-
 async function discoverKnownWindowsGames() {
   const apps=await discoverShortcutApps().catch(()=>[]);
   const found=[];
