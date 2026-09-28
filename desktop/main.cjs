@@ -994,13 +994,21 @@ async function chooseFolder(purpose) {
   return { ok:true, path:selected, roots:allowedRoots() };
 }
 
-function listDrives() {
-  const drives = [];
-  for (let code=67; code<=90; code++) {
-    const drive=String.fromCharCode(code)+':\\';
-    if (fs.existsSync(drive)) drives.push(drive);
-  }
-  return drives;
+async function listDrives() {
+  const command = "[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; Get-CimInstance Win32_LogicalDisk -Filter \"DriveType=3\" | Select-Object DeviceID,VolumeName,Size,FreeSpace | ConvertTo-Json -Compress";
+  return await new Promise(resolve=>{
+    execFile('powershell.exe',['-NoProfile','-NonInteractive','-Command',command],{windowsHide:true,maxBuffer:2*1024*1024},(error,stdout)=>{
+      if(error) return resolve([]);
+      try{
+        const value=JSON.parse(String(stdout||'[]'));
+        const list=Array.isArray(value)?value:(value?[value]:[]);
+        resolve(list.filter(x=>x?.DeviceID).map(x=>{
+          const total=Number(x.Size||0), free=Number(x.FreeSpace||0);
+          return {drive:String(x.DeviceID),device:String(x.DeviceID),name:String(x.VolumeName||'Yerel Disk'),totalGB:Number((total/1024/1024/1024).toFixed(1)),freeGB:Number((free/1024/1024/1024).toFixed(1)),usedPercent:total?Number(((total-free)/total*100).toFixed(1)):null};
+        }));
+      }catch{ resolve([]); }
+    });
+  });
 }
 
 async function copyPath(source, destination) {
@@ -1495,8 +1503,30 @@ async function getHardwareMetrics(){
   };
 }
 
-function systemInfo(){
-  return {platform:process.platform,arch:process.arch,os:os.type()+' '+os.release(),hostname:os.hostname(),cpu:os.cpus()?.[0]?.model||'Bilinmiyor',cpuCount:os.cpus()?.length||0,memoryGB:Math.round(os.totalmem()/1024/1024/1024),freeMemoryGB:Math.round(os.freemem()/1024/1024/1024),home:os.homedir()};
+async function systemInfo(){
+  let totalGB=os.totalmem()/1024/1024/1024;
+  let freeGB=os.freemem()/1024/1024/1024;
+  try{
+    const raw=await new Promise(resolve=>{
+      const command="[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; Get-CimInstance Win32_OperatingSystem | Select-Object TotalVisibleMemorySize,FreePhysicalMemory | ConvertTo-Json -Compress";
+      execFile('powershell.exe',['-NoProfile','-NonInteractive','-Command',command],{windowsHide:true,maxBuffer:1024*1024},(error,stdout)=>resolve(error?'':String(stdout||'')));
+    });
+    const data=JSON.parse(raw||'{}');
+    const totalKB=Number(data?.TotalVisibleMemorySize);
+    const freeKB=Number(data?.FreePhysicalMemory);
+    if(Number.isFinite(totalKB)&&totalKB>0) totalGB=totalKB/1024/1024;
+    if(Number.isFinite(freeKB)&&freeKB>=0) freeGB=freeKB/1024/1024;
+  }catch{}
+  totalGB=Number(totalGB.toFixed(1));
+  freeGB=Number(Math.max(0,freeGB).toFixed(1));
+  return {
+    platform:process.platform,arch:process.arch,os:os.type()+' '+os.release(),hostname:os.hostname(),
+    cpu:os.cpus()?.[0]?.model||'Bilinmiyor',cpuCount:os.cpus()?.length||0,
+    memoryGB:totalGB,freeMemoryGB:freeGB,
+    usedMemoryGB:Number(Math.max(0,totalGB-freeGB).toFixed(1)),
+    usedMemoryPercent:totalGB?Number(((totalGB-freeGB)/totalGB*100).toFixed(1)):null,
+    home:os.homedir()
+  };
 }
 async function handleTool(tool,args) {
   switch(tool) {
@@ -1504,7 +1534,7 @@ async function handleTool(tool,args) {
     case 'desktop_get_weather': return getWeather(args.city||'Istanbul');
     case 'desktop_get_battery_status': return getBatteryStatus();
     case 'desktop_find_unity_projects': return findUnityProjects(args.maxResults||20);
-    case 'desktop_get_system_info': return systemInfo();
+    case 'desktop_get_system_info': return await systemInfo();
     case 'desktop_list_directory': return listDirectory(normalizePath(args.path));
     case 'desktop_read_text_file': return {path:normalizePath(args.path),content:await readTextFile(normalizePath(args.path))};
     case 'desktop_write_text_file': return writeTextFile(normalizePath(args.path),args.content);
