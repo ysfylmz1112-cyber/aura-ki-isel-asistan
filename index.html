@@ -826,11 +826,11 @@ function isRunningAppsRequest(q){
   const n=String(q||"")
     .toLocaleLowerCase("tr-TR")
     .replace(/[?.!,;:]/g," ")
-    .replace(/\\s+/g," ")
+    .replace(/\s+/g," ")
     .trim();
 
-  return /(?:^|\\s)(çalışan|calisan) (uygulamalar|uygulama|programlar|programlarım|programlarim)(?:\\s|$)/.test(n) ||
-    /(?:^|\\s)(açık|acik) (uygulamalar|uygulama|programlar|programlarım|programlarim)(?:\\s|$)/.test(n) ||
+  return /(?:^|\s)(çalışan|calisan) (uygulamalar|uygulama|programlar|programlarım|programlarim)(?:\s|$)/.test(n) ||
+    /(?:^|\s)(açık|acik) (uygulamalar|uygulama|programlar|programlarım|programlarim)(?:\s|$)/.test(n) ||
     /hangi (uygulamalar|uygulama|programlar) (açık|acik|çalışıyor|calisiyor)/.test(n) ||
     /(?:uygulamalar|programlar) (hangileri )?(açık|acik|çalışıyor|calisiyor)/.test(n) ||
     /şu anda neler açık|su anda neler acik/.test(n) ||
@@ -844,10 +844,9 @@ function isDriveListRequest(q){
     .replace(/\s+/g," ")
     .trim();
 
-  return /^(sürücüler|suruculer|sürücüleri göster|suruculeri goster|diskler|diskleri göster|diskleri goster|disklerim|sürücülerim)\\??$/.test(x) ||
-    /(?:hangi|neler|ne) (sürücüler|suruculer|diskler)(?: var|bulunuyor|bulunuyor\??)?$/.test(x) ||
-    /sürücü (listesi|listele|liste)/.test(x) ||
-    /surucu (listesi|listele|liste)/.test(x);
+  return /^(sürücüler|suruculer|sürücüleri göster|suruculeri goster|diskler|diskleri göster|diskleri goster|disklerim|sürücülerim)$/.test(x) ||
+    /^(hangi|neler|ne) (sürücüler|suruculer|diskler)( var| bulunuyor)?$/.test(x) ||
+    /^(sürücü|surucu) (listesi|listele|liste)$/.test(x);
 }
 
 function isDesktopListRequest(q){
