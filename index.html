@@ -527,7 +527,7 @@ function getLocalAIModel() {
 async function loadLocalAI() {
   if (localAIModule) return localAIModule;
   if (!localAIPromise) {
-    localAIPromise = import("./local-ai.js").then((mod) => {
+    localAIPromise = import("./local-ai.js?v=4.8.0").then((mod) => {
       localAIModule = mod;
       return mod;
     });
@@ -1114,6 +1114,7 @@ async function handleDirectCommand(q) {
     return "Şu anda çalışan uygulamalar:\n\n"+items.slice(0,30).map((x,i)=>(i+1)+". "+x.name+(x.count>1?" ×"+x.count:"")).join("\n");
   }
 
+  const driveRequest = safeDriveListRequest(q);
   if (driveRequest) {
     const result=await callDesktop("desktop_list_drives",{});
     const items=Array.isArray(result)?result:[];
