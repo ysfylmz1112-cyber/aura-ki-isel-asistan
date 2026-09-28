@@ -1176,7 +1176,7 @@ async function run(q) {
     const memoryDirect = isMemorySaveRequest(q) || isMemoryForgetRequest(q) || isMemoryListRequest(q) || isMemorySearchRequest(q) || isMemoryClearRequest(q);
     const appControl=extractAppControlCommand(q);
   const utilityRequest=isWindowsUtilityRequest(q);
-    const driveRequest=typeof isDriveListRequest==="function" && isDriveListRequest(q);
+    const driveRequest=typeof globalThis.isDriveListRequest==="function" && globalThis.isDriveListRequest(q);
     const direct = memoryDirect || isCameraRequest(q) || !!utilityRequest || isPCRequest(q) || isUsageRequest(q) || isWeatherRequest(q) || isBatteryRequest(q) || isSystemRequest(q) || isHardwareRequest(q) || isUnityProjectRequest(q) || isConversationHistoryRequest(q) || isDesktopListRequest(q) || isRunningAppsRequest(q) || driveRequest || !!appControl || !!extractOpenTarget(q);
     if (quick) {
       finish(q, quick, false);
