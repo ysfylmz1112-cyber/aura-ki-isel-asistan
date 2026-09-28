@@ -389,7 +389,7 @@ function isWeatherRequest(q){
 }
 function isBatteryRequest(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
-  return /^(pilim kaç|pilim kac|pil yüzde kaç|pil yuzde kac|batarya|bataryam kaç|bataryam kac|şarjım kaç|sarjim kac)??$/.test(x);
+  return /^(pilim kaç|pilim kac|pil yüzde kaç|pil yuzde kac|batarya|bataryam kaç|bataryam kac|şarjım kaç|sarjim kac)\??$/.test(x);
 }
 async function refreshWeather(force=false){
   if(!hasDesktopAgent()) return null;
@@ -847,7 +847,7 @@ function isMemoryForgetRequest(q){
 
 function isMemoryListRequest(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
-  return /^(hafızamda ne var|hafizamda ne var|hafızanı göster|hafizani goster|neyi hatırlıyorsun|neyi hatirliyorsun)??$/.test(x);
+  return /^(hafızamda ne var|hafizamda ne var|hafızanı göster|hafizani goster|neyi hatırlıyorsun|neyi hatirliyorsun)\??$/.test(x);
 }
 
 function isMemorySearchRequest(q){
@@ -857,18 +857,18 @@ function isMemorySearchRequest(q){
 
 function isMemoryClearRequest(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
-  return /^(hafızamı temizle|hafizami temizle|tüm hafızayı sil|tum hafizayi sil|hafızayı sıfırla|hafizayi sifirla)??$/.test(x);
+  return /^(hafızamı temizle|hafizami temizle|tüm hafızayı sil|tum hafizayi sil|hafızayı sıfırla|hafizayi sifirla)\??$/.test(x);
 }
 
 function extractMemoryPayload(q){
-  return String(q||"").trim()    .replace(/^(bunu )?(hatırla|hatirla|unutma)s*:?s*/i,"")
-    .replace(/^(hafızana|hafizana)s+(kaydet|ekle)s*:?s*/i,"")
+  return String(q||"").trim()    .replace(/^(bunu )?(hatırla|hatirla|unutma)\s*:?\s*/i,"")
+    .replace(/^(hafızana|hafizana)\s+(kaydet|ekle)\s*:?\s*/i,"")
     .trim();
 }
 
 function extractMemoryForgetPayload(q){
   return String(q||"").trim()
-    .replace(/^(bunu )?(unut|hafızadan sil|hafizadan sil)s*:?s*/i,"")
+    .replace(/^(bunu )?(unut|hafızadan sil|hafizadan sil)\s*:?\s*/i,"")
     .trim();
 }
 
