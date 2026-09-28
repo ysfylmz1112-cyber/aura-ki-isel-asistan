@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const fsp = require('fs/promises');
 const http = require('http');
+const crypto = require('crypto');
 const os = require('os');
 const { execFile, spawn } = require('child_process');
 const { search } = require('duck-duck-scrape');
@@ -17,6 +18,10 @@ let extraRoots = [];
 let activeSpeechProcess = null;
 let localServer = null;
 let localServerPort = null;
+let remoteServer = null;
+let remoteServerPort = null;
+let remoteControlToken = null;
+const REMOTE_FILE = path.join(app.getPath('userData'), 'aura-remote.json');
 
 function normalizePath(value) { return path.resolve(String(value || '')); }
 function allowedRoots() {
@@ -1568,6 +1573,7 @@ async function systemInfo(){
 async function handleTool(tool,args) {
   switch(tool) {
     case 'desktop_get_hardware_metrics': return getHardwareMetrics();
+    case 'desktop_get_remote_control': return getRemoteControlInfo();
     case 'desktop_get_weather': return getWeather(args.city||'Istanbul');
     case 'desktop_get_battery_status': return getBatteryStatus();
     case 'desktop_open_camera': return openCamera();
@@ -1678,6 +1684,73 @@ function startLocalRendererServer() {
   });
 }
 
+
+async function loadRemoteControlToken(){
+  try{const raw=await fsp.readFile(REMOTE_FILE,'utf8');const data=JSON.parse(raw);if(typeof data?.token==='string'&&/^[a-f0-9]{32,128}$/i.test(data.token)){remoteControlToken=data.token;return;}}catch{}
+  remoteControlToken=crypto.randomBytes(24).toString('hex');
+  try{await fsp.mkdir(path.dirname(REMOTE_FILE),{recursive:true});await fsp.writeFile(REMOTE_FILE,JSON.stringify({token:remoteControlToken,createdAt:new Date().toISOString()},null,2),'utf8');}catch{}
+}
+function getLanAddress(){
+  const nets=os.networkInterfaces();
+  for(const entries of Object.values(nets)) for(const item of (entries||[])) if(item&&item.family==='IPv4'&&!item.internal&&!String(item.address).startsWith('127.')) return item.address;
+  return '127.0.0.1';
+}
+function remoteAuthorized(url){return String(url?.searchParams?.get('token')||'')===String(remoteControlToken||'');}
+function remotePage(){
+  return '<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#03070c"><title>AURA Remote</title><style>*{box-sizing:border-box}body{margin:0;background:#03070c;color:#edfaff;font-family:system-ui;min-height:100vh;background:radial-gradient(circle at 50% 15%,#12313d,#03070c 42%)}main{max-width:560px;margin:auto;padding:22px 16px 40px}.brand{text-align:center;letter-spacing:5px;font-weight:800;font-size:20px}.core{width:190px;height:190px;margin:24px auto;position:relative;border-radius:50%;display:grid;place-items:center;border:1px solid #3fe5ff88;box-shadow:0 0 55px #28dfff22,inset 0 0 35px #28dfff16}.core:before,.core:after{content:"";position:absolute;border-radius:50%;border:1px solid #53eaff55}.core:before{inset:16px;border-style:dashed;animation:r 8s linear infinite}.core:after{inset:35px;border-top-color:#7b8cff;border-bottom-color:#62e8ff;animation:r 4s linear infinite reverse}.orb{width:62px;height:62px;border-radius:50%;background:radial-gradient(circle,#fff,#68efff 20%,#0b7188 48%,transparent 72%);box-shadow:0 0 35px #48eaff}.online{text-align:center;color:#6ff0b1;font-size:11px;letter-spacing:2px}.panel{margin-top:16px;padding:14px;border:1px solid #172833;border-radius:16px;background:#071018cc}input{width:100%;padding:13px;border-radius:11px;border:1px solid #243743;background:#081017;color:white;outline:0}button{font:inherit;border:1px solid #20313b;background:#0c161e;color:#d9faff;border-radius:11px;padding:11px;cursor:pointer}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:9px}.primary{border-color:#35dfff55;background:#0c2530}.stat{display:flex;justify-content:space-between;color:#78909c;font-size:11px;padding:7px 0;border-bottom:1px solid #13212a}.stat b{color:#e8f8fb}.out{white-space:pre-wrap;color:#9eb0bb;font-size:12px;line-height:1.5;min-height:30px}.small{text-align:center;color:#536875;font-size:9px;margin-top:13px}@keyframes r{to{transform:rotate(360deg)}}</style></head><body><main><div class="brand">AURA</div><div class="core"><div class="orb"></div></div><div class="online">● REMOTE CORE ONLINE</div><div class="panel"><input id="cmd" placeholder="Komut: Minecraft aç, kamera aç..."><div class="grid"><button class="primary" onclick="act('minecraft aç')">Minecraft</button><button onclick="act('kamera aç')">Kamera</button><button onclick="act('Chrome aç')">Chrome</button><button onclick="act('Görev yöneticisi')">Görev Yöneticisi</button><button onclick="act('Bilgisayarımı tara')">PC Tara</button><button onclick="act('Hesap makinesi')">Hesap Makinesi</button></div><div class="grid"><button onclick="status()">PC Durumu</button><button onclick="act('Masaüstünü aç')">Masaüstü</button></div><div class="out" id="out"></div></div><div class="panel"><div class="stat"><span>CPU</span><b id="cpu">—</b></div><div class="stat"><span>RAM</span><b id="ram">—</b></div><div class="stat"><span>GPU</span><b id="gpu">—</b></div><div class="stat"><span>Sıcaklık</span><b id="temp">—</b></div></div><div class="small">AURA telefon kumandası · Aynı Wi‑Fi ağı üzerinde çalışır</div></main><script>
+const token=new URLSearchParams(location.search).get('token')||'';
+async function act(command){document.getElementById('out').textContent='Çalışıyor...';try{const r=await fetch('/api/action?token='+encodeURIComponent(token)+'&command='+encodeURIComponent(command));const j=await r.json();document.getElementById('out').textContent=j.message||j.error||'Tamam';await status()}catch(e){document.getElementById('out').textContent='Bağlantı hatası';}}
+async function status(){try{const r=await fetch('/api/status?token='+encodeURIComponent(token));const j=await r.json();if(j.hardware){document.getElementById('cpu').textContent=j.hardware.cpu?.usage!=null?j.hardware.cpu.usage+'%':'—';document.getElementById('ram').textContent=j.hardware.memory?.usedPercent!=null?j.hardware.memory.usedPercent.toFixed(0)+'%':'—';document.getElementById('gpu').textContent=j.hardware.gpu?.usage!=null?j.hardware.gpu.usage+'%':'—';document.getElementById('temp').textContent=j.hardware.gpu?.temperatureC!=null?j.hardware.gpu.temperatureC+'°C':'—';}}catch{}}
+document.getElementById('cmd').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.value.trim()){act(e.target.value.trim());e.target.value='';}});status();
+</script></body></html>';
+}
+function remoteCommand(command){
+  const q=String(command||'').toLocaleLowerCase('tr-TR').trim();
+  if(/^(kamera|kamerayı aç|kamerayi ac|kamera aç|kamera ac|webcam|webcamı aç|webcami ac|cam aç|cam ac)$/.test(q)) return ['desktop_open_camera',{}];
+  if(/^(görev yöneticisi|gorev yoneticisi|task manager|taskmgr)$/.test(q)) return ['desktop_open_windows_utility',{kind:'taskmanager'}];
+  if(/^(hesap makinesi|calculator)$/.test(q)) return ['desktop_open_windows_utility',{kind:'calculator'}];
+  if(/^(not defteri|notepad)$/.test(q)) return ['desktop_open_windows_utility',{kind:'notepad'}];
+  if(/^(masaüstü|desktop|masaüstünü aç|masaustunu ac)$/.test(q)) return ['desktop_open_windows_utility',{kind:'desktop'}];
+  if(/^(ayarlar|windows ayarları|windows ayarlari|ayarlari ac)$/.test(q)) return ['desktop_open_windows_utility',{kind:'settings'}];
+  const m=q.match(/^(.+?)\\s+aç$/);
+  if(m) return ['desktop_find_and_launch_app',{app:m[1].trim().replace(/['’](?:y?[ıiuü])$/i,'').replace(/(?:y[ıiuü])$/i,'')}];
+  return null;
+}
+async function startRemoteControlServer(){
+  if(remoteServer&&remoteServerPort)return;
+  await loadRemoteControlToken();
+  remoteServer=http.createServer(async(req,res)=>{
+    try{
+      const url=new URL(req.url||'/', 'http://'+(req.headers.host||'127.0.0.1'));
+      if(url.pathname==='/'||url.pathname==='/remote'){
+        if(!remoteAuthorized(url)){res.writeHead(401,{'Content-Type':'text/plain; charset=utf-8'});return res.end('AURA remote yetkisi gerekli.');}
+        res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});return res.end(remotePage());
+      }
+      if(!remoteAuthorized(url)){res.writeHead(401,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify({ok:false,error:'Yetkisiz remote erişim.'}));}
+      if(url.pathname==='/api/status'){
+        const hardware=await getHardwareMetrics();
+        const profile=await getEnvironmentProfile();
+        res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});
+        return res.end(JSON.stringify({ok:true,hardware,user:os.userInfo().username,apps:profile?.applicationSummary?.userApps||0,games:Array.isArray(profile?.games)?profile.games.length:0}));
+      }
+      if(url.pathname==='/api/action'){
+        const command=url.searchParams.get('command')||'';
+        const pair=remoteCommand(command);
+        if(!pair)throw new Error('Bu telefon komutu henüz desteklenmiyor.');
+        const result=await handleTool(pair[0],pair[1]);
+        res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});
+        return res.end(JSON.stringify({ok:true,message:result?.message||'Komut tamamlandı.',result}));
+      }
+      res.writeHead(404,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify({ok:false,error:'Bulunamadı'}));
+    }catch(error){
+      res.writeHead(400,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify({ok:false,error:error?.message||'Remote hata'}));
+    }
+  });
+  await new Promise((resolve,reject)=>{remoteServer.once('error',reject);remoteServer.listen(0,'0.0.0.0',()=>{remoteServerPort=remoteServer.address().port;resolve();});});
+}
+function getRemoteControlInfo(){const ip=getLanAddress();return {enabled:Boolean(remoteServerPort),ip,port:remoteServerPort,url:remoteServerPort?('http://'+ip+':'+remoteServerPort+'/?token='+remoteControlToken):null};}
+async function stopRemoteControlServer(){const server=remoteServer;remoteServer=null;remoteServerPort=null;if(!server)return;await new Promise(resolve=>{try{server.close(()=>resolve());}catch{resolve();}});}
+
 async function closeLocalRendererServer(){
   const server=localServer;
   localServer=null;
@@ -1749,6 +1822,7 @@ app.whenReady().then(async()=>{
   await loadUsageState();
   await loadMemoryState();
   await loadConversationState();
+  await startRemoteControlServer();
 
   ipcMain.handle('aura:tool',async(event,payload)=>{
     try{
@@ -1781,7 +1855,7 @@ app.whenReady().then(async()=>{
 
   ipcMain.handle('aura:desktop-info',async()=>({
     connected:true,
-    version:'4.6.0',
+    version:'4.7.0',
     mode:'secure-local-agent-pc-aware-core',
     roots:allowedRoots(),
     features:[
@@ -1793,7 +1867,8 @@ app.whenReady().then(async()=>{
       'battery',
       'web-research',
       'unity-tools',
-      'code-mode'
+      'code-mode',
+      'phone-remote-control'
     ]
   }));
 
@@ -1809,6 +1884,7 @@ app.whenReady().then(async()=>{
 });
 
 app.on('before-quit',()=>{
+  stopRemoteControlServer().catch(()=>{});
   closeLocalRendererServer().catch(()=>{});
 });
 
