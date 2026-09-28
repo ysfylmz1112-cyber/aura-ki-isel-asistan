@@ -104,7 +104,7 @@ button{user-select:none}
     <div id="usageTop" class="usageText">Kullanım raporu henüz alınmadı.</div>
     <div class="sideLabel" style="padding-left:0">SON SOHBETLER</div>
     <div class="history" id="history"></div>
-    <div class="footer">AURA OS 4.6 · LOCAL AI · MEMORY · PC CORE · CODE</div>
+    <div class="footer">AURA OS 4.7 · LOCAL AI · MEMORY · PC CORE · PHONE · CODE</div>
   </div>
 </aside>
 
@@ -112,9 +112,10 @@ button{user-select:none}
   <header class="topbar">
     <div class="topLeft">
       <span class="coreDot"></span>
-      <div><div class="modelName">AURA</div><div class="modelMeta" id="sub">AURA 4.6 · Yerel AI · Hafıza · PC Core · Web · Kod</div></div>
+      <div><div class="modelName">AURA</div><div class="modelMeta" id="sub">AURA 4.7 · Yerel AI · Hafıza · PC Core · Telefon · Web · Kod</div></div>
     </div>
     <div class="topActions">
+      <button class="btn" id="phoneBtn" title="Telefon kumandası">📱 Telefon</button>
       <div class="status" id="status">● HAZIR</div>
     </div>
   </header>
@@ -895,7 +896,7 @@ function safeDriveListRequest(q){
 
 function isCameraRequest(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
-  return /^(kamera|kamerayı aç|kamerayi ac|kamera aç|kamera ac|webcam|webcamı aç|webcami ac)$/.test(x);
+  return /^(kamera|kamerayı aç|kamerayi ac|kamera aç|kamera ac|webcam|webcamı aç|webcami ac|cam aç|cam ac)$/.test(x);
 }
 function isWindowsUtilityRequest(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
@@ -1257,6 +1258,24 @@ voiceBtn.addEventListener("click",()=>{
 });
 
 
+const phoneBtn = $("phoneBtn");
+if(phoneBtn){
+  phoneBtn.addEventListener("click",async()=>{
+    if(!hasDesktopAgent()){ addMessage("error","AURA","Telefon kumandası için AURA Desktop açık olmalı."); return; }
+    try{
+      const info=await callDesktop("desktop_get_remote_control",{});
+      if(info?.url){
+        const ok=confirm("Telefonundan AURA'yı yönetmek için bu adresi telefonunda aç:\n\n"+info.url+"\n\nAynı Wi‑Fi ağında olmalısınız.\n\nAdresi panoya kopyalayayım mı?");
+        if(ok && navigator.clipboard) await navigator.clipboard.writeText(info.url);
+        addMessage("ai","AURA","Telefon kumandası hazır. 📱\n\n"+info.url);
+      }else{
+        addMessage("error","AURA","Telefon kumandası başlatılamadı.");
+      }
+    }catch(error){
+      addMessage("error","AURA","Telefon kumandası: "+String(error?.message||error));
+    }
+  });
+}
 sendBtn.addEventListener("click", () => { voiceInput = false; run(input.value); });
 
 input.addEventListener("keydown", (event) => {
