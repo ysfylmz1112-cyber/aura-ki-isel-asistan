@@ -57,7 +57,11 @@ foreach($item in $files){
   if([string]::IsNullOrWhiteSpace($remote)){
     throw ('GitHub dosyasi bos: ' + $item.GitPath)
   }
-  if($remote.IndexOf($item.Required,[System.StringComparison]::Ordinal) -lt 0){
+  
+  if(($item.GitPath -eq 'index.html' -or $item.GitPath -eq 'local-ai.js') -and ($remote -match 'ÔÇ|â[€™‚]|─░|├╝|┬À')){
+    throw ('UTF-8 dosya doğrulanamadı: ' + $item.GitPath + ' | Bozuk karakter dizisi algılandı.')
+  }
+if($remote.IndexOf($item.Required,[System.StringComparison]::Ordinal) -lt 0){
     throw ('GitHub dosyasi dogrulanamadi: ' + $item.GitPath + ' | AURA guncel commitinde beklenen imza bulunamadi.')
   }
 
