@@ -184,6 +184,9 @@ button{user-select:none}
   <button class="commandTag" data-cmd="görev yöneticisi">◈ Görevler</button>
   <button class="commandTag" data-cmd="ayarlar">⚙ Ayarlar</button>
   <button class="commandTag" data-cmd="indirilenler">↓ İndirilenler</button>
+  <button class="commandTag" data-cmd="PC'yi hızlı tara">⚡ Hızlı Tara</button>
+  <button class="commandTag" data-cmd="PC'yi derin tara">🔎 Derin Tara</button>
+  <button class="commandTag" data-cmd="PC taramasını durdur">⏹ Durdur</button>
 </div>
 <div class="chat" id="chat">
         <div class="welcome"><h1>Nasıl yardımcı olabilirim?</h1><p>Hafıza · Kod · PC · Web · Yerel AI</p></div>
@@ -263,6 +266,9 @@ try {
 }
 
 let busy = false;
+let runGeneration = 0;
+let scanPollTimer = null;
+let scanWasCancelled = false;
 let voiceInput = false;
 let voiceEnabled = localStorage.getItem("aura_voice_enabled") !== "0";
 let speaking = false;
@@ -760,6 +766,7 @@ async function speak(text){
 }
 
 function finish(q, answer, usedAI = false) {
+  stopScanPoll();
   addMessage("", "AURA", answer);
   if(hasDesktopAgent()){
     callDesktop("desktop_conversation_log",{
@@ -827,9 +834,37 @@ function isPCRequest(q) {
     "pc de neler var",
     "uygulamalarımı göster",
     "oyunlarımı göster",
-    "hangi oyunlarım var"
+    "hangi oyunlarım var",
+    "pc tara",
+    "pc'yi hızlı tara",
+    "pc yi hızlı tara",
+    "bilgisayarı tara",
+    "bilgisayarımı tara"
   ].includes(x);
 }
+function isDeepPCRequest(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
+  return /^(pc'yi derin tara|pc yi derin tara|derin pc tara|bilgisayarı derin tara|bilgisayarımı derin tara)$/.test(x);
+}
+function isScanCancelRequest(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
+  return /^(pc taramasını durdur|pc taramasini durdur|taramayı durdur|taramayi durdur|taramayı iptal et|taramayi iptal et|pc taramasını iptal et|pc taramasini iptal et)$/.test(x);
+}
+function startScanPoll(){
+  clearInterval(scanPollTimer);
+  scanPollTimer=setInterval(async()=>{
+    if(!hasDesktopAgent()) return;
+    try{
+      const s=await callDesktop("desktop_get_scan_status",{});
+      if(!s?.active){clearInterval(scanPollTimer);scanPollTimer=null;return;}
+      const pct=Number(s.progress);
+      status.textContent=Number.isFinite(pct) ? "● PC TARANIYOR "+Math.round(pct)+"%" : "● PC TARANIYOR";
+      subEl.textContent=String(s.step||"PC taranıyor...");
+      aiEl.textContent=Number.isFinite(pct) ? Math.round(pct)+"%" : "PC";
+    }catch{}
+  },250);
+}
+function stopScanPoll(){clearInterval(scanPollTimer);scanPollTimer=null;}
 
 function isUsageRequest(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
@@ -1052,8 +1087,22 @@ async function handleDirectCommand(q) {
     return result?.message || "Tamam kanka, açtım.";
   }
 
-  if (isPCRequest(q)) {
-    const profile = await callDesktop("desktop_scan_environment", {});
+  if (isScanCancelRequest(q)) {
+    const result=await callDesktop("desktop_cancel_scan",{});
+    stopScanPoll();
+    return result?.cancelled ? "PC taramasını durduruyorum kanka. Yarım kalan sonuçlar kullanılmayacak." : "Şu anda çalışan bir PC taraması yok.";
+  }
+
+  if (isPCRequest(q) || isDeepPCRequest(q)) {
+    scanWasCancelled=false;
+    startScanPoll();
+    const deep=isDeepPCRequest(q);
+    const profile = await callDesktop("desktop_scan_environment", {mode:deep?"deep":"quick",force:true});
+    stopScanPoll();
+    if(profile?.cancelled){
+      scanWasCancelled=true;
+      return "PC taraması iptal edildi kanka. AURA çalışmayı bıraktı; pencereyi kapatmana gerek yok.";
+    }
     environmentProfile = profile;
     try { localStorage.setItem("aura_environment_profile", JSON.stringify(profile)); } catch {}
     updateLiveProfile(profile);
@@ -1172,6 +1221,7 @@ async function run(q) {
   q = String(q || "").trim();
   if (!q || busy) return;
 
+  const myGeneration=++runGeneration;
   busy = true;
   sendBtn.disabled = true;
   micBtn.disabled = true;
@@ -1187,26 +1237,26 @@ async function run(q) {
     if(modeCommand){
       mode=q.toLocaleLowerCase("tr-TR").includes("sohbet")?"chat":"code";
       applyMode();
-      finish(q,mode==="code"?"Kod modu açıldı. Artık doğrudan kod üretmeye odaklanacağım.":"Sohbet modu açıldı.",false);
+      if(myGeneration===runGeneration) finish(q,mode==="code"?"Kod modu açıldı. Artık doğrudan kod üretmeye odaklanacağım.":"Sohbet modu açıldı.",false);
       return;
     }
     const memoryDirect = isMemorySaveRequest(q) || isMemoryForgetRequest(q) || isMemoryListRequest(q) || isMemorySearchRequest(q) || isMemoryClearRequest(q);
     const appControl=extractAppControlCommand(q);
   const utilityRequest=isWindowsUtilityRequest(q);
     const driveRequest=safeDriveListRequest(q);
-    const direct = memoryDirect || isCameraRequest(q) || !!utilityRequest || isPCRequest(q) || isUsageRequest(q) || isWeatherRequest(q) || isBatteryRequest(q) || isSystemRequest(q) || isHardwareRequest(q) || isUnityProjectRequest(q) || isConversationHistoryRequest(q) || isDesktopListRequest(q) || isRunningAppsRequest(q) || driveRequest || !!appControl || !!extractOpenTarget(q);
+    const direct = memoryDirect || isScanCancelRequest(q) || isCameraRequest(q) || !!utilityRequest || isPCRequest(q) || isDeepPCRequest(q) || isUsageRequest(q) || isWeatherRequest(q) || isBatteryRequest(q) || isSystemRequest(q) || isHardwareRequest(q) || isUnityProjectRequest(q) || isConversationHistoryRequest(q) || isDesktopListRequest(q) || isRunningAppsRequest(q) || driveRequest || !!appControl || !!extractOpenTarget(q);
     if (quick) {
-      finish(q, quick, false);
+      if(myGeneration===runGeneration) finish(q, quick, false);
       return;
     }
     if (memoryDirect) {
       const answer = await handleMemoryCommand(q);
-      finish(q, answer || "Hafıza işlemi tamamlanamadı.", false);
+      if(myGeneration===runGeneration) finish(q, answer || "Hafıza işlemi tamamlanamadı.", false);
       return;
     }
     if (direct) {
       const answer = await handleDirectCommand(q);
-      finish(q, answer || "Komut çalıştırılamadı.", false);
+      if(myGeneration===runGeneration) finish(q, answer || "Komut çalıştırılamadı.", false);
       return;
     }
 
@@ -1229,7 +1279,7 @@ async function run(q) {
 
     aiEl.textContent = "YEREL";
     subEl.textContent = "Yerel model: " + getLocalAIModel();
-    finish(q, answer, true);
+    if(myGeneration===runGeneration) finish(q, answer, true);
   } catch (error) {
     console.error("[AURA] cevap üretme hatası:", error);
     busy = false;
@@ -1342,6 +1392,9 @@ document.addEventListener("keydown", (event) => {
   }
   if (event.key === "Escape") {
     if(qrModal?.classList.contains("open")) closeRemoteQr();
+    runGeneration++;
+    if(hasDesktopAgent()) callDesktop("desktop_cancel_scan",{}).catch(()=>{});
+    stopScanPoll();
     speechSynthesis.cancel();
     if(hasDesktopAgent()) callDesktop("desktop_stop_speech",{}).catch(()=>{});
     speaking=false;
