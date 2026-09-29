@@ -3,19 +3,19 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Join-Path $env:USERPROFILE 'Desktop\aura-ki-isel-asistan'
 $desktopDir = Join-Path $repoRoot 'desktop'
 $rendererDir = Join-Path $desktopDir 'renderer'
-$desktopInstaller = Join-Path $env:USERPROFILE 'Desktop\AURA-5.0.1-Setup.exe'
+$desktopInstaller = Join-Path $env:USERPROFILE 'Desktop\AURA-5.1.0-Setup.exe'
 $releaseCommits = @{
-  index = 'main'
-  localAI = 'main'
-  main = 'main'
-  preload = 'main'
-  package = 'main'
+  index = 'c20a3216474638bcf99a409c110cc64487852adc'
+  localAI = '08c8fdfdd603336a6f85315bc28c0ff7c85dd1ba'
+  main = 'c9354f144a505b9ac8e8c1bb7ee18612ac8fc71d'
+  preload = '587cde2a08e508376e0dba1ee44018d03d0440bb'
+  package = 'e692710d737f9da326ec09b14e6e479380db5981'
 }
 $rawBase = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/'
 
 New-Item -ItemType Directory -Force -Path $repoRoot,$desktopDir,$rendererDir | Out-Null
 
-Write-Host 'AURA 5.0.1 - TAM WINDOWS GUNCELLEMESI' -ForegroundColor Cyan
+Write-Host 'AURA 5.1.0 - TAM WINDOWS GUNCELLEMESI' -ForegroundColor Cyan
 Write-Host 'Mevcut AURA surecleri kapatiliyor...' -ForegroundColor DarkCyan
 Stop-Process -Name 'AURA' -Force -ErrorAction SilentlyContinue
 Get-CimInstance Win32_Process -Filter "Name='electron.exe'" -ErrorAction SilentlyContinue |
@@ -57,7 +57,7 @@ if(Test-Path '.\dist'){
   Remove-Item '.\dist' -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-Write-Host 'AURA 5.0.1 Setup EXE olusturuluyor...' -ForegroundColor Cyan
+Write-Host 'AURA 5.1.0 Setup EXE olusturuluyor...' -ForegroundColor Cyan
 npm run build:win
 if($LASTEXITCODE -ne 0){ throw 'AURA Setup EXE derlemesi basarisiz oldu.' }
 
@@ -71,10 +71,10 @@ Copy-Item -LiteralPath $built.FullName -Destination $desktopInstaller -Force
 
 Write-Host ''
 Write-Host '========================================' -ForegroundColor Green
-Write-Host 'AURA 5.0.1 HAZIR' -ForegroundColor Green
+Write-Host 'AURA 5.1.0 HAZIR' -ForegroundColor Green
 Write-Host ('Kurulum: ' + $desktopInstaller) -ForegroundColor Green
 Write-Host ('Boyut: ' + [math]::Round($built.Length/1MB,1) + ' MB') -ForegroundColor Green
-Write-Host 'Qwen yerel AI + uygulama kontrolu + hafiza + PC HUD + telefon QR + telefona aktarim + web + Unity + kod modu aktif.' -ForegroundColor Green
+Write-Host 'Qwen yerel AI + hafiza 2.0 + PC Core 2.0 + canlı HUD + sesli mod + telefon QR + web arastirma + Unity + kod modu + pano + ekran goruntusu aktif.' -ForegroundColor Green
 Write-Host '========================================' -ForegroundColor Green
 
 Start-Process -FilePath $desktopInstaller
