@@ -260,7 +260,7 @@ globalThis.isDriveListRequest = isDriveListRequest;
 
 // Compatibility helper: command routing uses this safe alias.
 function safeDriveListRequest(q){
-  return isDriveListRequest(q);
+  return typeof isDriveListRequest === "function" && isDriveListRequest(q);
 }
 globalThis.safeDriveListRequest = safeDriveListRequest;
 
