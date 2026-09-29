@@ -227,14 +227,18 @@ input,.composer,.composerArea,.topbar,.sidebar{pointer-events:auto;position:rela
 </div>
 <div class="qrModal" id="qrModal" aria-hidden="true">
   <div class="qrPanel">
-    <div class="qrHead"><div><b>📱 AURA TELEFON KUMANDASI</b><small>Aynı Wi‑Fi ağına bağlan, QR'ı okut.</small></div><button class="qrClose" id="qrClose">×</button></div>
+    <div class="qrHead"><div><b>📱 AURA TELEFON</b><small>Telefonunu aynı Wi‑Fi ağına bağla ve QR'ı okut.</small></div><button class="qrClose" id="qrClose">×</button></div>
     <img id="qrImage" class="qrImage" alt="AURA telefon bağlantı QR kodu">
     <div class="qrUrl" id="qrUrl">Adres hazırlanıyor...</div>
     <div class="qrActions">
       <button class="btn primary" id="qrCopy">Adresi Kopyala</button>
       <button class="btn" id="qrRefresh">QR Yenile</button>
     </div>
-    <div class="qrHint">QR ve adres, AURA Desktop'ın yerel telefon sunucusuna bağlanır. İnternete açık bir kontrol servisi kullanılmaz.</div>
+    <div class="qrActions">
+      <button class="btn" id="qrSendLast">↗ Son cevabı aktar</button>
+      <button class="btn" id="qrSendChat">↗ Sohbeti aktar</button>
+    </div>
+    <div class="qrHint">Telefon sayfası AURA Desktop'a doğrudan yerel ağdan bağlanır. QR bağlantısı token ile korunur; aktarım için dışarıdaki bir kontrol sunucusu kullanılmaz.</div>
   </div>
 </div>
 <script type="module">
@@ -273,6 +277,7 @@ const usageTopEl = $("usageTop");
 const modeBtn2 = $("codeBtn");
 const modeBadge = $("modeBadge");
 const modeBadgeTop = $("modeBadgeTop");
+const phoneBtn = $("phoneBtn");
 
 let history = [];
 try {
@@ -1235,6 +1240,90 @@ async function handleDirectCommand(q) {
   }
   return null;
 }
+function normalizePhoneQuery(q){
+  return String(q||"")
+    .toLocaleLowerCase("tr-TR")
+    .replace(/[?.!,;:]/g," ")
+    .replace(/\\s+/g," ")
+    .trim();
+}
+
+function isPhoneTransferRequest(q){
+  const x=normalizePhoneQuery(q);
+  return /^(telefonuma|telefona)\\s+(aktar|gönder|gonder)$/.test(x) ||
+    /^(bu (konuşmayı|konusmayi|sohbeti)|son (cevabı|cevabi|mesajı|mesaji))\\s+(telefonuma|telefona)\\s+(aktar|gönder|gonder)$/.test(x) ||
+    /^(telefonuma|telefona)\\s+(aktar|gönder|gonder)\\s+.+$/.test(x);
+}
+
+function phoneConversationSnapshot(limit=20){
+  return history.slice(0,limit).reverse().flatMap(item=>[
+    {role:"user",text:String(item?.q||"").slice(0,2000)},
+    {role:"assistant",text:String(item?.a||"").slice(0,6000)}
+  ]);
+}
+
+async function transferLastAnswerToPhone(){
+  if(!hasDesktopAgent()) throw new Error("Telefon aktarımı için AURA Desktop açık olmalı.");
+  const last=history[0];
+  if(!last?.a) return {empty:true};
+  return await callDesktop("desktop_phone_push",{
+    kind:"answer",
+    title:"Son AURA cevabı",
+    text:String(last.a),
+    user:String(last.q||""),
+    assistant:String(last.a||"")
+  });
+}
+
+async function transferConversationToPhone(){
+  if(!hasDesktopAgent()) throw new Error("Telefon aktarımı için AURA Desktop açık olmalı.");
+  const conversation=phoneConversationSnapshot(20);
+  if(!conversation.length) return {empty:true};
+  return await callDesktop("desktop_phone_push",{
+    kind:"conversation",
+    title:"AURA sohbeti",
+    text:"Son sohbet AURA telefonuna aktarıldı.",
+    conversation
+  });
+}
+
+async function handlePhoneTransferCommand(q){
+  if(!hasDesktopAgent()) return "Telefon aktarımı için AURA Desktop'ın açık olması gerekiyor.";
+
+  const x=normalizePhoneQuery(q);
+  const conversationRequest=/^(bu (konuşmayı|konusmayi)|sohbeti|bu sohbeti)\\s+(telefonuma|telefona)\\s+(aktar|gönder|gonder)$/.test(x);
+  const explicitText=x.match(/^(telefonuma|telefona)\\s+(aktar|gönder|gonder)\\s+(.+)$/);
+  const lastRequest=/^son (cevabı|cevabi|mesajı|mesaji)\\s+(telefonuma|telefona)\\s+(aktar|gönder|gonder)$/.test(x);
+
+  if(conversationRequest){
+    const result=await transferConversationToPhone();
+    if(result?.empty) return "Aktarılacak bir sohbet geçmişi yok.";
+    openRemoteQr();
+    return "Tamam kanka. Sohbeti telefona aktardım. QR kodu okutunca telefonda görünecek. 📱";
+  }
+
+  if(explicitText){
+    const textToSend=String(q||"").replace(/^(telefonuma|telefona)\\s+(aktar|gönder|gonder)\\s+/i,"").trim();
+    if(!textToSend) return "Telefona göndereceğim metni de yaz kanka.";
+    await callDesktop("desktop_phone_push",{
+      kind:"text",
+      title:"AURA'dan aktarım",
+      text:textToSend
+    });
+    openRemoteQr();
+    return "Tamam kanka. Yazdığın metni telefona aktardım. QR kodu okut. 📱";
+  }
+
+  if(lastRequest || /^(telefonuma|telefona)\\s+(aktar|gönder|gonder)$/.test(x)){
+    const result=await transferLastAnswerToPhone();
+    if(result?.empty) return "Telefona aktarabileceğim önceki bir AURA cevabı yok.";
+    openRemoteQr();
+    return "Tamam kanka. Son AURA cevabını telefona aktardım. QR kodu okutunca göreceksin. 📱";
+  }
+
+  return "Telefon aktarımı komutunu anlayamadım.";
+}
+
 async function run(q) {
   q = String(q || "").trim();
   if (!q || busy) return;
@@ -1261,8 +1350,9 @@ async function run(q) {
     const memoryDirect = isMemorySaveRequest(q) || isMemoryForgetRequest(q) || isMemoryListRequest(q) || isMemorySearchRequest(q) || isMemoryClearRequest(q);
     const appControl=extractAppControlCommand(q);
   const utilityRequest=isWindowsUtilityRequest(q);
+    const phoneTransfer=isPhoneTransferRequest(q);
     const driveRequest=safeDriveListRequest(q);
-    const direct = memoryDirect || isScanCancelRequest(q) || isCameraRequest(q) || !!utilityRequest || isPCRequest(q) || isDeepPCRequest(q) || isUsageRequest(q) || isWeatherRequest(q) || isBatteryRequest(q) || isSystemRequest(q) || isHardwareRequest(q) || isUnityProjectRequest(q) || isConversationHistoryRequest(q) || isDesktopListRequest(q) || isRunningAppsRequest(q) || driveRequest || !!appControl || !!extractOpenTarget(q);
+    const direct = memoryDirect || phoneTransfer || isScanCancelRequest(q) || isCameraRequest(q) || !!utilityRequest || isPCRequest(q) || isDeepPCRequest(q) || isUsageRequest(q) || isWeatherRequest(q) || isBatteryRequest(q) || isSystemRequest(q) || isHardwareRequest(q) || isUnityProjectRequest(q) || isConversationHistoryRequest(q) || isDesktopListRequest(q) || isRunningAppsRequest(q) || driveRequest || !!appControl || !!extractOpenTarget(q);
     if (quick) {
       if(myGeneration===runGeneration) finish(q, quick, false);
       return;
@@ -1270,6 +1360,11 @@ async function run(q) {
     if (memoryDirect) {
       const answer = await handleMemoryCommand(q);
       if(myGeneration===runGeneration) finish(q, answer || "Hafıza işlemi tamamlanamadı.", false);
+      return;
+    }
+    if (phoneTransfer) {
+      const answer = await handlePhoneTransferCommand(q);
+      if(myGeneration===runGeneration) finish(q, answer, false);
       return;
     }
     if (direct) {
@@ -1345,7 +1440,7 @@ voiceBtn.addEventListener("click",()=>{
 });
 
 
-const qrModal=$("qrModal"), qrImage=$("qrImage"), qrUrl=$("qrUrl"), qrClose=$("qrClose"), qrCopy=$("qrCopy"), qrRefresh=$("qrRefresh");
+const qrModal=$("qrModal"), qrImage=$("qrImage"), qrUrl=$("qrUrl"), qrClose=$("qrClose"), qrCopy=$("qrCopy"), qrRefresh=$("qrRefresh"), qrSendLast=$("qrSendLast"), qrSendChat=$("qrSendChat");
 let remoteQrInfo=null;
 async function openRemoteQr(){
   if(!hasDesktopAgent()){ addMessage("error","AURA","Telefon kumandası için AURA Desktop açık olmalı."); return; }
@@ -1366,6 +1461,20 @@ if(qrCopy) qrCopy.addEventListener("click",async()=>{
   if(remoteQrInfo?.url && navigator.clipboard){await navigator.clipboard.writeText(remoteQrInfo.url);qrCopy.textContent="Kopyalandı ✓";setTimeout(()=>qrCopy.textContent="Adresi Kopyala",1200);}
 });
 if(qrModal) qrModal.addEventListener("click",e=>{if(e.target===qrModal)closeRemoteQr();});
+if(qrSendLast) qrSendLast.addEventListener("click",async()=>{
+  try{
+    const result=await transferLastAnswerToPhone();
+    if(result?.empty){qrUrl.textContent="Henüz aktarılacak bir AURA cevabı yok.";return;}
+    qrUrl.textContent=(remoteQrInfo?.url||"")+"\n\n✓ Son cevap telefona aktarıldı.";
+  }catch(error){qrUrl.textContent="Aktarım hatası: "+String(error?.message||error);}
+});
+if(qrSendChat) qrSendChat.addEventListener("click",async()=>{
+  try{
+    const result=await transferConversationToPhone();
+    if(result?.empty){qrUrl.textContent="Henüz aktarılacak bir sohbet yok.";return;}
+    qrUrl.textContent=(remoteQrInfo?.url||"")+"\n\n✓ Sohbet telefona aktarıldı.";
+  }catch(error){qrUrl.textContent="Aktarım hatası: "+String(error?.message||error);}
+});
 sendBtn.addEventListener("click", () => { voiceInput = false; run(input.value); });
 
 input.addEventListener("keydown", (event) => {
