@@ -34,13 +34,13 @@ const SYSTEM_PROMPT = [
   "ZAMANLI HAFIZA: Kullanıcı geçmiş konuşmalarından söz ederse konuşma geçmişi aracını kullan. 'dün', 'geçen hafta', 'bugün' gibi ifadeleri araca aynen taşı.",
   "WEB ARAŞTIRMA: Güncel bilgi gerektiğinde araştırma aracını kullan; mümkünse birden fazla arama varyasyonu çalıştırılmış sonuçları karşılaştır ve kaynak adreslerini yanıta dahil et.",
   "PC CORE: Canlı CPU/RAM/GPU/disk/ağ değerlerini yalnızca masaüstü aracı döndürdüğü verilerle söyle; ölçülmeyen sıcaklık veya performansı uydurma.",
-  "UNITY GELİŞTİRME: Unity projesi bulunması, proje klasörü açılması veya kod dosyası okunması istendiğinde ilgili masaüstü araçlarını kullan. Yazma/silme/komut çalıştırma gibi değişikliklerde kullanıcı onayını bekle.",
+  "UNITY GELİŞTİRME: Kullanıcı Unity ile oyun/proje yapmamı istediğinde sadece tavsiye verme; mevcut Unity projesini bul, gerekli C# dosyalarını oku/yaz, klasörleri oluştur, sahne/proje dosyalarını düzenle ve gerektiğinde Unity Editor/PowerShell geliştirme komutlarını çalıştır. Her değişiklikte masaüstü ajanının kullanıcı onay mekanizmasına uy. Unity projesi yoksa kullanıcı klasörlerinde uygun yer seç veya kullanıcıdan klasör seçmesini iste.",
   "KOD ÜRETİM: Her yaygın programlama dilinde gerçek ve çalıştırılabilir kod üret. Pseudocode veya yarım örnek verme. İstenen dili aynen kullan. Tam dosya istenirse tam dosyayı ver. Importları, bağımlılıkları, hata yönetimini ve isim tutarlılığını düşün.",
   "KOD DÜZELTME: Hata verildiğinde problemi kısa biçimde belirle ve düzeltilmiş tam kodu üret. Kullanıcı istemedikçe uzun eğitim metnine girme.",
   "KOD MODU: C#, C++, C, Java, Kotlin, Swift, Python, JavaScript, TypeScript, Rust, Go, PHP, Ruby, Lua, Dart, SQL, HTML, CSS, Bash, PowerShell ve diğer yaygın dillerde kod yaz.",
   "Masaüstü ajanı bağlıysa PC, dosya, klasör, uygulama, oyun, Unity ve sistem araçlarını yalnızca görev gerçekten gerektiriyorsa kullan.",
-  "Kullanıcı açıkça istemediği sürece dosya yazma, silme, taşıma, uygulama çalıştırma veya komut çalıştırma araçlarını kullanma.",
-  "PowerShell aracı yalnızca kullanıcı açıkça bir PowerShell veya sistem komutu istediğinde kullanılmalıdır.",
+  "Kullanıcı bir kod, oyun, Unity projesi, dosya düzenleme veya geliştirme görevi istediğinde görevi tamamlamak için gerekli masaüstü araçlarını kullanabilirsin. Dosya yazma/silme/taşıma, uygulama çalıştırma ve komut çalıştırma işlemleri masaüstü ajanının kullanıcı onayına tabidir; bu onayı atlatmaya çalışma.",
+  "PowerShell aracı, kullanıcı açıkça bir geliştirme/oyun/Unity görevi verdiğinde de gerekli dosya, proje, derleme veya araç kurulum adımlarını gerçekleştirmek için kullanılabilir; ancak yönetici yükseltmesi veya onay atlatma yapılamaz.",
   "Türkçe konuş."
 ].join("\n");
 
@@ -740,13 +740,14 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     ? "\nPC BAĞLAM ÖZETİ:\n" + compactEnvironment(environment)
     : "";
 
-  const wantsTools = desktopAvailable() && mode !== "code" && /güncel|guncel|araştır|arastir|internette|web|site|dosya|klasör|klasor|uygulama|oyun|bilgisayar|masaüstü|masaustu|sistem|kullanım|kullanim|hatırla|hatirla|unut|geçen hafta|gecen hafta|dün|dun|bugün|bugun|konuşma geçmişi|konusma gecmisi|pano|clipboard|ekran görüntüsü|ekran goruntusu|screenshot|bildirim|notification|unity|cpu|ram|gpu|disk|performans|donanım|donanim|hava|sıcaklık|sicaklik|derece|pil|batarya/.test(
-    value.toLocaleLowerCase("tr-TR")
-  );
+  const lowerValue = value.toLocaleLowerCase("tr-TR");
+  const generalToolIntent = /güncel|guncel|araştır|arastir|internette|web|site|dosya|klasör|klasor|uygulama|oyun|bilgisayar|masaüstü|masaustu|sistem|kullanım|kullanim|hatırla|hatirla|unut|geçen hafta|gecen hafta|dün|dun|bugün|bugun|konuşma geçmişi|konusma gecmisi|pano|clipboard|ekran görüntüsü|ekran goruntusu|screenshot|bildirim|notification|unity|cpu|ram|gpu|disk|performans|donanım|donanim|hava|sıcaklık|sicaklik|derece|pil|batarya/.test(lowerValue);
+  const developmentIntent = mode === "code" || /unity|oyun yap|oyun geliştir|oyun gelistir|proje oluştur|proje olustur|dosya oluştur|dosya olustur|dosya yaz|kod yaz|kodu düzelt|kodu duzelt|hata düzelt|hata duzelt|build al|derle|compile|script oluştur|script olustur|sahne oluştur|sahne olustur|component oluştur|component olustur|prefab oluştur|prefab olustur/.test(lowerValue);
+  const wantsTools = desktopAvailable() && (generalToolIntent || developmentIntent);
 
   const toolExample = JSON.stringify({tool:"desktop_tool_name", args:{}});
   const toolProtocol = wantsTools
-    ? "\nARAÇ KULLANIMI: OpenAI tools alanı kullanılmıyor. Araç gerekiyorsa yalnızca " + toolExample + " biçiminde tek JSON nesnesi üret. JSON dışında metin yazma. Araç sonucu geldiğinde normal Türkçe cevap ver.\nKULLANILABİLEN ARAÇLAR:\n" + toolDirectoryPrompt()
+    ? "\nARAÇ KULLANIMI: OpenAI tools alanı kullanılmıyor. Araç gerekiyorsa yalnızca " + toolExample + " biçiminde tek JSON nesnesi üret. JSON dışında metin yazma. Araç sonucu geldiğinde göreve devam et.\nGELİŞTİRME GÖREVİ: Kullanıcı kod/oyun/Unity istediğinde araçları gerçekten kullan; sadece kodu sohbet mesajında bırakma. Önce proje/dosya yapısını kontrol et, sonra gerekli dosyaları oluştur/değiştir, gerekiyorsa Unity Editor veya derleme komutunu çalıştır ve sonucu doğrula.\nKULLANILABİLEN ARAÇLAR:\n" + toolDirectoryPrompt()
     : "";
 
   const messages = [
@@ -796,6 +797,17 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
 
     const answer=String(assistantMessage.content || "").trim();
     if(!answer) throw new Error("Yerel AI boş cevap verdi.");
+    if(wantsTools && developmentIntent){
+      const manualAfterAnswer=extractManualToolCall(answer);
+      if(manualAfterAnswer){
+        let result;
+        try { result=await desktopCall(manualAfterAnswer.name,manualAfterAnswer.args); }
+        catch(error){ result={error:error?.message||"Araç hatası"}; }
+        messages.push({role:"assistant",content:answer});
+        messages.push({role:"user",content:assistantToolResultMessage(manualAfterAnswer,result)});
+        continue;
+      }
+    }
     return answer;
   }
 
