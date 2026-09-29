@@ -119,7 +119,7 @@ input,.composer,.composerArea,.topbar,.sidebar{pointer-events:auto;position:rela
     <div id="usageTop" class="usageText">Kullanım raporu henüz alınmadı.</div>
     <div class="sideLabel" style="padding-left:0">SON SOHBETLER</div>
     <div class="history" id="history"></div>
-    <div class="footer">AURA OS 4.9 · LOCAL AI · MEMORY · PC CORE · PHONE · WEB · CODE</div>
+    <div class="footer">AURA OS 5.0 · LOCAL AI · MEMORY · PC CORE · PHONE · WEB · CODE</div>
   </div>
 </aside>
 
@@ -127,7 +127,7 @@ input,.composer,.composerArea,.topbar,.sidebar{pointer-events:auto;position:rela
   <header class="topbar">
     <div class="topLeft">
       <span class="coreDot"></span>
-      <div><div class="modelName">AURA</div><div class="modelMeta" id="sub">AURA 4.9 · Yerel AI · Hafıza · PC Core · Telefon · Web · Kod</div></div>
+      <div><div class="modelName">AURA</div><div class="modelMeta" id="sub">AURA 5.0 · Yerel AI · Hafıza · PC Core · Telefon · Web · Kod</div></div>
     </div>
     <div class="topActions">
       <button class="btn" id="phoneBtn" title="Telefon kumandası">📱 Telefon</button>
@@ -191,6 +191,8 @@ input,.composer,.composerArea,.topbar,.sidebar{pointer-events:auto;position:rela
       <div class="chatWrap"><div class="commandPanel" id="commandPanel">
   <button class="commandTag" data-cmd="kamera aç">📷 Kamera</button>
   <button class="commandTag" data-cmd="ekran görüntüsü al">▣ Ekran</button>
+  <button class="commandTag" data-cmd="panoyu oku">⌁ Pano</button>
+  <button class="commandTag" data-cmd="bana bildirim gönder: AURA hazır">◉ Bildirim</button>
   <button class="commandTag" data-cmd="görev yöneticisi">◈ Görevler</button>
   <button class="commandTag" data-cmd="ayarlar">⚙ Ayarlar</button>
   <button class="commandTag" data-cmd="indirilenler">↓ İndirilenler</button>
@@ -817,7 +819,7 @@ function isVagueCodeRequest(q){
 function quickLocalAnswer(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
   if(/^(ne yapabilirsin|neler yapabilirsin|özelliklerin|ozelliklerin|yardım|yardim)$/.test(x))
-    return "PC'ni anlayabilir, uygulama ve oyun açıp kapatabilir, yeniden başlatabilir ve kaldırma işlemini onayla yapabilir; dosya, Unity, web, hafıza, ses ve kod araçlarını kullanabilirim.";
+    return "PC'ni anlayabilir, uygulama ve oyun açıp kapatabilir, dosya ve Unity projeleriyle çalışabilir, hafıza ve eski konuşmaları arayabilir, web araştırması yapabilir, kod yazabilir; pano, ekran görüntüsü ve Windows bildirim araçlarını da kullanabilirim.";
   if(/^(nasılsın|nasilsin|nasılsın\?|nasilsin\?)$/.test(x))
     return "İyiyim kanka, hazırım. Ne yapmamı istersin?";
   if(/^(merhaba|selam|selamlar|sa|slm|mrb)$/.test(x))
