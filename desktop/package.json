@@ -33,7 +33,8 @@
       "preload.cjs",
       "prepare-renderer.cjs",
       "renderer/**/*",
-      "package.json"
+      "package.json",
+      "openclaw.cjs"
     ],
     "win": {
       "target": [
