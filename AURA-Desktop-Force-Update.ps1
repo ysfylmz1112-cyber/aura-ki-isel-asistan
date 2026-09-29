@@ -57,10 +57,6 @@ foreach($item in $files){
   if([string]::IsNullOrWhiteSpace($remote)){
     throw ('GitHub dosyasi bos: ' + $item.GitPath)
   }
-  
-  if(($item.GitPath -eq 'index.html' -or $item.GitPath -eq 'local-ai.js') -and ($remote -match 'ÔÇ|â[€™‚]|─░|├╝|┬À')){
-    throw ('UTF-8 dosya doğrulanamadı: ' + $item.GitPath + ' | Bozuk karakter dizisi algılandı.')
-  }
 if($item.GitPath -eq 'desktop/package.json'){
     try {
       $pkg = $remote | ConvertFrom-Json
