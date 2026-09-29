@@ -18,7 +18,7 @@ function desktopAvailable() {
 
 const MODEL_ID = CHAT_MODEL_ID;
 const SYSTEM_PROMPT = [
-  "AURA 4.9: Telefon kumandası AURA Desktop içindeki yerel, token korumalı sunucudur; telefon üzerinden gelen komutlar da masaüstü onay mekanizmalarını aşmamalıdır.",
+  "AURA 5.0: Telefon kumandası AURA Desktop içindeki yerel, token korumalı sunucudur; telefon üzerinden gelen komutlar da masaüstü onay mekanizmalarını aşmamalıdır.",
   "Sen AURA'sın: kişisel, yerel ve Türkçe bir AI asistanısın.",
   "Önce kullanıcının ne istediğini doğru anla. Bilmediğin bilgiyi uydurma.",
   "Güncel bilgi gerektiğinde yalnızca izin verilen web araçlarını kullan ve kaynağı ayırt et.",
@@ -418,6 +418,52 @@ const TOOLS = [
   {
     type: "function",
     function: {
+      name: "desktop_clipboard_read",
+      description: "Windows panosundaki metni okur. Şifreleri veya hassas verileri kendiliğinden isteme; kullanıcı açıkça pano içeriğini istediğinde kullan.",
+      parameters: { type:"object", properties:{}, additionalProperties:false }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_clipboard_write",
+      description: "Verilen metni Windows panosuna yazar. Kullanıcı onayı gösterilir.",
+      parameters: {
+        type:"object",
+        properties:{text:{type:"string"}},
+        required:["text"],
+        additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_capture_screen",
+      description: "AURA penceresinin ekran görüntüsünü PNG olarak kullanıcının Pictures\AURA Captures klasörüne kaydeder. Kullanıcı onayı gösterilir.",
+      parameters: {
+        type:"object",
+        properties:{name:{type:"string"}},
+        additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_notify",
+      description: "Windows masaüstü bildirimi gösterir. Kullanıcı tarafından istenen hatırlatma veya bilgi mesajlarında kullanılabilir.",
+      parameters: {
+        type:"object",
+        properties:{title:{type:"string"},body:{type:"string"}},
+        required:["body"],
+        additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
       name: "desktop_open_external_url",
       description: "Bir HTTP/HTTPS adresini varsayılan tarayıcıda açar. Kullanıcı onayı gösterilir.",
       parameters: {
@@ -686,7 +732,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     ? "\nPC BAĞLAM ÖZETİ:\n" + compactEnvironment(environment)
     : "";
 
-  const wantsTools = desktopAvailable() && mode !== "code" && /güncel|guncel|araştır|arastir|internette|web|site|dosya|klasör|klasor|uygulama|oyun|bilgisayar|masaüstü|masaustu|sistem|kullanım|kullanim|hatırla|hatirla|unut|geçen hafta|gecen hafta|dün|dun|bugün|bugun|konuşma geçmişi|konusma gecmisi|unity|cpu|ram|gpu|disk|performans|donanım|donanim|hava|sıcaklık|sicaklik|derece|pil|batarya/.test(
+  const wantsTools = desktopAvailable() && mode !== "code" && /güncel|guncel|araştır|arastir|internette|web|site|dosya|klasör|klasor|uygulama|oyun|bilgisayar|masaüstü|masaustu|sistem|kullanım|kullanim|hatırla|hatirla|unut|geçen hafta|gecen hafta|dün|dun|bugün|bugun|konuşma geçmişi|konusma gecmisi|pano|clipboard|ekran görüntüsü|ekran goruntusu|screenshot|bildirim|notification|unity|cpu|ram|gpu|disk|performans|donanım|donanim|hava|sıcaklık|sicaklik|derece|pil|batarya/.test(
     value.toLocaleLowerCase("tr-TR")
   );
 
