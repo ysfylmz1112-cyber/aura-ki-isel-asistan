@@ -3,13 +3,13 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Join-Path $env:USERPROFILE 'Desktop\aura-ki-isel-asistan'
 $desktopDir = Join-Path $repoRoot 'desktop'
 $rendererDir = Join-Path $desktopDir 'renderer'
-$desktopInstaller = Join-Path $env:USERPROFILE 'Desktop\AURA-5.3.0-Setup.exe'
+$desktopInstaller = Join-Path $env:USERPROFILE 'Desktop\AURA-5.3.1-Setup.exe'
 $releaseBranch = 'main'
 
 New-Item -ItemType Directory -Force -Path $repoRoot,$desktopDir,$rendererDir | Out-Null
 Set-Location $repoRoot
 
-Write-Host 'AURA 5.3.0 - TAM WINDOWS GUNCELLEMESI' -ForegroundColor Cyan
+Write-Host 'AURA 5.3.1 - TAM WINDOWS GUNCELLEMESI' -ForegroundColor Cyan
 Write-Host 'GitHub ana dal kontrol ediliyor...' -ForegroundColor DarkCyan
 
 if(-not (Get-Command git -ErrorAction SilentlyContinue)){
@@ -41,7 +41,7 @@ $files = @(
   @{ Local = Join-Path $desktopDir 'main.cjs'; GitPath = 'desktop/main.cjs'; Required = "app.whenReady().then(async()=>"; Name = 'desktop-core' },
   @{ Local = Join-Path $desktopDir 'prepare-renderer.cjs'; GitPath = 'desktop/prepare-renderer.cjs'; Required = 'AURA renderer sync'; Name = 'renderer-sync' },
   @{ Local = Join-Path $desktopDir 'preload.cjs'; GitPath = 'desktop/preload.cjs'; Required = 'contextBridge.exposeInMainWorld'; Name = 'preload' },
-  @{ Local = Join-Path $desktopDir 'package.json'; GitPath = 'desktop/package.json'; Required = '"version": "5.3.0"'; Name = 'paket' },
+  @{ Local = Join-Path $desktopDir 'package.json'; GitPath = 'desktop/package.json'; Required = '"version": "5.3.1"'; Name = 'paket' },
   @{ Local = Join-Path $desktopDir 'openclaw.cjs'; GitPath = 'desktop/openclaw.cjs'; Required = 'module.exports'; Name = 'openclaw' }
 )
 
@@ -61,7 +61,7 @@ foreach($item in $files){
 if($item.GitPath -eq 'desktop/package.json'){
     try {
       $pkg = $remote | ConvertFrom-Json
-      if([string]$pkg.version -ne '5.3.0'){
+      if([string]$pkg.version -ne '5.3.1'){
         throw ('Beklenmeyen package.json sürümü: ' + [string]$pkg.version)
       }
     } catch {
@@ -100,7 +100,7 @@ if(Test-Path '.\dist'){
   Remove-Item '.\dist' -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-Write-Host 'AURA 5.3.0 Setup EXE olusturuluyor...' -ForegroundColor Cyan
+Write-Host 'AURA 5.3.1 Setup EXE olusturuluyor...' -ForegroundColor Cyan
 npm run build:win
 if($LASTEXITCODE -ne 0){
   throw 'AURA Setup EXE derlemesi basarisiz oldu.'
@@ -118,7 +118,7 @@ Copy-Item -LiteralPath $built.FullName -Destination $desktopInstaller -Force
 
 Write-Host ''
 Write-Host '========================================' -ForegroundColor Green
-Write-Host 'AURA 5.3.0 HAZIR' -ForegroundColor Green
+Write-Host 'AURA 5.3.1 HAZIR' -ForegroundColor Green
 Write-Host ('Kurulum: ' + $desktopInstaller) -ForegroundColor Green
 Write-Host ('Boyut: ' + [math]::Round($built.Length/1MB,1) + ' MB') -ForegroundColor Green
 Write-Host 'Qwen yerel AI + hafiza + PC Core + canli HUD + ses + telefon + web + Unity + kod modu + pano + ekran goruntusu aktif.' -ForegroundColor Green
