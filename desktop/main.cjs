@@ -8,6 +8,7 @@ const os = require('os');
 const { execFile, spawn } = require('child_process');
 const { search } = require('duck-duck-scrape');
 const QRCode = require('qrcode');
+const openclaw = require('./openclaw.cjs');
 
 const PROD_URL = 'https://aura-ki-isel-asistan.vercel.app/';
 const ALLOWED_REMOTE_ORIGIN = 'https://aura-ki-isel-asistan.vercel.app';
@@ -1754,6 +1755,13 @@ async function buildUnityProject(projectPath,target='StandaloneWindows64'){
 }
 async function handleTool(tool,args) {
   switch(tool) {
+    case 'openclaw_status': return openclaw.status();
+    case 'openclaw_configure': return (async()=>{
+      const ok=await confirmAction('AURA — OpenClaw bağlantısı','OpenClaw Gateway bağlantı bilgileri kaydedilecek. Token yalnızca bu bilgisayardaki AURA kullanıcı verilerinde tutulur. Devam edilsin mi?');
+      if(!ok) throw new Error('Kullanıcı işlemi iptal etti.');
+      return openclaw.configure(args||{});
+    })();
+    case 'openclaw_chat': return openclaw.chat(args?.input||'',args||{});
     case 'desktop_get_hardware_metrics': return getHardwareMetrics();
     case 'desktop_clipboard_read': return readClipboardText();
     case 'desktop_clipboard_write': return writeClipboardText(args.text);
@@ -2131,7 +2139,8 @@ app.whenReady().then(async()=>{
       'unity-editor-automation',
       'code-mode',
       'phone-remote-control',
-      'qr-phone-pairing'
+      'qr-phone-pairing',
+      'openclaw-gateway'
     ]
   }));
 
