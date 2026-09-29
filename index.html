@@ -258,6 +258,12 @@ function isDriveListRequest(q){
 // Compatibility bridge: older renderer modules may call this helper as a global.
 globalThis.isDriveListRequest = isDriveListRequest;
 
+// Compatibility helper: command routing uses this safe alias.
+function safeDriveListRequest(q){
+  return isDriveListRequest(q);
+}
+globalThis.safeDriveListRequest = safeDriveListRequest;
+
 const $ = (id) => document.getElementById(id);
 const input = $("input");
 const chat = $("chat");
