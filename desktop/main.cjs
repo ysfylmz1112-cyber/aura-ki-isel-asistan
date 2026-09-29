@@ -144,7 +144,11 @@ function searchConversationScore(query,item){
     .trim();
   const t=normalizedSearchText(String(item?.user||'')+' '+String(item?.assistant||''));
   if(!q) return 1;
-  return memorySearchScore(q,t);
+  const base=memorySearchScore(q,t);
+  const at=Date.parse(item?.at||'');
+  const ageDays=Number.isFinite(at)?Math.max(0,(Date.now()-at)/86400000):9999;
+  const recency=Math.max(0,30-Math.min(30,ageDays))*1.4;
+  return base+recency;
 }
 
 function searchConversations(query,maxResults=18){
@@ -198,12 +202,20 @@ function memorySearchScore(query,text){
   const q=normalizedSearchText(query);
   const t=normalizedSearchText(text);
   if(!q||!t) return 0;
-  if(t===q) return 1000;
-  if(t.includes(q)) return 800;
+  if(t===q) return 1500;
+  if(t.includes(q)) return 1100;
+  const qTokens=[...new Set(q.split(' ').filter(Boolean))];
+  const tTokens=new Set(t.split(' ').filter(Boolean));
+  let matched=0;
   let score=0;
-  for(const token of q.split(' ').filter(Boolean)){
-    if(t.includes(token)) score+=120;
+  for(const token of qTokens){
+    if(tTokens.has(token)){ matched++; score+=180; }
+    else if(token.length>=4 && t.includes(token)) score+=75;
   }
+  if(!matched) return score;
+  const coverage=matched/qTokens.length;
+  score+=coverage*420;
+  if(qTokens.length>1 && matched===qTokens.length) score+=260;
   return score;
 }
 
@@ -242,8 +254,16 @@ async function remember(text,tags=[]){
 
 function searchMemory(query,maxResults=12){
   const q=String(query||'').trim();
+  const now=Date.now();
   const items=memoryState.items
-    .map(x=>({...x,score:memorySearchScore(q,x.text+' '+(x.tags||[]).join(' '))}))
+    .map(x=>{
+      const base=memorySearchScore(q,x.text+' '+(x.tags||[]).join(' '));
+      const updated=Date.parse(x.updatedAt||x.createdAt||'');
+      const ageDays=Number.isFinite(updated)?Math.max(0,(now-updated)/86400000):999;
+      const recency=Math.max(0,90-Math.min(90,ageDays))*0.9;
+      const hits=Math.min(40,Number(x.hits||0))*2;
+      return {...x,score:base+recency+hits};
+    })
     .filter(x=>x.score>0)
     .sort((a,b)=>b.score-a.score || String(b.updatedAt).localeCompare(String(a.updatedAt)))
     .slice(0,Math.max(1,Math.min(30,Number(maxResults)||12)));
