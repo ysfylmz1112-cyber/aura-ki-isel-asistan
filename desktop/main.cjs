@@ -1641,6 +1641,91 @@ function findUnityEditorExecutable(){
   for(const root of ['C:\\Program Files\\Unity\\Hub\\Editor','C:\\Program Files\\Unity\\Editor','C:\\Program Files (x86)\\Unity\\Editor']){try{if(fs.existsSync(root))for(const e of fs.readdirSync(root,{withFileTypes:true}))if(e.isDirectory())candidates.push(path.join(root,e.name,'Editor','Unity.exe'));}catch{}}
   return candidates.map(normalizePath).find(p=>fs.existsSync(p))||null;
 }
+
+function validateUnityProject(projectPath){
+  const root=normalizePath(projectPath);
+  if(!isAllowedPath(root)) throw new Error('Unity projesi kullanıcı erişim alanının dışında.');
+  if(!fs.existsSync(path.join(root,'Assets'))||!fs.existsSync(path.join(root,'ProjectSettings'))) throw new Error('Geçerli bir Unity projesi değil: Assets ve ProjectSettings bulunamadı.');
+  return root;
+}
+function validateUnityRelative(projectPath,relativePath){
+  const root=validateUnityProject(projectPath);
+  const rel=String(relativePath||'').replace(/^[/\\]+/,'');
+  if(!rel || rel.includes('..')) throw new Error('Geçersiz Unity proje yolu.');
+  const target=normalizePath(path.join(root,rel));
+  const prefix=root.toLowerCase()+path.sep;
+  if(target.toLowerCase()!==root.toLowerCase()&&!target.toLowerCase().startsWith(prefix)) throw new Error('Unity proje dışına erişim engellendi.');
+  return {root,target,relative:rel};
+}
+async function unityProjectTree(projectPath,maxDepth=5,maxEntries=1200){
+  const root=validateUnityProject(projectPath);
+  const limit=Math.max(50,Math.min(3000,Number(maxEntries)||1200));
+  const depthLimit=Math.max(1,Math.min(12,Number(maxDepth)||5));
+  const skip=new Set(['Library','Temp','Logs','obj','Builds','UserSettings','.git','.vs','.idea']);
+  const items=[];
+  async function walk(dir,depth){
+    if(depth>depthLimit||items.length>=limit)return;
+    let entries=[];
+    try{entries=await fsp.readdir(dir,{withFileTypes:true});}catch{return;}
+    entries.sort((a,b)=>a.name.localeCompare(b.name,'tr-TR'));
+    for(const entry of entries){
+      if(items.length>=limit)break;
+      if(entry.name.startsWith('.')&&entry.name!=='.gitignore')continue;
+      const full=path.join(dir,entry.name);
+      const rel=path.relative(root,full).replace(/\\/g,'/');
+      if(entry.isDirectory()&&skip.has(entry.name))continue;
+      items.push({path:rel,type:entry.isDirectory()?'directory':'file'});
+      if(entry.isDirectory())await walk(full,depth+1);
+    }
+  }
+  await walk(root,0);
+  return {ok:true,projectPath:root,count:items.length,truncated:items.length>=limit,items};
+}
+async function unityReadProjectFile(projectPath,relativePath){
+  const {target,relative}=validateUnityRelative(projectPath,relativePath);
+  const stat=await fsp.stat(target);
+  if(!stat.isFile())throw new Error('Unity yolu bir dosya değil.');
+  if(stat.size>5*1024*1024)throw new Error('Unity dosyası 5 MB sınırını aşıyor.');
+  if(/\.(png|jpg|jpeg|gif|webp|ico|psd|tga|fbx|obj|blend|wav|mp3|ogg|mp4|mov|dll|so|exe|zip|7z|unitypackage)$/i.test(target)) throw new Error('Bu Unity dosyası ikili formatta; metin aracıyla okunamaz.');
+  return {ok:true,projectPath:normalizePath(projectPath),relativePath:relative,content:await fsp.readFile(target,'utf8')};
+}
+async function unityWriteProjectFile(projectPath,relativePath,content){
+  const {root,target,relative}=validateUnityRelative(projectPath,relativePath);
+  const value=String(content??'');
+  if(value.length>5*1024*1024)throw new Error('Unity dosyası 5 MB sınırını aşıyor.');
+  const ok=await confirmAction('AURA — Unity dosyası değiştirme izni','AURA şu Unity dosyasını oluşturacak/değiştirecek:\n\n'+relative+'\n\nProje: '+root+'\n\nDevam edilsin mi?');
+  if(!ok)throw new Error('Kullanıcı işlemi iptal etti.');
+  await fsp.mkdir(path.dirname(target),{recursive:true});
+  await fsp.writeFile(target,value,'utf8');
+  return {ok:true,path:target,relativePath:relative,bytes:Buffer.byteLength(value,'utf8'),message:'Unity dosyası güncellendi.'};
+}
+async function unityCreateDirectory(projectPath,relativePath){
+  const {root,target,relative}=validateUnityRelative(projectPath,relativePath);
+  const ok=await confirmAction('AURA — Unity klasörü oluşturma izni','AURA şu Unity klasörünü oluşturacak:\n\n'+relative+'\n\nProje: '+root+'\n\nDevam edilsin mi?');
+  if(!ok)throw new Error('Kullanıcı işlemi iptal etti.');
+  await fsp.mkdir(target,{recursive:true});
+  return {ok:true,path:target,relativePath:relative,message:'Unity klasörü oluşturuldu.'};
+}
+async function unityRunEditorMethod(projectPath,method,args=[]){
+  const root=validateUnityProject(projectPath);
+  const editor=findUnityEditorExecutable();
+  if(!editor)throw new Error('Unity Editor bulunamadı.');
+  const name=String(method||'').trim();
+  if(!/^[A-Za-z_][A-Za-z0-9_.]*$/.test(name))throw new Error('Geçersiz Unity Editor method adı.');
+  const safeArgs=Array.isArray(args)?args.map(x=>String(x).slice(0,1000)).slice(0,8):[];
+  const ok=await confirmAction('AURA — Unity Editor otomasyonu','AURA Unity Editor üzerinde şu işlemi çalıştıracak:\n\n'+name+(safeArgs.length?'\nArgümanlar: '+safeArgs.join(' | '):'')+'\n\nProje: '+root+'\n\nDevam edilsin mi?');
+  if(!ok)throw new Error('Kullanıcı işlemi iptal etti.');
+  const cli=['-batchmode','-quit','-projectPath',root,'-executeMethod',name];
+  for(const arg of safeArgs)cli.push('-auraArg',arg);
+  return await new Promise((resolve,reject)=>{
+    execFile(editor,cli,{windowsHide:false,maxBuffer:12*1024*1024},(error,stdout,stderr)=>{
+      const result={ok:!error,exitCode:error?.code??0,stdout:String(stdout||'').slice(-20000),stderr:String(stderr||'').slice(-12000),method:name,projectPath:root};
+      if(error) return reject(Object.assign(new Error(String(stderr||stdout||error.message)),{auraResult:result}));
+      resolve(result);
+    });
+  });
+}
+
 async function createUnityProject(projectPath,projectName='AURA Game'){
   const root=normalizePath(projectPath); if(!isAllowedPath(root))throw new Error('Unity projesi yalnızca mevcut kullanıcı erişim alanında oluşturulabilir.');
   const ok=await confirmAction('AURA — Unity projesi oluşturma izni','AURA şu klasörde yeni bir Unity projesi oluşturacak:\n\n'+root+'\n\nDevam edilsin mi?'); if(!ok)throw new Error('Kullanıcı işlemi iptal etti.');
@@ -1725,6 +1810,11 @@ async function handleTool(tool,args) {
     case 'desktop_speak_text': return speakTextWindows(args.text);
     case 'desktop_stop_speech': return stopWindowsSpeech();
     case 'desktop_open_unity_project': return openUnityProject(normalizePath(args.projectPath));
+    case 'desktop_unity_project_tree': return unityProjectTree(args.projectPath,args.maxDepth,args.maxEntries);
+    case 'desktop_unity_read_file': return unityReadProjectFile(args.projectPath,args.relativePath);
+    case 'desktop_unity_write_file': return unityWriteProjectFile(args.projectPath,args.relativePath,args.content);
+    case 'desktop_unity_create_directory': return unityCreateDirectory(args.projectPath,args.relativePath);
+    case 'desktop_unity_run_editor': return unityRunEditorMethod(args.projectPath,args.method,args.args||[]);
     case 'desktop_create_unity_project': return createUnityProject(args.projectPath,args.projectName||'AURA Game');
     case 'desktop_unity_create_script': return unityCreateScript(args.projectPath,args.relativePath,args.content);
     case 'desktop_unity_open_project': return unityOpenProject(args.projectPath);
@@ -2037,6 +2127,8 @@ app.whenReady().then(async()=>{
       'battery',
       'web-research',
       'unity-tools',
+      'unity-project-files',
+      'unity-editor-automation',
       'code-mode',
       'phone-remote-control',
       'qr-phone-pairing'
