@@ -7,7 +7,7 @@ $desktopInstaller = Join-Path $env:USERPROFILE 'Desktop\AURA-5.2.0-Setup.exe'
 $releaseCommits = @{
   index = 'dbe6bc28358cc72e8fccc760f8f96fd0ec562ca2'
   localAI = '897dbbd5cf61ab642ebcea08b0342a44254aca96'
-  main = 'b97ce1a9fe0dcfca6b8e8044aade17fc05585ea5'
+  main = '34a431878517c48a09eb596e697f4c9aeea9b0f5'
   preload = '587cde2a08e508376e0dba1ee44018d03d0440bb'
   package = '205e914bb2fb53d428d84709110b227e1017f35f'
 }
