@@ -12,6 +12,10 @@ function isDriveListRequest(q) {
     /^(hangi|neler|ne) (sürücüler|suruculer|diskler)( var| bulunuyor)?$/.test(x) ||
     /^(sürücü|surucu) (listesi|listele|liste)$/.test(x);
 }
+
+// Eski renderer/inline script sürümleri bu fonksiyonu globalden çağırabiliyor.
+// Modül içinde de globalde de aynı güvenli sürücü algılama fonksiyonunu kullan.
+globalThis.isDriveListRequest = isDriveListRequest;
 import { CreateMLCEngine } from "https://esm.run/@mlc-ai/web-llm@0.2.85";
 
 const CHAT_MODEL_ID = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
