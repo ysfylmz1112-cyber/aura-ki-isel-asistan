@@ -5,11 +5,11 @@ $desktopDir = Join-Path $repoRoot 'desktop'
 $rendererDir = Join-Path $desktopDir 'renderer'
 $desktopInstaller = Join-Path $env:USERPROFILE 'Desktop\AURA-5.2.0-Setup.exe'
 $releaseCommits = @{
-  index = 'ca5af277d4347e6ea1dbab952030bd7b1edc9372'
-  localAI = 'ca5af277d4347e6ea1dbab952030bd7b1edc9372'
-  main = 'ca5af277d4347e6ea1dbab952030bd7b1edc9372'
-  preload = 'ca5af277d4347e6ea1dbab952030bd7b1edc9372'
-  package = 'ca5af277d4347e6ea1dbab952030bd7b1edc9372'
+  index = 'dfefa0e20a785d90a02e6b5ade041802ac4d68ce'
+  localAI = 'dfefa0e20a785d90a02e6b5ade041802ac4d68ce'
+  main = 'dfefa0e20a785d90a02e6b5ade041802ac4d68ce'
+  preload = 'dfefa0e20a785d90a02e6b5ade041802ac4d68ce'
+  package = 'dfefa0e20a785d90a02e6b5ade041802ac4d68ce'
 }
 $rawBase = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/'
 
@@ -25,7 +25,7 @@ Start-Sleep -Milliseconds 1000
 
 $files = @(
   @{ Local = Join-Path $repoRoot 'index.html'; Remote = $rawBase + $releaseCommits.index + '/index.html'; Required = '<title>AURA — Kişisel Asistan</title>'; Name = 'arayuz' },
-  @{ Local = Join-Path $repoRoot 'local-ai.js'; Remote = $rawBase + $releaseCommits.localAI + '/local-ai.js'; Required = 'AURA 5.0'; Name = 'yerel-ai' },
+  @{ Local = Join-Path $repoRoot 'local-ai.js'; Remote = $rawBase + $releaseCommits.localAI + '/local-ai.js'; Required = 'function isDriveListRequest'; Name = 'yerel-ai' },
   @{ Local = Join-Path $desktopDir 'main.cjs'; Remote = $rawBase + $releaseCommits.main + '/desktop/main.cjs'; Required = 'app.whenReady'; Name = 'desktop-core' },
   @{ Local = Join-Path $desktopDir 'preload.cjs'; Remote = $rawBase + $releaseCommits.preload + '/desktop/preload.cjs'; Required = 'auraDesktop'; Name = 'preload' },
   @{ Local = Join-Path $desktopDir 'package.json'; Remote = $rawBase + $releaseCommits.package + '/desktop/package.json'; Required = '5.2.0'; Name = 'paket' }
