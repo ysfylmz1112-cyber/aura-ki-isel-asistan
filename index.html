@@ -255,6 +255,9 @@ function isDriveListRequest(q){
 }
 
 
+// Compatibility bridge: older renderer modules may call this helper as a global.
+globalThis.isDriveListRequest = isDriveListRequest;
+
 const $ = (id) => document.getElementById(id);
 const input = $("input");
 const chat = $("chat");
