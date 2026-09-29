@@ -1662,7 +1662,7 @@ async function buildUnityProject(projectPath,target='StandaloneWindows64'){
   const buildDir=path.join(root,'Builds'); await fsp.mkdir(buildDir,{recursive:true});
   const buildFile=path.join(buildDir,'AURA.exe');
   const bootstrap=path.join(root,'Assets','Scripts','AURABuild.cs');
-  const source=['using UnityEditor;','public static class AURABuild {',' public static void Build(){','  BuildPipeline.BuildPlayer(EditorBuildSettings.scenes, "'+buildFile.replace(/\/g,'\\').replace(/"/g,'\\"')+'", BuildTarget.StandaloneWindows64, BuildOptions.None);',' }','}'].join('\\n');
+  const source=['using UnityEditor;','public static class AURABuild {',' public static void Build(){','  BuildPipeline.BuildPlayer(EditorBuildSettings.scenes, "'+buildFile.replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'", BuildTarget.StandaloneWindows64, BuildOptions.None);',' }','}'].join('\n');
   await writeTextFile(bootstrap,source);
   const result=await new Promise((resolve,reject)=>execFile(editor,['-batchmode','-quit','-projectPath',root,'-executeMethod','AURABuild.Build','-logFile','-'],{windowsHide:false,maxBuffer:8*1024*1024},(e,so,se)=>e?reject(new Error(String(se||so||e.message))):resolve({stdout:String(so||''),stderr:String(se||'')})));
   return {ok:true,project:root,target,buildFile,log:String(result.stdout||'').slice(-10000)};
