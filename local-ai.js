@@ -1,9 +1,17 @@
 
-// Global renderer helper: drive-list requests are handled by the desktop command layer.
-globalThis.isDriveListRequest = function isDriveListRequest(q) {
-  const x = String(q || "").toLocaleLowerCase("tr-TR").trim();
-  return /^(sürücüleri göster|suruculeri goster|sürücüler|suruculer|diskleri göster|diskleri goster|diskler|hangi sürücüler var|hangi suruculer var|sürücülerim|suruculerim|disklerim)\??$/.test(x);
-};
+// Drive-list intent is local to this module. Never depend on a bare global
+// function because the renderer can load modules in a different order.
+function isDriveListRequest(q) {
+  const x = String(q || "")
+    .toLocaleLowerCase("tr-TR")
+    .replace(/[?.!,;:]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return /^(sürücüler|suruculer|sürücüleri göster|suruculeri goster|diskler|diskleri göster|diskleri goster|disklerim|sürücülerim)$/.test(x) ||
+    /^(hangi|neler|ne) (sürücüler|suruculer|diskler)( var| bulunuyor)?$/.test(x) ||
+    /^(sürücü|surucu) (listesi|listele|liste)$/.test(x);
+}
 import { CreateMLCEngine } from "https://esm.run/@mlc-ai/web-llm@0.2.85";
 
 const CHAT_MODEL_ID = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
