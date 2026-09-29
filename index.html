@@ -578,7 +578,7 @@ function getLocalAIModel() {
 async function loadLocalAI() {
   if (localAIModule) return localAIModule;
   if (!localAIPromise) {
-    localAIPromise = import("./local-ai.js?v=4.9.0").then((mod) => {
+    localAIPromise = import("./local-ai.js?v=4.10.0").then((mod) => {
       localAIModule = mod;
       return mod;
     });
@@ -824,6 +824,19 @@ function isVagueCodeRequest(q){
   return /^(kod yaz|kod yazsana|bir kod yaz|bana kod yaz|script yaz|bir script yaz)$/i.test(x);
 }
 
+function isScreenshotRequest(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
+  return /^(ekran görüntüsü al|ekran goruntusu al|ekran görüntüsü çek|ekran goruntusu cek|screenshot al)$/.test(x);
+}
+function isClipboardReadRequest(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
+  return /^(panoda ne var|panomu oku|panoyu oku|clipboard oku)$/.test(x);
+}
+function isClipboardWriteRequest(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
+  return /^(panoya yaz|panoya kopyala|clipboarda yaz|clipboard'a yaz)\s+.+$/.test(x);
+}
+
 function quickLocalAnswer(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
   if(/^(ne yapabilirsin|neler yapabilirsin|özelliklerin|ozelliklerin|yardım|yardim)$/.test(x))
@@ -963,15 +976,7 @@ function isRunningAppsRequest(q){
 }
 
 function safeDriveListRequest(q){
-  const x=String(q||"")
-    .toLocaleLowerCase("tr-TR")
-    .replace(/[?.!,;:]/g," ")
-    .replace(/\s+/g," ")
-    .trim();
-
-  return /^(sürücüler|suruculer|sürücüleri göster|suruculeri goster|diskler|diskleri göster|diskleri goster|disklerim|sürücülerim)$/.test(x) ||
-    /^(hangi|neler|ne) (sürücüler|suruculer|diskler)( var| bulunuyor)?$/.test(x) ||
-    /^(sürücü|surucu) (listesi|listele|liste)$/.test(x);
+  return typeof isDriveListRequest === "function" && isDriveListRequest(q);
 }
 
 function isCameraRequest(q){
@@ -1178,6 +1183,23 @@ async function handleDirectCommand(q) {
     return "Sistem: "+info.os+" · CPU: "+info.cpu+" · "+info.cpuCount+" çekirdek · RAM: "+info.memoryGB+" GB · Boş RAM: "+info.freeMemoryGB+" GB.";
   }
 
+  if (isScreenshotRequest(q)) {
+    const result=await callDesktop("desktop_capture_screen",{name:"aura"});
+    return result?.message || "Ekran görüntüsü kaydedildi.";
+  }
+
+  if (isClipboardReadRequest(q)) {
+    const result=await callDesktop("desktop_clipboard_read",{});
+    const text=String(result?.text||"").trim();
+    return text ? "Panodaki içerik:\n\n"+text : "Windows panosu boş görünüyor.";
+  }
+
+  if (isClipboardWriteRequest(q)) {
+    const text=String(q||"").replace(/^(panoya yaz|panoya kopyala|clipboarda yaz|clipboard'a yaz)\s+/i,"").trim();
+    const result=await callDesktop("desktop_clipboard_write",{text});
+    return result?.message || "Panoya kopyalandı.";
+  }
+
   if (isHardwareRequest(q)) {
     const hw=await callDesktop("desktop_get_hardware_metrics",{});
     updateHardwareHUD(hw);
@@ -1355,7 +1377,7 @@ async function run(q) {
   const utilityRequest=isWindowsUtilityRequest(q);
     const phoneTransfer=isPhoneTransferRequest(q);
     const driveRequest=safeDriveListRequest(q);
-    const direct = memoryDirect || phoneTransfer || isScanCancelRequest(q) || isCameraRequest(q) || !!utilityRequest || isPCRequest(q) || isDeepPCRequest(q) || isUsageRequest(q) || isWeatherRequest(q) || isBatteryRequest(q) || isSystemRequest(q) || isHardwareRequest(q) || isUnityProjectRequest(q) || isConversationHistoryRequest(q) || isDesktopListRequest(q) || isRunningAppsRequest(q) || driveRequest || !!appControl || !!extractOpenTarget(q);
+    const direct = memoryDirect || phoneTransfer || isScreenshotRequest(q) || isClipboardReadRequest(q) || isClipboardWriteRequest(q) || isScanCancelRequest(q) || isCameraRequest(q) || !!utilityRequest || isPCRequest(q) || isDeepPCRequest(q) || isUsageRequest(q) || isWeatherRequest(q) || isBatteryRequest(q) || isSystemRequest(q) || isHardwareRequest(q) || isUnityProjectRequest(q) || isConversationHistoryRequest(q) || isDesktopListRequest(q) || isRunningAppsRequest(q) || driveRequest || !!appControl || !!extractOpenTarget(q);
     if (quick) {
       if(myGeneration===runGeneration) finish(q, quick, false);
       return;
