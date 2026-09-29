@@ -1636,6 +1636,37 @@ async function systemInfo(){
     home:os.homedir()
   };
 }
+function findUnityEditorExecutable(){
+  const candidates=[]; if(process.env.UNITY_EDITOR)candidates.push(process.env.UNITY_EDITOR);
+  for(const root of ['C:\\Program Files\\Unity\\Hub\\Editor','C:\\Program Files\\Unity\\Editor','C:\\Program Files (x86)\\Unity\\Editor']){try{if(fs.existsSync(root))for(const e of fs.readdirSync(root,{withFileTypes:true}))if(e.isDirectory())candidates.push(path.join(root,e.name,'Editor','Unity.exe'));}catch{}}
+  return candidates.map(normalizePath).find(p=>fs.existsSync(p))||null;
+}
+async function createUnityProject(projectPath,projectName='AURA Game'){
+  const root=normalizePath(projectPath); if(!isAllowedPath(root))throw new Error('Unity projesi yalnızca mevcut kullanıcı erişim alanında oluşturulabilir.');
+  const ok=await confirmAction('AURA — Unity projesi oluşturma izni','AURA şu klasörde yeni bir Unity projesi oluşturacak:\n\n'+root+'\n\nDevam edilsin mi?'); if(!ok)throw new Error('Kullanıcı işlemi iptal etti.');
+  const editor=findUnityEditorExecutable(); if(!editor)throw new Error('Unity Editor bulunamadı. UNITY_EDITOR ortam değişkeniyle Unity.exe yolunu gösterebilirsin.');
+  await fsp.mkdir(root,{recursive:true});
+  await new Promise((resolve,reject)=>execFile(editor,['-quit','-batchmode','-createProject',root],{windowsHide:false,maxBuffer:4*1024*1024},(e,so,se)=>e?reject(new Error(String(se||so||e.message))):resolve()));
+  return {ok:true,path:root,projectName,unityEditor:editor,message:'Unity projesi oluşturuldu.'};
+}
+async function unityCreateScript(projectPath,relativePath,content){
+  const root=normalizePath(projectPath),target=normalizePath(path.join(root,String(relativePath||'')));
+  if(!isAllowedPath(root)||!isAllowedPath(target)||!target.toLowerCase().startsWith(path.join(root,'assets').toLowerCase()+path.sep)||!target.toLowerCase().endsWith('.cs'))throw new Error('Unity script yalnızca izinli projenin Assets altında .cs olarak oluşturulabilir.');
+  return writeTextFile(target,String(content||''));
+}
+async function unityOpenProject(projectPath){return openUnityProject(normalizePath(projectPath));}
+async function buildUnityProject(projectPath,target='StandaloneWindows64'){
+  const root=normalizePath(projectPath); if(!isAllowedPath(root))throw new Error('Unity proje yolu izinli değil.');
+  const editor=findUnityEditorExecutable(); if(!editor)throw new Error('Unity Editor bulunamadı.');
+  const ok=await confirmAction('AURA — Unity build izni','AURA Unity projesini derleyecek:\n\n'+root+'\n\nHedef: '+target); if(!ok)throw new Error('Kullanıcı işlemi iptal etti.');
+  const buildDir=path.join(root,'Builds'); await fsp.mkdir(buildDir,{recursive:true});
+  const buildFile=path.join(buildDir,'AURA.exe');
+  const bootstrap=path.join(root,'Assets','Scripts','AURABuild.cs');
+  const source=['using UnityEditor;','public static class AURABuild {',' public static void Build(){','  BuildPipeline.BuildPlayer(EditorBuildSettings.scenes, "'+buildFile.replace(/\/g,'\\').replace(/"/g,'\\"')+'", BuildTarget.StandaloneWindows64, BuildOptions.None);',' }','}'].join('\\n');
+  await writeTextFile(bootstrap,source);
+  const result=await new Promise((resolve,reject)=>execFile(editor,['-batchmode','-quit','-projectPath',root,'-executeMethod','AURABuild.Build','-logFile','-'],{windowsHide:false,maxBuffer:8*1024*1024},(e,so,se)=>e?reject(new Error(String(se||so||e.message))):resolve({stdout:String(so||''),stderr:String(se||'')})));
+  return {ok:true,project:root,target,buildFile,log:String(result.stdout||'').slice(-10000)};
+}
 async function handleTool(tool,args) {
   switch(tool) {
     case 'desktop_get_hardware_metrics': return getHardwareMetrics();
@@ -1694,6 +1725,10 @@ async function handleTool(tool,args) {
     case 'desktop_speak_text': return speakTextWindows(args.text);
     case 'desktop_stop_speech': return stopWindowsSpeech();
     case 'desktop_open_unity_project': return openUnityProject(normalizePath(args.projectPath));
+    case 'desktop_create_unity_project': return createUnityProject(args.projectPath,args.projectName||'AURA Game');
+    case 'desktop_unity_create_script': return unityCreateScript(args.projectPath,args.relativePath,args.content);
+    case 'desktop_unity_open_project': return unityOpenProject(args.projectPath);
+    case 'desktop_unity_build': return buildUnityProject(args.projectPath,args.target||'StandaloneWindows64');
     case 'desktop_web_research': return webResearch(args.query,args.maxResults||12);
     case 'desktop_web_search': return webSearch(args.query);
     case 'desktop_fetch_web_page': return fetchWebPage(args.url);
