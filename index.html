@@ -236,11 +236,17 @@ input,.composer,.composerArea,.topbar,.sidebar{pointer-events:auto;position:rela
   </div>
 </div>
 <script type="module">
-globalThis.isDriveListRequest = function isDriveListRequest(q){
-  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
-  return /^(sürücüleri göster|suruculeri goster|sürücüler|suruculer|diskleri göster|diskleri goster|diskler|hangi sürücüler var|hangi suruculer var|sürücülerim|suruculerim|disklerim)\\??$/.test(x);
+function isDriveListRequest(q){
+  const x=String(q||"")
+    .toLocaleLowerCase("tr-TR")
+    .replace(/[?.!,;:]/g," ")
+    .replace(/\\s+/g," ")
+    .trim();
+
+  return /^(sürücüler|suruculer|sürücüleri göster|suruculeri goster|diskler|diskleri göster|diskleri goster|disklerim|sürücülerim)$/.test(x) ||
+    /^(hangi|neler|ne) (sürücüler|suruculer|diskler)( var| bulunuyor)?$/.test(x) ||
+    /^(sürücü|surucu) (listesi|listele|liste)$/.test(x);
 }
-const isDriveListRequest = globalThis.isDriveListRequest;
 
 
 const $ = (id) => document.getElementById(id);
@@ -1191,7 +1197,7 @@ async function handleDirectCommand(q) {
     return "Şu anda çalışan uygulamalar:\n\n"+items.slice(0,30).map((x,i)=>(i+1)+". "+x.name+(x.count>1?" ×"+x.count:"")).join("\n");
   }
 
-  const driveRequest = safeDriveListRequest(q);
+  const driveRequest = isDriveListRequest(q);
   if (driveRequest) {
     const result=await callDesktop("desktop_list_drives",{});
     const items=Array.isArray(result)?result:[];
