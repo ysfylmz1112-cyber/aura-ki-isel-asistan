@@ -963,7 +963,7 @@ function isDriveListRequest(q){
   const x=String(q||"")
     .toLocaleLowerCase("tr-TR")
     .replace(/[?.!,;:]/g," ")
-    .replace(/\\s+/g," ")
+    .replace(/\s+/g," ")
     .trim();
 
   return /^(sürücüler|suruculer|sürücüleri göster|suruculeri goster|diskler|diskleri göster|diskleri goster|disklerim|sürücülerim)$/.test(x) ||
@@ -971,18 +971,19 @@ function isDriveListRequest(q){
     /^(sürücü|surucu) (listesi|listele|liste)$/.test(x);
 }
 
-globalThis.isDriveListRequest=isDriveListRequest;
+globalThis.isDriveListRequest = (q) => {
+  const x = String(q || "")
+    .toLocaleLowerCase("tr-TR")
+    .replace(/[?.!,;:]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return /^(sürücüler|suruculer|diskler|disklerim|sürücülerim)$/.test(x) ||
+    /^(sürücüleri|suruculeri|diskleri) (göster|goster|listele|liste)$/.test(x);
+};
 
 function safeDriveListRequest(q){
-  // Bazı Electron/renderer yükleme sıralarında yerel sembol görünmeyebilir.
-  // Bu yüzden sürücü intent'ini hiçbir zaman ReferenceError'a düşürme.
-  if (typeof isDriveListRequest === "function") {
-    return isDriveListRequest(q);
-  }
   const fn = globalThis.isDriveListRequest;
-  if (typeof fn === "function") {
-    return fn(q);
-  }
+  return typeof fn === "function" ? Boolean(fn(q)) : false;
   const x = String(q || "")
     .toLocaleLowerCase("tr-TR")
     .replace(/[?.!,;:]/g, " ")
