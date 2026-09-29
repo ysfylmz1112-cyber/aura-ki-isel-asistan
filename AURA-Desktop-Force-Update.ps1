@@ -61,7 +61,7 @@ foreach($item in $files){
 if($item.GitPath -eq 'desktop/package.json'){
     try {
       $pkg = $remote | ConvertFrom-Json
-      if([string]$pkg.version -ne '5.2.1'){
+      if([string]$pkg.version -ne '5.3.0'){
         throw ('Beklenmeyen package.json sürümü: ' + [string]$pkg.version)
       }
     } catch {
