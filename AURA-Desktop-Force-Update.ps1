@@ -5,11 +5,11 @@ $desktopDir = Join-Path $repoRoot 'desktop'
 $rendererDir = Join-Path $desktopDir 'renderer'
 $desktopInstaller = Join-Path $env:USERPROFILE 'Desktop\AURA-5.0.0-Setup.exe'
 $releaseCommits = @{
-  index = '741540d'
-  localAI = '741540d'
-  main = '741540d'
-  preload = '741540d'
-  package = '741540d'
+  index = '8c4116e1233a24e5e67fd60e134de3e2cfdafa88'
+  localAI = '8c4116e1233a24e5e67fd60e134de3e2cfdafa88'
+  main = '8c4116e1233a24e5e67fd60e134de3e2cfdafa88'
+  preload = '8c4116e1233a24e5e67fd60e134de3e2cfdafa88'
+  package = '8c4116e1233a24e5e67fd60e134de3e2cfdafa88'
 }
 $rawBase = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/'
 
@@ -74,7 +74,7 @@ Write-Host '========================================' -ForegroundColor Green
 Write-Host 'AURA 5.0.0 HAZIR' -ForegroundColor Green
 Write-Host ('Kurulum: ' + $desktopInstaller) -ForegroundColor Green
 Write-Host ('Boyut: ' + [math]::Round($built.Length/1MB,1) + ' MB') -ForegroundColor Green
-Write-Host 'Qwen yerel AI + uygulama kontrolu + hafiza + PC HUD + telefon kumandasi + web + Unity + kod modu aktif.' -ForegroundColor Green
+Write-Host 'Qwen yerel AI + uygulama kontrolu + hafiza + PC HUD + telefon QR + telefona aktarim + web + Unity + kod modu aktif.' -ForegroundColor Green
 Write-Host '========================================' -ForegroundColor Green
 
 Start-Process -FilePath $desktopInstaller
