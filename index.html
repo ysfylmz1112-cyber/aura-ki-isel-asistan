@@ -66,6 +66,16 @@ button{user-select:none}
 .qrImage{display:block;width:min(320px,80vw);height:min(320px,80vw);margin:18px auto;border-radius:12px;background:#fff;padding:8px}.qrUrl{padding:10px;border:1px solid #1b2933;background:#050a0f;color:#8ddff0;border-radius:10px;font-size:10px;line-height:1.45;word-break:break-all}.qrActions{display:flex;gap:8px;margin-top:10px}.qrActions .btn{flex:1}.qrHint{margin-top:10px;color:#5e6d78;font-size:8px;line-height:1.5}
 
 @media(max-width:900px){.app{grid-template-columns:0 1fr}.sidebar{display:none}.workspace{grid-template-rows:330px minmax(0,1fr)}.core{width:290px;height:290px}.chat{width:min(820px,calc(100% - 22px))}}
+
+/* AURA interaction safety: decorative HUD layers never block clicks */
+button,.btn,.nav,.newChat,.chip,.send,.modeBadge,
+input,.composer,.composerArea,.topbar,.sidebar{pointer-events:auto;position:relative;z-index:60}
+.coreStage:before,.coreStage:after,.coreSvg,.coreGlow,.coreEnergy,
+.particle,.coreLabelTop,.coreLabelLive,.coreLabelBottom,
+.modeBadgeTop,.dataStream,.hudRail,.weatherMini{pointer-events:none}
+.qrModal{pointer-events:none}
+.qrModal.open{pointer-events:auto}
+
 </style>
 </head><body><div class="app">
 <aside class="sidebar">
