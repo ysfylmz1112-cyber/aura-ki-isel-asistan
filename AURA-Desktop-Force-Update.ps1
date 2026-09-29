@@ -3,19 +3,19 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Join-Path $env:USERPROFILE 'Desktop\aura-ki-isel-asistan'
 $desktopDir = Join-Path $repoRoot 'desktop'
 $rendererDir = Join-Path $desktopDir 'renderer'
-$desktopInstaller = Join-Path $env:USERPROFILE 'Desktop\AURA-5.1.0-Setup.exe'
+$desktopInstaller = Join-Path $env:USERPROFILE 'Desktop\AURA-5.2.0-Setup.exe'
 $releaseCommits = @{
-  index = 'c20a3216474638bcf99a409c110cc64487852adc'
-  localAI = '2651436f145371a8b7f57f216712b758917cf202'
-  main = 'c9354f144a505b9ac8e8c1bb7ee18612ac8fc71d'
+  index = 'dbe6bc28358cc72e8fccc760f8f96fd0ec562ca2'
+  localAI = '897dbbd5cf61ab642ebcea08b0342a44254aca96'
+  main = 'b97ce1a9fe0dcfca6b8e8044aade17fc05585ea5'
   preload = '587cde2a08e508376e0dba1ee44018d03d0440bb'
-  package = 'e692710d737f9da326ec09b14e6e479380db5981'
+  package = '205e914bb2fb53d428d84709110b227e1017f35f'
 }
 $rawBase = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/'
 
 New-Item -ItemType Directory -Force -Path $repoRoot,$desktopDir,$rendererDir | Out-Null
 
-Write-Host 'AURA 5.1.0 - TAM WINDOWS GUNCELLEMESI' -ForegroundColor Cyan
+Write-Host 'AURA 5.2.0 - TAM WINDOWS GUNCELLEMESI' -ForegroundColor Cyan
 Write-Host 'Mevcut AURA surecleri kapatiliyor...' -ForegroundColor DarkCyan
 Stop-Process -Name 'AURA' -Force -ErrorAction SilentlyContinue
 Get-CimInstance Win32_Process -Filter "Name='electron.exe'" -ErrorAction SilentlyContinue |
@@ -28,7 +28,7 @@ $files = @(
   @{ Local = Join-Path $repoRoot 'local-ai.js'; Remote = $rawBase + $releaseCommits.localAI + '/local-ai.js'; Required = 'AURA 5.0'; Name = 'yerel-ai' },
   @{ Local = Join-Path $desktopDir 'main.cjs'; Remote = $rawBase + $releaseCommits.main + '/desktop/main.cjs'; Required = 'app.whenReady'; Name = 'desktop-core' },
   @{ Local = Join-Path $desktopDir 'preload.cjs'; Remote = $rawBase + $releaseCommits.preload + '/desktop/preload.cjs'; Required = 'auraDesktop'; Name = 'preload' },
-  @{ Local = Join-Path $desktopDir 'package.json'; Remote = $rawBase + $releaseCommits.package + '/desktop/package.json'; Required = '5.0.1'; Name = 'paket' }
+  @{ Local = Join-Path $desktopDir 'package.json'; Remote = $rawBase + $releaseCommits.package + '/desktop/package.json'; Required = '5.2.0'; Name = 'paket' }
 )
 
 foreach($item in $files){
@@ -57,7 +57,7 @@ if(Test-Path '.\dist'){
   Remove-Item '.\dist' -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-Write-Host 'AURA 5.1.0 Setup EXE olusturuluyor...' -ForegroundColor Cyan
+Write-Host 'AURA 5.2.0 Setup EXE olusturuluyor...' -ForegroundColor Cyan
 npm run build:win
 if($LASTEXITCODE -ne 0){ throw 'AURA Setup EXE derlemesi basarisiz oldu.' }
 
@@ -71,7 +71,7 @@ Copy-Item -LiteralPath $built.FullName -Destination $desktopInstaller -Force
 
 Write-Host ''
 Write-Host '========================================' -ForegroundColor Green
-Write-Host 'AURA 5.1.0 HAZIR' -ForegroundColor Green
+Write-Host 'AURA 5.2.0 HAZIR' -ForegroundColor Green
 Write-Host ('Kurulum: ' + $desktopInstaller) -ForegroundColor Green
 Write-Host ('Boyut: ' + [math]::Round($built.Length/1MB,1) + ' MB') -ForegroundColor Green
 Write-Host 'Qwen yerel AI + hafiza 2.0 + PC Core 2.0 + canlı HUD + sesli mod + telefon QR + web arastirma + Unity + kod modu + pano + ekran goruntusu aktif.' -ForegroundColor Green
