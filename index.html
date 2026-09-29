@@ -982,13 +982,7 @@ globalThis.isDriveListRequest = (q) => {
 };
 
 function safeDriveListRequest(q){
-  const fn = globalThis.isDriveListRequest;
-  return typeof fn === "function" ? Boolean(fn(q)) : false;
-  const x = String(q || "")
-    .toLocaleLowerCase("tr-TR")
-    .replace(/[?.!,;:]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  const x=String(q||"").toLocaleLowerCase("tr-TR").replace(/[?.!,;:]/g," ").replace(/\s+/g," ").trim();
   return /^(sürücüler|suruculer|sürücüleri göster|suruculeri goster|diskler|diskleri göster|diskleri goster|disklerim|sürücülerim)$/.test(x) ||
     /^(hangi|neler|ne) (sürücüler|suruculer|diskler)( var| bulunuyor)?$/.test(x) ||
     /^(sürücü|surucu) (listesi|listele|liste)$/.test(x);
@@ -1016,7 +1010,7 @@ function isDesktopListRequest(q){
 
 function looksLikeCodeRequest(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
-  return /kod yaz|kod oluştur|kod olustur|script yaz|c#|c sharp|python|javascript|typescript|html|css|unity script|unity c#/.test(x);
+  return /kod yaz|kod oluştur|kod olustur|script yaz|c#|c sharp|python|javascript|typescript|html|css|unity|unity script|unity c#|oyun yap|oyun geliştir|oyun gelistir|sahne oluştur|sahne olustur|prefab|component|animator|build al|derle/.test(x);
 }
 
 function extractAppControlCommand(q){
