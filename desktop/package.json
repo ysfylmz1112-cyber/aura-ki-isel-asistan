@@ -1,13 +1,16 @@
 {
   "name": "aura-desktop",
-  "version": "5.2.0",
+  "version": "5.2.1",
   "private": true,
   "description": "AURA local desktop AI assistant",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
-    "build:win": "electron-builder --win nsis"
+    "build:win": "electron-builder --win nsis",
+    "prepare-renderer": "node prepare-renderer.cjs",
+    "prestart": "npm run prepare-renderer",
+    "prebuild:win": "npm run prepare-renderer"
   },
   "dependencies": {
     "duck-duck-scrape": "2.2.7",
@@ -28,6 +31,7 @@
     "files": [
       "main.cjs",
       "preload.cjs",
+      "prepare-renderer.cjs",
       "renderer/**/*",
       "package.json"
     ],
