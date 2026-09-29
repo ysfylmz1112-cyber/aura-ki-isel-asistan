@@ -242,28 +242,6 @@ input,.composer,.composerArea,.topbar,.sidebar{pointer-events:auto;position:rela
   </div>
 </div>
 <script type="module">
-function isDriveListRequest(q){
-  const x=String(q||"")
-    .toLocaleLowerCase("tr-TR")
-    .replace(/[?.!,;:]/g," ")
-    .replace(/\\s+/g," ")
-    .trim();
-
-  return /^(sürücüler|suruculer|sürücüleri göster|suruculeri goster|diskler|diskleri göster|diskleri goster|disklerim|sürücülerim)$/.test(x) ||
-    /^(hangi|neler|ne) (sürücüler|suruculer|diskler)( var| bulunuyor)?$/.test(x) ||
-    /^(sürücü|surucu) (listesi|listele|liste)$/.test(x);
-}
-
-
-// Compatibility bridge: older renderer modules may call this helper as a global.
-globalThis.isDriveListRequest = isDriveListRequest;
-
-// Compatibility helper: command routing uses this safe alias.
-function safeDriveListRequest(q){
-  return typeof isDriveListRequest === "function" && isDriveListRequest(q);
-}
-globalThis.safeDriveListRequest = safeDriveListRequest;
-
 const $ = (id) => document.getElementById(id);
 const input = $("input");
 const chat = $("chat");
@@ -981,10 +959,23 @@ function isRunningAppsRequest(q){
     /hangi programlar çalışıyor|hangi programlar calisiyor/.test(n);
 }
 
+function isDriveListRequest(q){
+  const x=String(q||"")
+    .toLocaleLowerCase("tr-TR")
+    .replace(/[?.!,;:]/g," ")
+    .replace(/\\s+/g," ")
+    .trim();
+
+  return /^(sürücüler|suruculer|sürücüleri göster|suruculeri goster|diskler|diskleri göster|diskleri goster|disklerim|sürücülerim)$/.test(x) ||
+    /^(hangi|neler|ne) (sürücüler|suruculer|diskler)( var| bulunuyor)?$/.test(x) ||
+    /^(sürücü|surucu) (listesi|listele|liste)$/.test(x);
+}
+
+globalThis.isDriveListRequest=isDriveListRequest;
+
 function safeDriveListRequest(q){
   return isDriveListRequest(q);
 }
-
 function isCameraRequest(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
   return /^(kamera|kamerayı aç|kamerayi ac|kamera aç|kamera ac|webcam|webcamı aç|webcami ac|cam aç|cam ac)$/.test(x);
