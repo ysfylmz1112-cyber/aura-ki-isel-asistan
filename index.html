@@ -982,7 +982,7 @@ function isRunningAppsRequest(q){
 }
 
 function safeDriveListRequest(q){
-  return typeof isDriveListRequest === "function" && isDriveListRequest(q);
+  return isDriveListRequest(q);
 }
 
 function isCameraRequest(q){
