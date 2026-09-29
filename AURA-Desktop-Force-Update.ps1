@@ -9,7 +9,7 @@ $releaseCommits = @{
   localAI = 'b21f67747e9a6226a85580c7e348169213ac73e0'
   main = '89f72393e1f829a83e2c12db0e05fdaffc1880c5'
   preload = '587cde2a08e508376e0dba1ee44018d03d0440bb'
-  package = '19549745fa706eedca06d43eee4f2ceccc919e
+  package = '19549745fa706eedca06d43eee4f2ceccc919e5'
 }
 $rawBase = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/'
 
