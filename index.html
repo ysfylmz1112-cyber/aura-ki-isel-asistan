@@ -974,7 +974,23 @@ function isDriveListRequest(q){
 globalThis.isDriveListRequest=isDriveListRequest;
 
 function safeDriveListRequest(q){
-  return isDriveListRequest(q);
+  // Bazı Electron/renderer yükleme sıralarında yerel sembol görünmeyebilir.
+  // Bu yüzden sürücü intent'ini hiçbir zaman ReferenceError'a düşürme.
+  if (typeof isDriveListRequest === "function") {
+    return isDriveListRequest(q);
+  }
+  const fn = globalThis.isDriveListRequest;
+  if (typeof fn === "function") {
+    return fn(q);
+  }
+  const x = String(q || "")
+    .toLocaleLowerCase("tr-TR")
+    .replace(/[?.!,;:]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return /^(sürücüler|suruculer|sürücüleri göster|suruculeri goster|diskler|diskleri göster|diskleri goster|disklerim|sürücülerim)$/.test(x) ||
+    /^(hangi|neler|ne) (sürücüler|suruculer|diskler)( var| bulunuyor)?$/.test(x) ||
+    /^(sürücü|surucu) (listesi|listele|liste)$/.test(x);
 }
 function isCameraRequest(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
