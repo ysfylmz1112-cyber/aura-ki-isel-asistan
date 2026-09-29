@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, shell, session } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, shell, session, clipboard, Notification } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const fsp = require('fs/promises');
@@ -1555,6 +1555,41 @@ async function getHardwareMetrics(){
   };
 }
 
+async function readClipboardText(){
+  return {ok:true,text:String(clipboard.readText()||'').slice(0,20000)};
+}
+
+async function writeClipboardText(text){
+  const value=String(text||'');
+  if(!value.trim()) throw new Error('Panoya yazılacak metin boş.');
+  const ok=await confirmAction('AURA — Pano onayı','AURA aşağıdaki metni Windows panosuna yazacak:\n\n'+value.slice(0,1200)+(value.length>1200?'…':'')+'\n\nDevam edilsin mi?');
+  if(!ok) throw new Error('Kullanıcı işlemi iptal etti.');
+  clipboard.writeText(value);
+  return {ok:true,length:value.length,message:'Metin Windows panosuna kopyalandı.'};
+}
+
+async function captureAuraScreen(name='aura'){
+  const win=BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+  if(!win) throw new Error('AURA penceresi bulunamadı.');
+  const ok=await confirmAction('AURA — Ekran görüntüsü','AURA mevcut AURA penceresinin ekran görüntüsünü Pictures\\AURA Captures klasörüne kaydedecek.\n\nDevam edilsin mi?');
+  if(!ok) throw new Error('Kullanıcı işlemi iptal etti.');
+  const image=await win.webContents.capturePage();
+  const dir=path.join(app.getPath('pictures'),'AURA Captures');
+  await fsp.mkdir(dir,{recursive:true});
+  const safe=String(name||'aura').replace(/[^a-zA-Z0-9ğüşöçıİĞÜŞÖÇ_-]+/g,'_').slice(0,60)||'aura';
+  const file=path.join(dir,safe+'-'+new Date().toISOString().replace(/[:.]/g,'-')+'.png');
+  await fsp.writeFile(file,image.toPNG());
+  return {ok:true,path:file,message:'Ekran görüntüsü kaydedildi: '+file};
+}
+
+function showAuraNotification(title='AURA',body=''){
+  const text=String(body||'').trim();
+  if(!text) throw new Error('Bildirim metni boş.');
+  if(!Notification.isSupported()) throw new Error('Windows bildirimleri bu sistemde desteklenmiyor.');
+  new Notification({title:String(title||'AURA').slice(0,120),body:text.slice(0,1000)}).show();
+  return {ok:true,message:'Windows bildirimi gösterildi.'};
+}
+
 async function systemInfo(){
   let totalGB=os.totalmem()/1024/1024/1024;
   let freeGB=os.freemem()/1024/1024/1024;
@@ -1583,6 +1618,11 @@ async function systemInfo(){
 async function handleTool(tool,args) {
   switch(tool) {
     case 'desktop_get_hardware_metrics': return getHardwareMetrics();
+    case 'desktop_clipboard_read': return readClipboardText();
+    case 'desktop_clipboard_write': return writeClipboardText(args.text);
+    case 'desktop_capture_screen': return captureAuraScreen(args.name||'aura');
+    case 'desktop_notify': return showAuraNotification(args.title||'AURA',args.body);
+
     case 'desktop_get_remote_control': return getRemoteControlInfo();
     case 'desktop_get_remote_qr': return getRemoteControlQr();
     case 'desktop_get_weather': return getWeather(args.city||'Istanbul');
@@ -1893,7 +1933,7 @@ app.whenReady().then(async()=>{
 
   ipcMain.handle('aura:desktop-info',async()=>({
     connected:true,
-    version:'4.9.0',
+    version:'5.0.0',
     mode:'secure-local-agent-pc-aware-core',
     roots:allowedRoots(),
     features:[
