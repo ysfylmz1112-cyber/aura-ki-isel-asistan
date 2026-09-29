@@ -523,7 +523,11 @@ const TOOLS = [
         additionalProperties:false
       }
     }
-  }
+  },
+  {type:"function",function:{name:"desktop_create_unity_project",description:"İzinli kullanıcı klasöründe gerçek Unity proje oluşturur.",parameters:{type:"object",properties:{projectPath:{type:"string"},projectName:{type:"string"}},required:["projectPath"],additionalProperties:false}}},
+  {type:"function",function:{name:"desktop_unity_create_script",description:"Unity Assets altında gerçek C# script oluşturur veya günceller.",parameters:{type:"object",properties:{projectPath:{type:"string"},relativePath:{type:"string"},content:{type:"string"}},required:["projectPath","relativePath","content"],additionalProperties:false}}},
+  {type:"function",function:{name:"desktop_unity_open_project",description:"Unity projesini Editor ile açar.",parameters:{type:"object",properties:{projectPath:{type:"string"}},required:["projectPath"],additionalProperties:false}}},
+  {type:"function",function:{name:"desktop_unity_build",description:"Unity projesinden Windows build alır.",parameters:{type:"object",properties:{projectPath:{type:"string"},target:{type:"string"}},required:["projectPath"],additionalProperties:false}}},
 ];
 
 let engine = null;
