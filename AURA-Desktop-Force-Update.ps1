@@ -5,11 +5,11 @@ $desktopDir = Join-Path $repoRoot 'desktop'
 $rendererDir = Join-Path $desktopDir 'renderer'
 $desktopInstaller = Join-Path $env:USERPROFILE 'Desktop\AURA-5.2.0-Setup.exe'
 $releaseCommits = @{
-  index = 'dbe6bc28358cc72e8fccc760f8f96fd0ec562ca2'
-  localAI = '897dbbd5cf61ab642ebcea08b0342a44254aca96'
-  main = '34a431878517c48a09eb596e697f4c9aeea9b0f5'
-  preload = '587cde2a08e508376e0dba1ee44018d03d0440bb'
-  package = '205e914bb2fb53d428d84709110b227e1017f35f'
+  index = '893ed5f68f4e68eb72571d9a4278f47016e3fca7'
+  localAI = '893ed5f68f4e68eb72571d9a4278f47016e3fca7'
+  main = '893ed5f68f4e68eb72571d9a4278f47016e3fca7'
+  preload = '893ed5f68f4e68eb72571d9a4278f47016e3fca7'
+  package = '893ed5f68f4e68eb72571d9a4278f47016e3fca7'
 }
 $rawBase = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/'
 
