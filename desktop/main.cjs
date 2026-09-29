@@ -22,6 +22,7 @@ let localServerPort = null;
 let remoteServer = null;
 let remoteServerPort = null;
 let remoteControlToken = null;
+let phoneState = { version:1, updatedAt:null, items:[] };
 const REMOTE_FILE = path.join(app.getPath('userData'), 'aura-remote.json');
 
 function normalizePath(value) { return path.resolve(String(value || '')); }
@@ -1625,6 +1626,9 @@ async function handleTool(tool,args) {
 
     case 'desktop_get_remote_control': return getRemoteControlInfo();
     case 'desktop_get_remote_qr': return getRemoteControlQr();
+    case 'desktop_phone_push': return pushPhoneTransfer(args);
+    case 'desktop_phone_get_session': return getPhoneSession();
+    case 'desktop_phone_clear': return clearPhoneSession();
     case 'desktop_get_weather': return getWeather(args.city||'Istanbul');
     case 'desktop_get_battery_status': return getBatteryStatus();
     case 'desktop_open_camera': return openCamera();
@@ -1749,13 +1753,42 @@ function getLanAddress(){
   return '127.0.0.1';
 }
 function remoteAuthorized(url){return String(url?.searchParams?.get('token')||'')===String(remoteControlToken||'');}
+function pushPhoneTransfer(args={}){
+  const kind=String(args.kind||'text').slice(0,40);
+  const title=String(args.title||'AURA aktarımı').trim().slice(0,160);
+  const text=String(args.text||'').trim().slice(0,20000);
+  const user=String(args.user||'').trim().slice(0,4000);
+  const assistant=String(args.assistant||'').trim().slice(0,12000);
+  const conversation=Array.isArray(args.conversation)
+    ? args.conversation.slice(-40).map(item=>({
+        role:String(item?.role||'').slice(0,20),
+        text:String(item?.text||'').slice(0,7000)
+      }))
+    : [];
+  const item={
+    id:'phone_'+Date.now().toString(36)+'_'+crypto.randomBytes(4).toString('hex'),
+    kind,title,text,user,assistant,conversation,
+    createdAt:new Date().toISOString()
+  };
+  phoneState.items.unshift(item);
+  phoneState.items=phoneState.items.slice(0,30);
+  phoneState.updatedAt=item.createdAt;
+  return {ok:true,id:item.id,title:item.title,createdAt:item.createdAt};
+}
+function getPhoneSession(){
+  return {
+    version:phoneState.version,
+    updatedAt:phoneState.updatedAt,
+    items:phoneState.items.slice(0,20)
+  };
+}
+function clearPhoneSession(){
+  phoneState={version:1,updatedAt:null,items:[]};
+  return {ok:true,cleared:true};
+}
+
 function remotePage(){
-  return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#03070c"><title>AURA Remote</title><style>*{box-sizing:border-box}body{margin:0;background:#03070c;color:#edfaff;font-family:system-ui;min-height:100vh;background:radial-gradient(circle at 50% 15%,#12313d,#03070c 42%)}main{max-width:560px;margin:auto;padding:22px 16px 40px}.brand{text-align:center;letter-spacing:5px;font-weight:800;font-size:20px}.core{width:190px;height:190px;margin:24px auto;position:relative;border-radius:50%;display:grid;place-items:center;border:1px solid #3fe5ff88;box-shadow:0 0 55px #28dfff22,inset 0 0 35px #28dfff16}.core:before,.core:after{content:"";position:absolute;border-radius:50%;border:1px solid #53eaff55}.core:before{inset:16px;border-style:dashed;animation:r 8s linear infinite}.core:after{inset:35px;border-top-color:#7b8cff;border-bottom-color:#62e8ff;animation:r 4s linear infinite reverse}.orb{width:62px;height:62px;border-radius:50%;background:radial-gradient(circle,#fff,#68efff 20%,#0b7188 48%,transparent 72%);box-shadow:0 0 35px #48eaff}.online{text-align:center;color:#6ff0b1;font-size:11px;letter-spacing:2px}.panel{margin-top:16px;padding:14px;border:1px solid #172833;border-radius:16px;background:#071018cc}input{width:100%;padding:13px;border-radius:11px;border:1px solid #243743;background:#081017;color:white;outline:0}button{font:inherit;border:1px solid #20313b;background:#0c161e;color:#d9faff;border-radius:11px;padding:11px;cursor:pointer}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:9px}.primary{border-color:#35dfff55;background:#0c2530}.stat{display:flex;justify-content:space-between;color:#78909c;font-size:11px;padding:7px 0;border-bottom:1px solid #13212a}.stat b{color:#e8f8fb}.out{white-space:pre-wrap;color:#9eb0bb;font-size:12px;line-height:1.5;min-height:30px}.small{text-align:center;color:#536875;font-size:9px;margin-top:13px}@keyframes r{to{transform:rotate(360deg)}}</style></head><body><main><div class="brand">AURA</div><div class="core"><div class="orb"></div></div><div class="online">● REMOTE CORE ONLINE</div><div class="panel"><input id="cmd" placeholder="Komut: Minecraft aç, kamera aç..."><div class="grid"><button class="primary" onclick="act('minecraft aç')">Minecraft</button><button onclick="act('kamera aç')">Kamera</button><button onclick="act('Chrome aç')">Chrome</button><button onclick="act('Görev yöneticisi')">Görev Yöneticisi</button><button onclick="act('Bilgisayarımı tara')">PC Tara</button><button onclick="act('Hesap makinesi')">Hesap Makinesi</button></div><div class="grid"><button onclick="status()">PC Durumu</button><button onclick="act('Masaüstünü aç')">Masaüstü</button></div><div class="out" id="out"></div></div><div class="panel"><div class="stat"><span>CPU</span><b id="cpu">—</b></div><div class="stat"><span>RAM</span><b id="ram">—</b></div><div class="stat"><span>GPU</span><b id="gpu">—</b></div><div class="stat"><span>Sıcaklık</span><b id="temp">—</b></div></div><div class="small">AURA telefon kumandası · Aynı Wi‑Fi ağı üzerinde çalışır</div></main><script>
-const token=new URLSearchParams(location.search).get('token')||'';
-async function act(command){document.getElementById('out').textContent='Çalışıyor...';try{const r=await fetch('/api/action?token='+encodeURIComponent(token)+'&command='+encodeURIComponent(command));const j=await r.json();document.getElementById('out').textContent=j.message||j.error||'Tamam';await status()}catch(e){document.getElementById('out').textContent='Bağlantı hatası';}}
-async function status(){try{const r=await fetch('/api/status?token='+encodeURIComponent(token));const j=await r.json();if(j.hardware){document.getElementById('cpu').textContent=j.hardware.cpu?.usage!=null?j.hardware.cpu.usage+'%':'—';document.getElementById('ram').textContent=j.hardware.memory?.usedPercent!=null?j.hardware.memory.usedPercent.toFixed(0)+'%':'—';document.getElementById('gpu').textContent=j.hardware.gpu?.usage!=null?j.hardware.gpu.usage+'%':'—';document.getElementById('temp').textContent=j.hardware.gpu?.temperatureC!=null?j.hardware.gpu.temperatureC+'°C':'—';}}catch{}}
-document.getElementById('cmd').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.value.trim()){act(e.target.value.trim());e.target.value='';}});status();
-</script></body></html>`;
+  return "<!doctype html>\n<html lang=\"tr\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n<meta name=\"theme-color\" content=\"#03070c\">\n<title>AURA Telefon</title>\n<style>\n*{box-sizing:border-box}\nbody{margin:0;background:#03070c;color:#edfaff;font-family:system-ui,-apple-system,Segoe UI,sans-serif;min-height:100vh;background:radial-gradient(circle at 50% 8%,#12313d,#03070c 44%)}\nmain{width:min(720px,100%);margin:auto;padding:20px 16px 44px}\n.brand{text-align:center;letter-spacing:6px;font-weight:850;font-size:21px}\n.subtitle{text-align:center;color:#67808d;font-size:9px;letter-spacing:1.4px;margin-top:5px}\n.core{width:190px;height:190px;margin:22px auto 13px;position:relative;border-radius:50%;display:grid;place-items:center;border:1px solid #3fe5ff88;box-shadow:0 0 55px #28dfff22,inset 0 0 35px #28dfff16}\n.core:before,.core:after{content:\"\";position:absolute;border-radius:50%;border:1px solid #53eaff55}\n.core:before{inset:16px;border-style:dashed;animation:r1 8s linear infinite}\n.core:after{inset:35px;border-top-color:#7b8cff;border-bottom-color:#62e8ff;animation:r1 4s linear infinite reverse}\n.orb{width:62px;height:62px;border-radius:50%;background:radial-gradient(circle,#fff,#68efff 20%,#0b7188 48%,transparent 72%);box-shadow:0 0 35px #48eaff}\n.online{text-align:center;color:#6ff0b1;font-size:10px;letter-spacing:2px}\n.panel{margin-top:14px;padding:14px;border:1px solid #172833;border-radius:16px;background:#071018dc;box-shadow:0 14px 40px #0004}\n.title{font-size:9px;letter-spacing:1.8px;color:#78929f}\ninput{width:100%;margin-top:9px;padding:13px;border-radius:11px;border:1px solid #243743;background:#081017;color:white;outline:0}\n.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:9px}\nbutton{font:inherit;border:1px solid #20313b;background:#0c161e;color:#d9faff;border-radius:11px;padding:11px;cursor:pointer}\nbutton.primary{border-color:#35dfff55;background:#0c2530}\n.out,.content,.conversation{white-space:pre-wrap;color:#b0c0c9;font-size:12px;line-height:1.55}\n.out{min-height:24px;margin-top:10px}\n.content{margin-top:8px;color:#e8faff}\n.conversation{margin-top:12px;padding-top:11px;border-top:1px solid #12232d;color:#8ea6b2;max-height:260px;overflow:auto}\n.transferMeta{display:flex;justify-content:space-between;gap:10px;margin-top:5px;color:#5e7580;font-size:9px}\n.stat{display:flex;justify-content:space-between;color:#78909c;font-size:11px;padding:8px 0;border-bottom:1px solid #13212a}\n.stat b{color:#e8f8fb}\n.small{text-align:center;color:#536875;font-size:9px;margin-top:13px;line-height:1.5}\n.empty{color:#5e7580}\n@keyframes r1{to{transform:rotate(360deg)}}\n</style>\n</head>\n<body>\n<main>\n  <div class=\"brand\">AURA</div>\n  <div class=\"subtitle\">PHONE LINK · LOCAL NETWORK</div>\n  <div class=\"core\"><div class=\"orb\"></div></div>\n  <div class=\"online\">● AURA PHONE LINK ONLINE</div>\n\n  <div class=\"panel\">\n    <div class=\"title\">PC KOMUTU</div>\n    <input id=\"cmd\" placeholder=\"Minecraft aç, PC durumu, kamera aç...\">\n    <div class=\"grid\">\n      <button class=\"primary\" onclick=\"act('minecraft aç')\">Minecraft</button>\n      <button onclick=\"act('kamera aç')\">Kamera</button>\n      <button onclick=\"act('Chrome aç')\">Chrome</button>\n      <button onclick=\"act('Görev yöneticisi')\">Görev Yöneticisi</button>\n      <button onclick=\"act('Bilgisayarımı tara')\">PC Tara</button>\n      <button onclick=\"act('Hesap makinesi')\">Hesap Makinesi</button>\n    </div>\n    <div class=\"grid\">\n      <button onclick=\"status()\">PC Durumu</button>\n      <button onclick=\"act('Masaüstünü aç')\">Masaüstü</button>\n    </div>\n    <div class=\"out\" id=\"out\"></div>\n  </div>\n\n  <div class=\"panel\">\n    <div class=\"title\">TELEFONA AKTARILAN</div>\n    <div id=\"transferTitle\" class=\"content empty\">Henüz aktarım yok.</div>\n    <div id=\"transferMeta\" class=\"transferMeta\"><span>—</span><span>—</span></div>\n    <div id=\"transferText\" class=\"content\"></div>\n    <div id=\"conversation\" class=\"conversation\" style=\"display:none\"></div>\n  </div>\n\n  <div class=\"panel\">\n    <div class=\"title\">CANLI PC</div>\n    <div class=\"stat\"><span>CPU</span><b id=\"cpu\">—</b></div>\n    <div class=\"stat\"><span>RAM</span><b id=\"ram\">—</b></div>\n    <div class=\"stat\"><span>GPU</span><b id=\"gpu\">—</b></div>\n    <div class=\"stat\"><span>Sıcaklık</span><b id=\"temp\">—</b></div>\n    <div class=\"stat\"><span>Kullanıcı</span><b id=\"user\">—</b></div>\n  </div>\n\n  <div class=\"small\">Telefon ve AURA Desktop aynı Wi‑Fi ağında olmalı.<br>Bağlantı token ile korunur; bu sayfa internete açılmaz.</div>\n</main>\n\n<script>\nconst token=new URLSearchParams(location.search).get('token')||'';\nlet lastTransferId='';\n\nasync function requestJson(path,options){\n  const joiner=path.includes('?')?'&':'?';\n  const r=await fetch(path+joiner+'token='+encodeURIComponent(token),options||{cache:'no-store'});\n  return await r.json();\n}\nasync function act(command){\n  document.getElementById('out').textContent='Çalışıyor...';\n  try{\n    const j=await requestJson('/api/action?command='+encodeURIComponent(command));\n    document.getElementById('out').textContent=j.message||j.error||'Tamam';\n    await status();\n  }catch{\n    document.getElementById('out').textContent='Bağlantı hatası';\n  }\n}\nasync function status(){\n  try{\n    const j=await requestJson('/api/status');\n    if(!j.ok)return;\n    const h=j.hardware||{};\n    document.getElementById('cpu').textContent=h.cpu?.usage!=null?h.cpu.usage+'%':'—';\n    document.getElementById('ram').textContent=h.memory?.usedPercent!=null?h.memory.usedPercent.toFixed(0)+'%':'—';\n    document.getElementById('gpu').textContent=h.gpu?.usage!=null?h.gpu.usage+'%':'—';\n    document.getElementById('temp').textContent=h.gpu?.temperatureC!=null?h.gpu.temperatureC+'°C':'ölçüm yok';\n    document.getElementById('user').textContent=j.user||'—';\n  }catch{}\n}\nasync function loadPhone(){\n  try{\n    const j=await requestJson('/api/phone');\n    if(!j.ok)return;\n    const items=Array.isArray(j.session?.items)?j.session.items:[];\n    const last=items[0];\n    if(!last){\n      document.getElementById('transferTitle').textContent='Henüz aktarım yok.';\n      document.getElementById('transferTitle').className='content empty';\n      return;\n    }\n    if(last.id===lastTransferId)return;\n    lastTransferId=last.id;\n    const title=document.getElementById('transferTitle');\n    const text=document.getElementById('transferText');\n    const meta=document.getElementById('transferMeta');\n    const conversation=document.getElementById('conversation');\n    title.className='content';\n    title.textContent=last.title||'AURA aktarımı';\n    text.textContent=last.text||last.assistant||last.user||'';\n    const when=last.createdAt?new Date(last.createdAt).toLocaleString('tr-TR'):'—';\n    meta.innerHTML='';\n    const a=document.createElement('span'); a.textContent=last.kind||'text';\n    const b=document.createElement('span'); b.textContent=when;\n    meta.append(a,b);\n    if(Array.isArray(last.conversation)&&last.conversation.length){\n      conversation.style.display='block';\n      conversation.textContent=last.conversation.map(x=>{\n        const role=String(x?.role||'').toLowerCase()==='user'?'SEN':'AURA';\n        return role+' · '+String(x?.text||'');\n      }).join('\\n\\n');\n    }else{\n      conversation.style.display='none';\n      conversation.textContent='';\n    }\n  }catch{}\n}\ndocument.getElementById('cmd').addEventListener('keydown',e=>{\n  if(e.key==='Enter'&&e.target.value.trim()){act(e.target.value.trim());e.target.value='';}\n});\nstatus();\nloadPhone();\nsetInterval(status,5000);\nsetInterval(loadPhone,1000);\n</script>\n</body>\n</html>";
 }
 function remoteCommand(command){
   const q=String(command||'').toLocaleLowerCase('tr-TR').trim();
@@ -1791,6 +1824,10 @@ async function startRemoteControlServer(){
         const profile=await getEnvironmentProfile();
         res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});
         return res.end(JSON.stringify({ok:true,hardware,user:os.userInfo().username,apps:profile?.applicationSummary?.userApps||0,games:Array.isArray(profile?.games)?profile.games.length:0}));
+      }
+      if(url.pathname==='/api/phone'){
+        res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});
+        return res.end(JSON.stringify({ok:true,session:getPhoneSession()}));
       }
       if(url.pathname==='/api/action'){
         const command=url.searchParams.get('command')||'';
