@@ -36,7 +36,7 @@ Get-CimInstance Win32_Process -Filter "Name='electron.exe'" -ErrorAction Silentl
 Start-Sleep -Milliseconds 1200
 
 $files = @(
-  @{ Local = Join-Path $repoRoot 'index.html'; GitPath = 'index.html'; Required = '<title>AURA — Kişisel Asistan</title>'; Name = 'arayuz' },
+  @{ Local = Join-Path $repoRoot 'index.html'; GitPath = 'index.html'; Required = '<html lang="tr">'; Name = 'arayuz' },
   @{ Local = Join-Path $repoRoot 'local-ai.js'; GitPath = 'local-ai.js'; Required = 'function isDriveListRequest'; Name = 'yerel-ai' },
   @{ Local = Join-Path $desktopDir 'main.cjs'; GitPath = 'desktop/main.cjs'; Required = "app.whenReady().then(async()=>"; Name = 'desktop-core' },
   @{ Local = Join-Path $desktopDir 'preload.cjs'; GitPath = 'desktop/preload.cjs'; Required = 'contextBridge.exposeInMainWorld'; Name = 'preload' },
