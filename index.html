@@ -119,7 +119,7 @@ input,.composer,.composerArea,.topbar,.sidebar{pointer-events:auto;position:rela
     <div id="usageTop" class="usageText">Kullanım raporu henüz alınmadı.</div>
     <div class="sideLabel" style="padding-left:0">SON SOHBETLER</div>
     <div class="history" id="history"></div>
-    <div class="footer">AURA OS 5.0 · LOCAL AI · MEMORY · PC CORE · PHONE · WEB · CODE</div>
+    <div class="footer">AURA OS 5.2 · LOCAL AI · MEMORY · PC CORE · PHONE · WEB · CODE</div>
   </div>
 </aside>
 
@@ -578,7 +578,7 @@ function getLocalAIModel() {
 async function loadLocalAI() {
   if (localAIModule) return localAIModule;
   if (!localAIPromise) {
-    localAIPromise = import("./local-ai.js?v=4.10.0").then((mod) => {
+    localAIPromise = import("./local-ai.js?v=5.2.0").then((mod) => {
       localAIModule = mod;
       return mod;
     });
