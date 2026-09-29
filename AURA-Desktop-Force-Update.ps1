@@ -3,13 +3,13 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Join-Path $env:USERPROFILE 'Desktop\aura-ki-isel-asistan'
 $desktopDir = Join-Path $repoRoot 'desktop'
 $rendererDir = Join-Path $desktopDir 'renderer'
-$desktopInstaller = Join-Path $env:USERPROFILE 'Desktop\AURA-4.8.0-Setup.exe'
+$desktopInstaller = Join-Path $env:USERPROFILE 'Desktop\AURA-4.9.0-Setup.exe'
 $releaseCommits = @{
-  index = '84b06f0b265c428dff4c4bfb9912e98f2461d60e'
-  localAI = '626bddd79fc530cbf1cfcc057762ed99dc6d5987'
-  main = 'db4ecac68d5d23c0c0837bce802ce3b2bfbff87d'
+  index = '0f49e187e8e4c0a1ee1dcf2c666d13b75d11410b'
+  localAI = '3d63016a33d841f458e3180284265ea184ead05d'
+  main = 'a592ef9f02b46dbea10c6ceab99e734f1f8639d6'
   preload = '587cde2a08e508376e0dba1ee44018d03d0440bb'
-  package = 'c1de14135d370583757ec0579efc385d9c12c787'
+  package = '9c433d8ca17aa874724e9f56d3c46fa577fca690'
 }
 $rawBase = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/'
 
@@ -57,7 +57,7 @@ if(Test-Path '.\dist'){
   Remove-Item '.\dist' -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-Write-Host 'AURA 4.8.0 Setup EXE olusturuluyor...' -ForegroundColor Cyan
+Write-Host 'AURA 4.9.0 Setup EXE olusturuluyor...' -ForegroundColor Cyan
 npm run build:win
 if($LASTEXITCODE -ne 0){ throw 'AURA Setup EXE derlemesi basarisiz oldu.' }
 
