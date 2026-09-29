@@ -27,8 +27,13 @@ $files = @(
 
 foreach($item in $files){
   Write-Host ('Guncelleniyor: ' + $item.Name) -ForegroundColor DarkCyan
-  $remote = (Invoke-WebRequest -UseBasicParsing -Uri $item.Remote -Headers @{ 'Cache-Control' = 'no-cache' }).Content
-  if([string]::IsNullOrWhiteSpace($remote) -or $remote -notmatch $item.Required){
+  try {
+    $response = Invoke-WebRequest -UseBasicParsing -Uri ($item.Remote + '?aura=' + [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()) -Headers @{ 'Cache-Control' = 'no-cache' }
+    $remote = [string]$response.Content
+  } catch {
+    throw ('GitHub dosyasi indirilemedi: ' + $item.Remote + ' | ' + $_.Exception.Message)
+  }
+  if([string]::IsNullOrWhiteSpace($remote) -or $remote -notmatch [regex]::Escape($item.Required)){
     throw ('GitHub dosyasi dogrulanamadi: ' + $item.Remote)
   }
   if(Test-Path $item.Local){
