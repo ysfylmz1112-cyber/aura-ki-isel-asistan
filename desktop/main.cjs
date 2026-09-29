@@ -68,6 +68,7 @@ let conversationWritePromise = Promise.resolve();
 let hardwareSnapshot = null;
 let environmentProfile = null;
 let environmentScanPromise = null;
+let scanControl = { active:false, cancelled:false, mode:'quick', step:'idle', progress:0, startedAt:null };
 
 async function loadUsageState() {
   try {
@@ -366,7 +367,8 @@ function candidateScore(query, candidate) {
   return score - Math.max(0, c.length - q.length);
 }
 
-async function discoverShortcutApps() {
+async function discoverShortcutApps(options = {}) {
+  const deep = options.deep !== false;
   const dirs = [
     path.join(os.homedir(),'AppData','Roaming','Microsoft','Windows','Start Menu','Programs'),
     path.join(os.homedir(),'Desktop')
@@ -394,7 +396,9 @@ async function discoverShortcutApps() {
     }
   }
 
-  for(const dir of dirs) await walk(dir);
+  if (deep) {
+    for(const dir of dirs) await walk(dir);
+  }
 
   // Windows StartApps: güvenilir uygulama kataloğu.
   const startApps=await new Promise(resolve=>{
@@ -797,8 +801,8 @@ async function getUsageReport() {
   };
 }
 
-async function discoverKnownWindowsGames() {
-  const apps=await discoverShortcutApps().catch(()=>[]);
+async function discoverKnownWindowsGames(appsInput=null, options={}) {
+  const apps=Array.isArray(appsInput) ? appsInput : await discoverShortcutApps({deep:options.deep !== false}).catch(()=>[]);
   const found=[];
   const seen=new Set();
   for(const app of apps){
@@ -815,25 +819,56 @@ async function discoverKnownWindowsGames() {
   return found;
 }
 
-async function scanEnvironment() {
-  if (environmentProfile?.scannedAt) {
+async function scanEnvironment(options={}) {
+  const mode=options?.mode==='deep' ? 'deep' : 'quick';
+  const force=Boolean(options?.force);
+  if (!force && environmentProfile?.scannedAt && environmentProfile?.scanMode===mode) {
     const age=Date.now()-new Date(environmentProfile.scannedAt).getTime();
     if (Number.isFinite(age) && age < 30*1000) return environmentProfile;
   }
   if (environmentScanPromise) return environmentScanPromise;
-  environmentScanPromise = performEnvironmentScan().finally(() => {
+  scanControl={active:true,cancelled:false,mode,step:'başlıyor',progress:0,startedAt:new Date().toISOString()};
+  environmentScanPromise = performEnvironmentScan({mode}).catch(error=>{
+    if(error?.code==='AURA_SCAN_CANCELLED') return {cancelled:true,scanMode:mode,scanErrors:[]};
+    throw error;
+  }).finally(() => {
+    scanControl={active:false,cancelled:false,mode,step:'idle',progress:0,startedAt:null};
     environmentScanPromise = null;
   });
   return environmentScanPromise;
 }
 
-async function performEnvironmentScan() {
+function cancelEnvironmentScan(){
+  if(!scanControl.active) return {ok:true,active:false,cancelled:false};
+  scanControl.cancelled=true;
+  scanControl.step='iptal ediliyor';
+  return {ok:true,active:true,cancelled:true};
+}
+
+function scanCheckpoint(step,progress){
+  scanControl.step=String(step||'çalışıyor');
+  scanControl.progress=Math.max(0,Math.min(100,Number(progress)||0));
+  if(scanControl.cancelled){
+    const error=new Error('PC taraması kullanıcı tarafından iptal edildi.');
+    error.code='AURA_SCAN_CANCELLED';
+    throw error;
+  }
+}
+
+function getScanStatus(){
+  return {...scanControl};
+}
+
+async function performEnvironmentScan({mode='quick'}={}) {
+  const deep=mode==='deep';
   const home=os.homedir();
   const rootList=allowedRoots();
+  scanCheckpoint('izinli klasörler hazırlanıyor',5);
   const profile={
     scannedAt:new Date().toISOString(),
+    scanMode:mode,
     live:true,
-    system:systemInfo(),
+    system:await systemInfo(),
     desktop:null,
     documents:null,
     downloads:null,
@@ -852,7 +887,8 @@ async function performEnvironmentScan() {
     applicationSummary:null
   };
 
-  const safeStep=async(name,fn,fallback)=>{
+  const safeStep=async(name,fn,fallback,progress=0)=>{
+    scanCheckpoint(name,progress);
     try{return await fn();}
     catch(error){
       profile.scanErrors.push({step:name,error:error?.message||String(error)});
@@ -864,17 +900,17 @@ async function performEnvironmentScan() {
   for(const root of rootList){
     if(!uniqueRoots.some(x=>x.toLowerCase()===root.toLowerCase())) uniqueRoots.push(root);
   }
-  const rootSummaries = await Promise.all(uniqueRoots.map(root =>
-    safeStep('folder:'+root,()=>directorySummary(root),{path:root,exists:false,error:true})
-  ));
+  const rootSummaries = deep ? await Promise.all(uniqueRoots.map(root =>
+    safeStep('folder:'+root,()=>directorySummary(root),{path:root,exists:false,error:true},8)
+  )) : [];
   profile.roots.push(...rootSummaries);
 
   const [desktop,documents,downloads,shortcutApps,registryApps] = await Promise.all([
-    safeStep('desktop',()=>directorySummary(path.join(home,'Desktop')),{path:path.join(home,'Desktop'),exists:false,error:true}),
-    safeStep('documents',()=>directorySummary(path.join(home,'Documents')),{path:path.join(home,'Documents'),exists:false,error:true}),
-    safeStep('downloads',()=>directorySummary(path.join(home,'Downloads')),{path:path.join(home,'Downloads'),exists:false,error:true}),
-    safeStep('applications',()=>discoverShortcutApps(),[]),
-    safeStep('user-installed-apps',()=>discoverCurrentUserInstalledApps(),[])
+    safeStep('masaüstü',()=>directorySummary(path.join(home,'Desktop')),{path:path.join(home,'Desktop'),exists:false,error:true},12),
+    safeStep('belgeler',()=>directorySummary(path.join(home,'Documents')),{path:path.join(home,'Documents'),exists:false,error:true},15),
+    safeStep('indirilenler',()=>directorySummary(path.join(home,'Downloads')),{path:path.join(home,'Downloads'),exists:false,error:true},18),
+    safeStep('uygulamalar',()=>discoverShortcutApps({deep}),[],25),
+    deep ? safeStep('kullanıcı uygulamaları',()=>discoverCurrentUserInstalledApps(),[],28) : []
   ]);
   profile.desktop=desktop;
   profile.documents=documents;
@@ -894,9 +930,10 @@ async function performEnvironmentScan() {
     totalDiscovered:combinedApps.length
   };
 
+  scanCheckpoint('oyunlar taranıyor',35);
   const [steamGames,windowsGames] = await Promise.all([
-    safeStep('steam-games',()=>discoverSteamGames(),[]),
-    safeStep('windows-games',()=>discoverKnownWindowsGames(),[])
+    safeStep('steam oyunları',()=>discoverSteamGames(),[],40),
+    safeStep('Windows oyunları',()=>discoverKnownWindowsGames(shortcutApps,{deep}),[],45)
   ]);
   const filteredSteamGames=steamGames.filter(x=>!isClearlyNonGame(x.name));
   const gameMap=new Map();
@@ -905,19 +942,22 @@ async function performEnvironmentScan() {
     if(key && !isClearlyNonGame(game.name) && !gameMap.has(key)) gameMap.set(key,game);
   }
   profile.games=[...gameMap.values()].slice(0,300);
+  scanCheckpoint('çalışan işlemler okunuyor',70);
   const [runningProcesses,recentItems] = await Promise.all([
-    safeStep('processes',()=>currentProcesses(),{count:0,items:[]}),
-    safeStep('recent-windows',()=>recentWindowsItems(),[])
+    safeStep('işlemler',()=>currentProcesses(),{count:0,items:[]},72),
+    deep ? safeStep('son öğeler',()=>recentWindowsItems(),[],78) : []
   ]);
   profile.runningProcesses=runningProcesses;
   profile.recentWindowsItems=recentItems;
 
+  scanCheckpoint('sonuçlar kaydediliyor',92);
   environmentProfile=profile;
   try{
     await fsp.mkdir(path.dirname(PROFILE_FILE),{recursive:true});
     await fsp.writeFile(PROFILE_FILE,JSON.stringify(profile,null,2),'utf8');
   }catch{}
 
+  scanCheckpoint('tamamlandı',100);
   return profile;
 }
 async function getEnvironmentProfile() {
@@ -934,7 +974,7 @@ async function getEnvironmentProfile() {
       return data;
     }
   } catch {}
-  return scanEnvironment();
+  return scanEnvironment({mode:'quick'});
 }
 
 function isAllowedPath(target) {
@@ -1573,7 +1613,9 @@ async function handleTool(tool,args) {
       return {...await findAndLaunchApp(target),restarted:true};
     }
     case 'desktop_uninstall_app': return uninstallAppByName(args.app);
-    case 'desktop_scan_environment': return scanEnvironment();
+    case 'desktop_scan_environment': return scanEnvironment({mode:args?.mode==='deep'?'deep':'quick',force:Boolean(args?.force)});
+    case 'desktop_cancel_scan': return cancelEnvironmentScan();
+    case 'desktop_get_scan_status': return getScanStatus();
     case 'desktop_get_environment_profile': return getEnvironmentProfile();
     case 'desktop_get_running_apps': return getRunningApps();
     case 'desktop_get_usage_report': return getUsageReport();
@@ -1870,12 +1912,12 @@ app.whenReady().then(async()=>{
   }));
 
   createWindow();
-  scanEnvironment().catch(()=>{});
+  scanEnvironment({mode:'quick'}).catch(()=>{});
 
   app.on('activate',()=>{
     if(BrowserWindow.getAllWindows().length===0){
       createWindow();
-      scanEnvironment().catch(()=>{});
+      scanEnvironment({mode:'quick'}).catch(()=>{});
     }
   });
 });
