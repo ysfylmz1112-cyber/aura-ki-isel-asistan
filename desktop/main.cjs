@@ -2025,7 +2025,7 @@ app.whenReady().then(async()=>{
 
   ipcMain.handle('aura:desktop-info',async()=>({
     connected:true,
-    version:'5.2.0',
+    version:'5.2.1',
     mode:'secure-local-agent-pc-aware-core',
     roots:allowedRoots(),
     features:[
