@@ -597,7 +597,7 @@ function getLocalAIModel() {
 async function loadLocalAI() {
   if (localAIModule) return localAIModule;
   if (!localAIPromise) {
-    localAIPromise = import("./local-ai.js?v=5.3.2").then((mod) => {
+    localAIPromise = import("./local-ai.js?v=5.3.3").then((mod) => {
       localAIModule = mod;
       return mod;
     });
@@ -1490,7 +1490,6 @@ async function run(q) {
       return;
     }
 
-    await loadAuraMemory();
     const answer = await callLocalAI(
       q,
       history.slice(0, 8).reverse().flatMap((item) => [
@@ -1683,13 +1682,13 @@ loadAuraMemory().catch(()=>{});
 updateHardwareHUD(null);
 refreshHardwareHUD().catch(()=>{});
 setTimeout(()=>refreshWeather(false).catch(()=>{}),450);
-hardwareTimer=setInterval(()=>refreshHardwareHUD(),10000);
+hardwareTimer=setInterval(()=>{ if(!busy) refreshHardwareHUD(); },20000);
 setInterval(()=>refreshWeather(false).catch(()=>{}),10*60*1000);
 
 ttsEl.textContent = voiceEnabled ? "HAZIR" : "KAPALI";
 input.focus();
 
-setTimeout(()=>warmLocalModel(),900);
+setTimeout(()=>warmLocalModel(),3500);
 
 setTimeout(async () => {
   if (!hasDesktopAgent()) {
