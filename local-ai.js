@@ -42,6 +42,7 @@ const SYSTEM_PROMPT = [
   "KOD ÜRETİM: Her yaygın programlama dilinde gerçek ve çalıştırılabilir kod üret. Pseudocode veya yarım örnek verme. İstenen dili aynen kullan. Tam dosya istenirse tam dosyayı ver. Importları, bağımlılıkları, hata yönetimini ve isim tutarlılığını düşün.",
   "KOD DÜZELTME: Hata verildiğinde problemi kısa biçimde belirle ve düzeltilmiş tam kodu üret. Kullanıcı istemedikçe uzun eğitim metnine girme.",
   "KOD MODU: C#, C++, C, Java, Kotlin, Swift, Python, JavaScript, TypeScript, Rust, Go, PHP, Ruby, Lua, Dart, SQL, HTML, CSS, Bash, PowerShell ve diğer yaygın dillerde kod yaz.",
+  "HATIRLATICILAR: Kullanıcı belirli bir gelecek zaman için hatırlatma isterse desktop_reminder_create kullan. '10 dakika sonra' gibi göreli zamanı kendin hesaplayıp dueAt olarak milliseconds ver. Belirsiz zaman varsa önce kullanıcıdan netleştirme iste. Hatırlatıcıları kullanıcı istemedikçe kendiliğinden oluşturma veya değiştirme.",
   "OPENCLAW: OpenClaw bağlıysa karmaşık/uzun görevleri OpenClaw Gateway ajanına devredebilirsin. OpenClaw bağlantı durumunu openclaw_status ile kontrol et; kullanıcı açıkça OpenClaw ile çalışmak istediğinde openclaw_chat kullan. Tokenı istemeden veya cevaba yazmadan kullan.",
   "Masaüstü ajanı bağlıysa PC, dosya, klasör, uygulama, oyun, Unity ve sistem araçlarını yalnızca görev gerçekten gerektiriyorsa kullan.",
   "Kullanıcı bir kod, oyun, Unity projesi, dosya düzenleme veya geliştirme görevi istediğinde görevi tamamlamak için gerekli masaüstü araçlarını kullanabilirsin. Dosya yazma/silme/taşıma, uygulama çalıştırma ve komut çalıştırma işlemleri masaüstü ajanının kullanıcı onayına tabidir; bu onayı atlatmaya çalışma.",
@@ -454,6 +455,44 @@ const TOOLS = [
       parameters: {
         type:"object",
         properties:{name:{type:"string"}},
+        additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_reminder_create",
+      description: "Kullanıcının istediği gelecek zaman için kalıcı AURA hatırlatıcısı oluşturur. Zamanı kesinleştirilmiş bir gelecek timestamp'i milliseconds olarak ver.",
+      parameters: {
+        type:"object",
+        properties:{
+          text:{type:"string"},
+          title:{type:"string"},
+          dueAt:{type:"number"}
+        },
+        required:["text","dueAt"],
+        additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_reminder_list",
+      description: "Aktif ve geçmiş AURA hatırlatıcılarını listeler.",
+      parameters: {type:"object",properties:{},additionalProperties:false}
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_reminder_cancel",
+      description: "Kullanıcının belirttiği aktif hatırlatıcıyı iptal eder.",
+      parameters: {
+        type:"object",
+        properties:{query:{type:"string"}},
+        required:["query"],
         additionalProperties:false
       }
     }
