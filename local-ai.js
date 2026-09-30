@@ -697,7 +697,7 @@ function compactLongUserRequest(text, maxChars = 6000) {
   };
 
   for (const line of lines) {
-    if (/^#{1,4}\\s+/.test(line.trim()) && current.length) flush();
+    if (/^#{1,4}\s+/.test(line.trim()) && current.length) flush();
     current.push(line);
   }
   flush();
@@ -712,12 +712,12 @@ function compactLongUserRequest(text, maxChars = 6000) {
   const addSection = (section, limit) => {
     if (!section || seen.has(section)) return;
     seen.add(section);
-    const lines = section.split("\\n");
+    const lines = section.split("\n");
     const head = lines[0] || "";
     const body = lines.slice(1)
       .filter(x => x.trim())
       .slice(0, 7)
-      .join("\\n");
+      .join("\n");
     const compact = (head + "\n" + body).slice(0, limit).trim();
     if (compact) result.push(compact);
   };
