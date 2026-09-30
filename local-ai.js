@@ -948,7 +948,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         // Böylece WebLLM 4096 context modellerinde de cevap üretmeye devam eder.
         const emergencyPrompt=compactLongUserRequest(value,3600);
         const emergencyMessages=[
-          {role:"system",content:SYSTEM_PROMPT+modePrompt+"\nÇok uzun kullanıcı isteği acil sıkıştırma modunda işlendi. Eksik ayrıntı uydurma; mevcut ana gereksinimlere göre iler.",
+          {role:"system",content:SYSTEM_PROMPT+modePrompt+"\nÇok uzun kullanıcı isteği acil sıkıştırma modunda işlendi. Eksik ayrıntı uydurma; mevcut ana gereksinimlere göre iler."},
           {role:"user",content:emergencyPrompt}
         ];
         response=await localEngine.chat.completions.create({
