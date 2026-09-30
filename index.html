@@ -86,6 +86,7 @@ input,.composer,.composerArea,.topbar,.sidebar{pointer-events:auto;position:rela
   <div class="sideSection">
     <div class="sideLabel">MERKEZ</div>
     <button class="nav active" id="memory"><span class="ico">◷</span> Hafıza</button>
+    <button class="nav" id="reminders"><span class="ico">⏰</span> Hatırlatıcılar</button>
     <button class="nav" id="voice"><span class="ico">◌</span> Ses</button>
   </div>
   <div class="sideDivider"></div>
@@ -857,7 +858,6 @@ function isClipboardWriteRequest(q){
 
 function quickLocalAnswer(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
-  if(/^(hatırlatıcılar|hatirlaticilar)$/.test(x)) return "Hatırlatıcı kurabilirim. Örnek: “10 dakika sonra bana ders çalışmayı hatırlat.”";
   if(/^(ne yapabilirsin|neler yapabilirsin|özelliklerin|ozelliklerin|yardım|yardim)$/.test(x))
     return "PC'ni anlayabilir, uygulama ve oyun açıp kapatabilir, dosya ve Unity projeleriyle çalışabilir, hafıza ve eski konuşmaları arayabilir, web araştırması yapabilir, kod yazabilir; pano, ekran görüntüsü ve Windows bildirim araçlarını da kullanabilirim.";
   if(/^(nasılsın|nasilsin|nasılsın\?|nasilsin\?)$/.test(x))
@@ -949,6 +949,37 @@ function isMemoryListRequest(q){
 function isMemorySearchRequest(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
   return /hafızanda.*var mı|hafizanda.*var mi|hafızada.*ara|hafizada.*ara/.test(x);
+}
+
+function isReminderListRequest(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
+  return /^(hatırlatıcılar|hatirlaticilar|hatırlatıcılarım|hatirlaticilarim|hatırlatmalarım|hatirlatmalarim|hatırlatıcılarımı göster|hatirlaticilarimi goster)$/.test(x);
+}
+function isReminderCancelRequest(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
+  return /^(hatırlatıcıyı iptal et|hatirlaticiyi iptal et|hatırlatıcıyı sil|hatirlaticiyi sil|hatırlatmayı iptal et|hatirlatmayi iptal et)\s+.+$/.test(x);
+}
+function extractReminderCancelPayload(q){
+  return String(q||"").trim()
+    .replace(/^(hatırlatıcıyı iptal et|hatirlaticiyi iptal et|hatırlatıcıyı sil|hatirlaticiyi sil|hatırlatmayı iptal et|hatirlatmayi iptal et)\s*/i,"")
+    .trim();
+}
+async function handleReminderCommand(q){
+  if(isReminderListRequest(q)){
+    const result=await callDesktop("desktop_reminder_list",{});
+    const items=Array.isArray(result?.items)?result.items.filter(x=>x.status==="active"): [];
+    if(!items.length) return "Şu anda aktif hatırlatıcın yok kanka. ⏰";
+    return "Aktif hatırlatıcıların:\n\n"+items.map((x,i)=>{
+      const when=new Date(Number(x.dueAt)).toLocaleString("tr-TR");
+      return (i+1)+". "+when+" · "+String(x.text||x.title||"Hatırlatıcı");
+    }).join("\n");
+  }
+  if(isReminderCancelRequest(q)){
+    const query=extractReminderCancelPayload(q);
+    const result=await callDesktop("desktop_reminder_cancel",{query});
+    return result?.removed ? "Tamam kanka, hatırlatıcıyı iptal ettim. ⏰" : "Eşleşen aktif hatırlatıcı bulamadım.";
+  }
+  return null;
 }
 
 function isMemoryClearRequest(q){
@@ -1418,11 +1449,12 @@ async function run(q) {
       return;
     }
     const memoryDirect = isMemorySaveRequest(q) || isMemoryForgetRequest(q) || isMemoryListRequest(q) || isMemorySearchRequest(q) || isMemoryClearRequest(q);
+    const reminderDirect = isReminderListRequest(q) || isReminderCancelRequest(q) || isReminderRequest(q);
     const appControl=extractAppControlCommand(q);
   const utilityRequest=isWindowsUtilityRequest(q);
     const phoneTransfer=isPhoneTransferRequest(q);
     const driveRequest=safeDriveListRequest(q);
-    const direct = memoryDirect || phoneTransfer || isReminderRequest(q) || isScreenshotRequest(q) || isClipboardReadRequest(q) || isClipboardWriteRequest(q) || isScanCancelRequest(q) || isCameraRequest(q) || !!utilityRequest || isPCRequest(q) || isDeepPCRequest(q) || isUsageRequest(q) || isWeatherRequest(q) || isBatteryRequest(q) || isSystemRequest(q) || isHardwareRequest(q) || isUnityProjectRequest(q) || isConversationHistoryRequest(q) || isDesktopListRequest(q) || isRunningAppsRequest(q) || driveRequest || !!appControl || !!extractOpenTarget(q);
+    const direct = memoryDirect || reminderDirect || phoneTransfer || isScreenshotRequest(q) || isClipboardReadRequest(q) || isClipboardWriteRequest(q) || isScanCancelRequest(q) || isCameraRequest(q) || !!utilityRequest || isPCRequest(q) || isDeepPCRequest(q) || isUsageRequest(q) || isWeatherRequest(q) || isBatteryRequest(q) || isSystemRequest(q) || isHardwareRequest(q) || isUnityProjectRequest(q) || isConversationHistoryRequest(q) || isDesktopListRequest(q) || isRunningAppsRequest(q) || driveRequest || !!appControl || !!extractOpenTarget(q);
     if (quick) {
       if(myGeneration===runGeneration) finish(q, quick, false);
       return;
@@ -1431,6 +1463,21 @@ async function run(q) {
       const answer = await handleMemoryCommand(q);
       if(myGeneration===runGeneration) finish(q, answer || "Hafıza işlemi tamamlanamadı.", false);
       return;
+    }
+    if (reminderDirect) {
+      const answer = await handleReminderCommand(q);
+      if(answer){
+        if(myGeneration===runGeneration) finish(q, answer, false);
+        return;
+      }
+      if(isReminderRequest(q)){
+        const reminder=parseReminderRequest(q);
+        if(!reminder) throw new Error("Hatırlatma zamanı net değil. Örneğin “20 dakika sonra bana ders çalışmayı hatırlat” diyebilirsin.");
+        const result=await callDesktop("desktop_reminder_create",reminder);
+        const when=new Date(reminder.dueAt).toLocaleString("tr-TR");
+        if(myGeneration===runGeneration) finish(q, "Tamam kanka. “"+reminder.text+"” hatırlatıcısını "+when+" için kurdum. ⏰", false);
+        return;
+      }
     }
     if (phoneTransfer) {
       const answer = await handlePhoneTransferCommand(q);
@@ -1488,6 +1535,11 @@ modeBtn2.addEventListener("click",toggleMode);
 const memoryNav=$("memory");
 memoryNav.addEventListener("click",()=>{
   if(!busy) run("Hafızamda ne var?");
+});
+
+const reminderNav=$("reminders");
+if(reminderNav) reminderNav.addEventListener("click",()=>{
+  if(!busy) run("Hatırlatıcılarımı göster");
 });
 
 const voiceBtn=$("voice");
