@@ -62,9 +62,12 @@ const USAGE_FILE = path.join(app.getPath('userData'), 'aura-usage.json');
 const PROFILE_FILE = path.join(app.getPath('userData'), 'aura-device-profile.json');
 const MEMORY_FILE = path.join(app.getPath('userData'), 'aura-memory.json');
 const CONVERSATION_FILE = path.join(app.getPath('userData'), 'aura-conversations.json');
+const REMINDERS_FILE = path.join(app.getPath('userData'), 'aura-reminders.json');
 let usageState = { launches: [], counts: {}, lastLaunch: null };
 let memoryState = { version:1, items:[] };
 let conversationState = { version:1, items:[] };
+let reminderState = { version:1, items:[] };
+const reminderTimers = new Map();
 let memoryWritePromise = Promise.resolve();
 let conversationWritePromise = Promise.resolve();
 let hardwareSnapshot = null;
@@ -108,6 +111,111 @@ async function saveConversationState(){
   }).catch(()=>{});
   return conversationWritePromise;
 }
+
+async function loadReminderState(){
+  try{
+    const raw=await fsp.readFile(REMINDERS_FILE,'utf8');
+    const data=JSON.parse(raw);
+    reminderState={
+      version:1,
+      items:Array.isArray(data?.items)
+        ? data.items.filter(x=>x&&typeof x.id==='string'&&typeof x.text==='string'&&Number.isFinite(Number(x.dueAt))).slice(-300)
+        : []
+    };
+  }catch{
+    reminderState={version:1,items:[]};
+  }
+  for(const item of reminderState.items){
+    if(item.status==='active') scheduleReminder(item);
+  }
+}
+
+async function saveReminderState(){
+  await fsp.mkdir(path.dirname(REMINDERS_FILE),{recursive:true});
+  await fsp.writeFile(REMINDERS_FILE,JSON.stringify(reminderState,null,2),'utf8');
+}
+
+function clearReminderTimer(id){
+  const timer=reminderTimers.get(id);
+  if(timer){ clearTimeout(timer); reminderTimers.delete(id); }
+}
+
+function scheduleReminder(item){
+  if(!item||item.status!=='active') return;
+  clearReminderTimer(item.id);
+  const fire=()=>{
+    const current=reminderState.items.find(x=>x.id===item.id);
+    if(!current||current.status!=='active') return;
+    const delay=Math.max(0,Number(current.dueAt)-Date.now());
+    if(delay>0){
+      const timer=setTimeout(fire,Math.min(delay,2147480000));
+      reminderTimers.set(current.id,timer);
+      return;
+    }
+    current.status='done';
+    current.completedAt=new Date().toISOString();
+    reminderTimers.delete(current.id);
+    showAuraNotification(current.title||'AURA Hatırlatıcı',current.text).catch?.(()=>{});
+    saveReminderState().catch(()=>{});
+  };
+  const delay=Math.max(0,Number(item.dueAt)-Date.now());
+  const timer=setTimeout(fire,Math.min(delay,2147480000));
+  reminderTimers.set(item.id,timer);
+}
+
+async function createReminder({text,title,dueAt}={}){
+  const value=String(text||'').trim();
+  const when=Number(dueAt);
+  if(!value) throw new Error('Hatırlatıcı metni boş.');
+  if(!Number.isFinite(when)||when<=Date.now()) throw new Error('Hatırlatıcı zamanı geçerli bir gelecek zamanı olmalı.');
+  if(when-Date.now()>365*86400000) throw new Error('Hatırlatıcı en fazla 1 yıl ileriye kurulabilir.');
+  const item={
+    id:'rem_'+Date.now().toString(36)+'_'+crypto.randomBytes(4).toString('hex'),
+    title:String(title||'AURA Hatırlatıcı').slice(0,120),
+    text:value.slice(0,1000),
+    dueAt:when,
+    createdAt:new Date().toISOString(),
+    status:'active'
+  };
+  reminderState.items.unshift(item);
+  reminderState.items=reminderState.items.slice(0,300);
+  scheduleReminder(item);
+  await saveReminderState();
+  return {ok:true,item,items:listReminders().items};
+}
+
+function listReminders(){
+  const now=Date.now();
+  const items=reminderState.items
+    .slice()
+    .sort((a,b)=>Number(a.dueAt)-Number(b.dueAt));
+  return {
+    count:items.filter(x=>x.status==='active').length,
+    items:items.slice(0,100).map(x=>({...x,dueInMs:Math.max(0,Number(x.dueAt)-now)}))
+  };
+}
+
+async function cancelReminder(query){
+  const q=String(query||'').trim();
+  if(!q) throw new Error('İptal edilecek hatırlatıcıyı belirt.');
+  const n=normalizedSearchText(q);
+  const active=reminderState.items.filter(x=>x.status==='active');
+  const matches=active
+    .map(x=>({...x,score:memorySearchScore(n,normalizedSearchText(x.text+' '+x.title))}))
+    .filter(x=>x.score>0)
+    .sort((a,b)=>b.score-a.score);
+  if(!matches.length) return {ok:true,removed:0,message:'Eşleşen aktif hatırlatıcı bulunamadı.'};
+  const target=matches[0];
+  const original=reminderState.items.find(x=>x.id===target.id);
+  if(original){
+    original.status='cancelled';
+    original.cancelledAt=new Date().toISOString();
+    clearReminderTimer(original.id);
+  }
+  await saveReminderState();
+  return {ok:true,removed:1,reminder:original};
+}
+
 
 function conversationTimeWindow(query){
   const q=String(query||'').toLocaleLowerCase('tr-TR').trim();
@@ -1804,6 +1912,9 @@ async function handleTool(tool,args) {
     })();
     case 'openclaw_chat': return openclaw.chat(args?.input||'',args||{});
     case 'desktop_get_hardware_metrics': return getHardwareMetrics();
+    case 'desktop_reminder_create': return createReminder(args||{});
+    case 'desktop_reminder_list': return listReminders();
+    case 'desktop_reminder_cancel': return cancelReminder(args?.query);
     case 'desktop_clipboard_read': return readClipboardText();
     case 'desktop_clipboard_write': return writeClipboardText(args.text);
     case 'desktop_capture_screen': return captureAuraScreen(args.name||'aura');
@@ -2131,6 +2242,7 @@ app.whenReady().then(async()=>{
   await loadUsageState();
   await loadMemoryState();
   await loadConversationState();
+  await loadReminderState();
   await startRemoteControlServer();
 
   ipcMain.handle('aura:tool',async(event,payload)=>{
