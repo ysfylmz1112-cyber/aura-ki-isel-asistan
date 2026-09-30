@@ -404,6 +404,40 @@ function isWeatherRequest(q){
   return /(?:hava|hava durumu|sıcaklık|sicaklik|kaç derece|kac derece|weather)/.test(x) &&
     !/(pc|gpu|cpu|işlemci|ram|donanım|donanim|ekran kartı|ekran karti)/.test(x);
 }
+function isReminderRequest(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
+  return /(?:hatırlat|hatirlat|hatırlatıcı|hatirlatici)/.test(x) &&
+    /(?:sonra|dakika|saat|yarın|yarin|bugün|bugun|hatırlat|hatirlat)/.test(x);
+}
+function parseReminderRequest(q){
+  const raw=String(q||"").trim();
+  const x=raw.toLocaleLowerCase("tr-TR");
+  const rel=x.match(/(\d+)\s*(dakika|dk|saat)\s*sonra/);
+  let due=null;
+  if(rel){
+    const amount=Number(rel[1]);
+    due=Date.now()+(rel[2].startsWith("saat")?amount*3600000:amount*60000);
+  }else if(/yarın|yarin/.test(x)){
+    const time=x.match(/(?:yarın|yarin).*?(\d{1,2})(?::(\d{2}))?/);
+    if(time){
+      const d=new Date(); d.setDate(d.getDate()+1); d.setHours(Math.min(23,Number(time[1])),Number(time[2]||0),0,0); due=d.getTime();
+    }
+  }else if(/bugün|bugun/.test(x)){
+    const time=x.match(/(?:bugün|bugun).*?(\d{1,2})(?::(\d{2}))?/);
+    if(time){
+      const d=new Date(); d.setHours(Math.min(23,Number(time[1])),Number(time[2]||0),0,0); due=d.getTime();
+      if(due<=Date.now()) due=null;
+    }
+  }
+  if(!due) return null;
+  const text=raw
+    .replace(/^(aura[, ]*)?/i,"")
+    .replace(/(\d+)\s*(dakika|dk|saat)\s*sonra/i,"")
+    .replace(/(?:bugün|bugun|yarın|yarin).*?(\d{1,2})(?::(\d{2}))?/i,"")
+    .replace(/\b(hatırlat|hatirlat|hatırlatıcı|hatirlatici)\b/i,"")
+    .replace(/\s+/g," ").trim();
+  return {text:text||"Hatırlatma zamanı geldi.",dueAt:due,title:"AURA Hatırlatıcı"};
+}
 function isBatteryRequest(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
   return /^(pilim kaç|pilim kac|pil yüzde kaç|pil yuzde kac|batarya|bataryam kaç|bataryam kac|şarjım kaç|sarjim kac)\??$/.test(x);
@@ -823,6 +857,7 @@ function isClipboardWriteRequest(q){
 
 function quickLocalAnswer(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
+  if(/^(hatırlatıcılar|hatirlaticilar)$/.test(x)) return "Hatırlatıcı kurabilirim. Örnek: “10 dakika sonra bana ders çalışmayı hatırlat.”";
   if(/^(ne yapabilirsin|neler yapabilirsin|özelliklerin|ozelliklerin|yardım|yardim)$/.test(x))
     return "PC'ni anlayabilir, uygulama ve oyun açıp kapatabilir, dosya ve Unity projeleriyle çalışabilir, hafıza ve eski konuşmaları arayabilir, web araştırması yapabilir, kod yazabilir; pano, ekran görüntüsü ve Windows bildirim araçlarını da kullanabilirim.";
   if(/^(nasılsın|nasilsin|nasılsın\?|nasilsin\?)$/.test(x))
@@ -1165,6 +1200,15 @@ function handleDirectCommand(q) {
     return data ? formatWeather(data) : "Hava bilgisine şu anda ulaşamadım.";
   }
 
+  if (isReminderRequest(q)) {
+    const reminder=parseReminderRequest(q);
+    if(reminder){
+      const result=await callDesktop("desktop_reminder_create",reminder);
+      const when=new Date(reminder.dueAt).toLocaleString("tr-TR");
+      return "Tamam kanka. “"+reminder.text+"” hatırlatıcısını "+when+" için kurdum. ⏰";
+    }
+  }
+
   if (isBatteryRequest(q)) {
     const data=await callDesktop("desktop_get_battery_status",{});
     if(!data?.available) return "Bu cihazda okunabilir bir pil bilgisi yok veya masaüstü bilgisayar kullanılıyor.";
@@ -1383,7 +1427,7 @@ async function run(q) {
   const utilityRequest=isWindowsUtilityRequest(q);
     const phoneTransfer=isPhoneTransferRequest(q);
     const driveRequest=safeDriveListRequest(q);
-    const direct = memoryDirect || phoneTransfer || isScreenshotRequest(q) || isClipboardReadRequest(q) || isClipboardWriteRequest(q) || isScanCancelRequest(q) || isCameraRequest(q) || !!utilityRequest || isPCRequest(q) || isDeepPCRequest(q) || isUsageRequest(q) || isWeatherRequest(q) || isBatteryRequest(q) || isSystemRequest(q) || isHardwareRequest(q) || isUnityProjectRequest(q) || isConversationHistoryRequest(q) || isDesktopListRequest(q) || isRunningAppsRequest(q) || driveRequest || !!appControl || !!extractOpenTarget(q);
+    const direct = memoryDirect || phoneTransfer || isReminderRequest(q) || isScreenshotRequest(q) || isClipboardReadRequest(q) || isClipboardWriteRequest(q) || isScanCancelRequest(q) || isCameraRequest(q) || !!utilityRequest || isPCRequest(q) || isDeepPCRequest(q) || isUsageRequest(q) || isWeatherRequest(q) || isBatteryRequest(q) || isSystemRequest(q) || isHardwareRequest(q) || isUnityProjectRequest(q) || isConversationHistoryRequest(q) || isDesktopListRequest(q) || isRunningAppsRequest(q) || driveRequest || !!appControl || !!extractOpenTarget(q);
     if (quick) {
       if(myGeneration===runGeneration) finish(q, quick, false);
       return;
