@@ -680,18 +680,18 @@ async function ensureLocalAI(mode = "chat", onProgress = () => {}) {
 }
 
 function compactLongUserRequest(text, maxChars = 6000) {
-  const source = String(text || "").replace(/\\r/g, "").trim();
+  const source = String(text || "").replace(/\r/g, "").trim();
   if (source.length <= maxChars) return source;
 
   // Çok uzun isteklerde bölüm başlıklarını ve her bölümün ana maddelerini koru.
   // Böylece model 4096 token sınırına takılmazken görevin kapsamını kaybetmez.
-  const lines = source.split("\\n");
+  const lines = source.split("\n");
   const sections = [];
   let current = [];
 
   const flush = () => {
     if (current.length) {
-      sections.push(current.join("\\n").trim());
+      sections.push(current.join("\n").trim());
       current = [];
     }
   };
@@ -718,7 +718,7 @@ function compactLongUserRequest(text, maxChars = 6000) {
       .filter(x => x.trim())
       .slice(0, 7)
       .join("\\n");
-    const compact = (head + "\\n" + body).slice(0, limit).trim();
+    const compact = (head + "\n" + body).slice(0, limit).trim();
     if (compact) result.push(compact);
   };
 
@@ -726,7 +726,7 @@ function compactLongUserRequest(text, maxChars = 6000) {
   priority.forEach(s => addSection(s, 800));
   normal.forEach(s => addSection(s, 250));
 
-  let output = result.join("\\n\\n");
+  let output = result.join("\n\n");
   if (output.length > maxChars) output = output.slice(0, maxChars);
 
   return [
