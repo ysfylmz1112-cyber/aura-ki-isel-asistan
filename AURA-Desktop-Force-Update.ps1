@@ -48,24 +48,35 @@ $files = @(
 foreach($item in $files){
   Write-Host ('Guncelleniyor: ' + $item.Name) -ForegroundColor DarkCyan
 
-  $showArg = $releaseRef + ':' + $item.GitPath
-  $remoteLines = @(git show $showArg 2>$null)
-  if($LASTEXITCODE -ne 0 -or $remoteLines.Count -eq 0){
-    throw ('GitHub dosyasi alinamadi: ' + $item.GitPath)
+  $downloadUrl = 'https://raw.githubusercontent.com/ysfylmz1112-cyber/aura-ki-isel-asistan/' + $releaseRef + '/' + ($item.GitPath -replace '\\','/')
+  try {
+    $webClient = New-Object System.Net.WebClient
+    $bytes = $webClient.DownloadData($downloadUrl)
+    $remote = [System.Text.Encoding]::UTF8.GetString($bytes)
+  } catch {
+    throw ('GitHub dosyasi alinamadi: ' + $item.GitPath + ' | UTF-8 indirme basarisiz.')
+  } finally {
+    if($webClient){ $webClient.Dispose() }
   }
 
-  $remote = ($remoteLines -join [Environment]::NewLine)
   if([string]::IsNullOrWhiteSpace($remote)){
     throw ('GitHub dosyasi bos: ' + $item.GitPath)
   }
-if($item.GitPath -eq 'desktop/package.json'){
+
+  if($item.GitPath -eq 'desktop/package.json'){
     try {
       $pkg = $remote | ConvertFrom-Json
+      if([string]$pkg.name -ne 'aura-desktop'){
+        throw 'package.json name beklenen deger degil.'
+      }
       if([string]$pkg.version -ne '5.3.2'){
-        throw ('Beklenmeyen package.json sürümü: ' + [string]$pkg.version)
+        throw ('Beklenmeyen package.json surumu: ' + [string]$pkg.version)
+      }
+      if(-not $pkg.scripts.'build:win'){
+        throw 'build:win scripti bulunamadi.'
       }
     } catch {
-      throw ('GitHub dosyasi dogrulanamadi: ' + $item.GitPath + ' | package.json JSON/sürüm doğrulaması başarısız.')
+      throw ('GitHub dosyasi dogrulanamadi: ' + $item.GitPath + ' | package.json JSON/surum dogrulamasi basarisiz.')
     }
   } elseif(-not [string]::IsNullOrWhiteSpace($item.Required) -and $remote.IndexOf($item.Required,[System.StringComparison]::Ordinal) -lt 0){
     throw ('GitHub dosyasi dogrulanamadi: ' + $item.GitPath + ' | AURA guncel commitinde beklenen imza bulunamadi.')
