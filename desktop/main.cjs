@@ -297,8 +297,7 @@ async function forgetMemory(query){
 }
 
 async function clearMemory(){
-  const ok=await confirmAction('AURA — Hafızayı temizleme onayı','AURA kayıtlı kalıcı hafızadaki tüm maddeleri silecek.\n\nDevam edilsin mi?');
-  if(!ok) throw new Error('Kullanıcı işlemi iptal etti.');
+  const ok=await confirmAction('AURA — Hafızayı temizleme onayı','AURA kayıtlı kalıcı hafızadaki tüm maddeleri silecek.\n\nDevam edilsin mi?');  if(!ok) throw new Error('Kullanıcı işlemi iptal etti.');
   const removed=memoryState.items.length;
   memoryState.items=[];
   await saveMemoryState();
@@ -597,7 +596,6 @@ function isClearlyNonGame(name){
   const n=normalizedSearchText(name);
   return NON_GAME_ENTRIES.some(x=>n===normalizedSearchText(x));
 }
-
 function looksLikeGame(name){
   const n=normalizedSearchText(name);
   if(!n || isClearlyNonGame(name)) return false;
@@ -897,8 +895,7 @@ async function performEnvironmentScan({mode='quick'}={}) {
     roots:[],
     apps:[],
     games:[],
-    runningProcesses:[],
-    recentWindowsItems:[],
+    runningProcesses:[],    recentWindowsItems:[],
     permissions:rootList,
     scanErrors:[],
     scanScope:'current-user',
@@ -1198,7 +1195,6 @@ async function launchStartApp(item) {
   await recordLaunch(name,'start-app',appId);
   return {ok:true,app:name,type:'start-app',appId};
 }
-
 const AURA_PROTECTED_PROCESS_NAMES=new Set(['aura.exe','electron.exe','smss.exe','csrss.exe','wininit.exe','services.exe','lsass.exe','svchost.exe','winlogon.exe','dwm.exe','system.exe','idle.exe']);
 function normalizeAppControlName(value){return String(value||'').trim().replace(/^[“”"'\s]+|[“”"'\s]+$/g,'').replace(/['’](?:y?[ıiuü])$/i,'').replace(/(?:y[ıiuü])$/i,'').replace(/\s+(?:uygulamasını|uygulamasini|programını|programini|oyununu)$/i,'').trim();}
 async function closeAppByName(appName){
@@ -1497,8 +1493,7 @@ async function getWeather(city='Istanbul'){
       minC:Number(Array.isArray(daily.temperature_2m_min)?daily.temperature_2m_min[0]:NaN),
       precipitationProbability:Number(Array.isArray(daily.precipitation_probability_max)?daily.precipitation_probability_max[0]:NaN)
     }
-  };
-  weatherCache.set(key,{at:Date.now(),data:out});
+  };  weatherCache.set(key,{at:Date.now(),data:out});
   return out;
 }
 
@@ -1735,6 +1730,52 @@ async function createUnityProject(projectPath,projectName='AURA Game'){
   await new Promise((resolve,reject)=>execFile(editor,['-quit','-batchmode','-createProject',root],{windowsHide:false,maxBuffer:4*1024*1024},(e,so,se)=>e?reject(new Error(String(se||so||e.message))):resolve()));
   return {ok:true,path:root,projectName,unityEditor:editor,message:'Unity projesi oluşturuldu.'};
 }
+
+async function unityApplyPlan(args={}) {
+  const projectPath=normalizePath(args.projectPath||'');
+  if(!projectPath) throw new Error('Unity proje yolu gerekli.');
+  const root=validateUnityProject(projectPath);
+  const files=Array.isArray(args.files)?args.files:[];
+  const editor=args.editor && typeof args.editor==='object'?args.editor:null;
+  const build=Boolean(args.build);
+  const open=Boolean(args.open);
+  if(files.length>80) throw new Error('Tek planda en fazla 80 Unity dosyası değiştirilebilir.');
+  const operations=[];
+  for(const item of files){
+    const rel=String(item?.relativePath||'').replace(/^[/\\]+/,'');
+    const content=String(item?.content??'');
+    if(!rel || rel.includes('..')) throw new Error('Geçersiz Unity dosya yolu: '+rel);
+    const checked=validateUnityRelative(root,rel);
+    if(content.length>5*1024*1024) throw new Error('Unity dosyası 5 MB sınırını aşıyor: '+rel);
+    operations.push({relativePath:checked.relative,target:checked.target,content});
+  }
+  let editorOp=null;
+  if(editor){
+    const rel=String(editor.relativePath||'Assets/Editor/AURAEditorBridge.cs').replace(/^[/\\]+/,'');
+    const content=String(editor.content||'');
+    const method=String(editor.method||'').trim();
+    if(!rel.startsWith('Assets/') || !rel.startsWith('Assets/Editor/') || !rel.endsWith('.cs')) throw new Error('Editor otomasyon dosyası Assets/Editor altında .cs olmalı.');
+    if(!method || !/^[A-Za-z_][A-Za-z0-9_.]*$/.test(method)) throw new Error('Geçersiz Unity Editor methodu.');
+    const checked=validateUnityRelative(root,rel);
+    operations.push({relativePath:checked.relative,target:checked.target,content});
+    editorOp={method,args:Array.isArray(editor.args)?editor.args.map(x=>String(x).slice(0,1000)).slice(0,8):[]};
+  }
+  if(!operations.length && !editorOp && !open && !build) throw new Error('Unity autopilot planı boş.');
+  const summary=operations.map(x=>x.relativePath).join('\n');
+  const ok=await confirmAction('AURA — Unity Autopilot','AURA bu Unity projesinde otomatik geliştirme planını uygulayacak.\n\nProje:\n'+root+'\n\nDosyalar:\n'+(summary||'Dosya değişikliği yok')+'\n\nEditor otomasyonu: '+(editorOp?editorOp.method:'yok')+'\nBuild: '+(build?'EVET':'hayır')+'\n\nDevam edilsin mi?');
+  if(!ok) throw new Error('Kullanıcı işlemi iptal etti.');
+  for(const op of operations){
+    await fsp.mkdir(path.dirname(op.target),{recursive:true});
+    await fsp.writeFile(op.target,op.content,'utf8');
+  }
+  let editorResult=null;
+  if(editorOp) editorResult=await unityRunEditorMethod(root,editorOp.method,editorOp.args);
+  let buildResult=null;
+  if(build) buildResult=await buildUnityProject(root,'StandaloneWindows64');
+  if(open) await openUnityProject(root);
+  return {ok:true,projectPath:root,filesChanged:operations.map(x=>x.relativePath),editor:editorResult,build:buildResult,opened:open};
+}
+
 async function unityCreateScript(projectPath,relativePath,content){
   const root=normalizePath(projectPath),target=normalizePath(path.join(root,String(relativePath||'')));
   if(!isAllowedPath(root)||!isAllowedPath(target)||!target.toLowerCase().startsWith(path.join(root,'assets').toLowerCase()+path.sep)||!target.toLowerCase().endsWith('.cs'))throw new Error('Unity script yalnızca izinli projenin Assets altında .cs olarak oluşturulabilir.');
@@ -1797,8 +1838,7 @@ async function handleTool(tool,args) {
     case 'desktop_restart_app': {
       const target=normalizeAppControlName(args.app);
       await closeAppByName(target);
-      await new Promise(r=>setTimeout(r,900));
-      return {...await findAndLaunchApp(target),restarted:true};
+      await new Promise(r=>setTimeout(r,900));      return {...await findAndLaunchApp(target),restarted:true};
     }
     case 'desktop_uninstall_app': return uninstallAppByName(args.app);
     case 'desktop_scan_environment': return scanEnvironment({mode:args?.mode==='deep'?'deep':'quick',force:Boolean(args?.force)});
@@ -1827,6 +1867,7 @@ async function handleTool(tool,args) {
     case 'desktop_unity_create_script': return unityCreateScript(args.projectPath,args.relativePath,args.content);
     case 'desktop_unity_open_project': return unityOpenProject(args.projectPath);
     case 'desktop_unity_build': return buildUnityProject(args.projectPath,args.target||'StandaloneWindows64');
+    case 'desktop_unity_autopilot': return unityApplyPlan(args);
     case 'desktop_web_research': return webResearch(args.query,args.maxResults||12);
     case 'desktop_web_search': return webSearch(args.query);
     case 'desktop_fetch_web_page': return fetchWebPage(args.url);
@@ -2097,8 +2138,7 @@ app.whenReady().then(async()=>{
       const senderUrl=event?.senderFrame?.url || '';
       const isLocal=(()=>{
         try{
-          const u=new URL(senderUrl);
-          return u.protocol==='file:' || (u.hostname==='127.0.0.1' && u.protocol==='http:');
+          const u=new URL(senderUrl);          return u.protocol==='file:' || (u.hostname==='127.0.0.1' && u.protocol==='http:');
         }catch{
           return false;
         }
