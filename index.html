@@ -1096,7 +1096,13 @@ async function handleMemoryCommand(q){
   return null;
 }
 
-async function handleDirectCommand(q) {
+async function isDriveListRequest(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR").replace(/[?.!,;:]/g," ").replace(/\\s+/g," ").trim();
+  return /^(sürücüler|suruculer|sürücüleri göster|suruculeri goster|diskler|diskleri göster|diskleri goster|disklerim|sürücülerim)$/.test(x) || /^(hangi|neler|ne) (sürücüler|suruculer|diskler)( var| bulunuyor)?$/.test(x) || /^(sürücü|surucu) (listesi|listele|liste)$/.test(x);
+}
+const safeDriveListRequest=(q)=>isDriveListRequest(q);
+
+function handleDirectCommand(q) {
   if (!hasDesktopAgent()) {
     return "Bu özellik için AURA Desktop'ın açık olması gerekiyor.";
   }
