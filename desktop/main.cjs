@@ -1625,7 +1625,7 @@ async function getBatteryStatus(){
   };
 }
 
-async function getHardwareMetrics(){
+async function collectHardwareMetrics(){
   const totalGB=Number((os.totalmem()/1024/1024/1024).toFixed(1));
   const freeGB=Number((os.freemem()/1024/1024/1024).toFixed(1));
   const usedPercent=totalGB ? ((totalGB-freeGB)/totalGB)*100 : null;
@@ -1678,6 +1678,25 @@ async function getHardwareMetrics(){
     network:{downloadMbps,uploadMbps,receivedBytes:psNet.downloadBps,sentBytes:psNet.uploadBps},
     temperatureSource:gpu.source||null
   };
+}
+
+const HARDWARE_CACHE_TTL=5000;
+let hardwareMetricsCache=null;
+let hardwareMetricsPromise=null;
+
+async function getHardwareMetrics(){
+  const now=Date.now();
+  if(hardwareMetricsCache && now-hardwareMetricsCache.at<HARDWARE_CACHE_TTL){
+    return hardwareMetricsCache.data;
+  }
+  if(hardwareMetricsPromise) return hardwareMetricsPromise;
+  hardwareMetricsPromise=collectHardwareMetrics()
+    .then(data=>{
+      hardwareMetricsCache={at:Date.now(),data};
+      return data;
+    })
+    .finally(()=>{hardwareMetricsPromise=null;});
+  return hardwareMetricsPromise;
 }
 
 async function readClipboardText(){
