@@ -1027,7 +1027,8 @@ function isRunningAppsRequest(q){
     /hangi programlar çalışıyor|hangi programlar calisiyor/.test(n);
 }
 
-function isDriveListRequest(q){
+function safeDriveListRequest(q){
+  // Renderer/module yüklenme sırasından bağımsız: hiçbir çıplak global fonksiyona güvenme.
   const x=String(q||"")
     .toLocaleLowerCase("tr-TR")
     .replace(/[?.!,;:]/g," ")
@@ -1037,13 +1038,6 @@ function isDriveListRequest(q){
   return /^(sürücüler|suruculer|sürücüleri göster|suruculeri goster|diskler|diskleri göster|diskleri goster|disklerim|sürücülerim)$/.test(x) ||
     /^(hangi|neler|ne) (sürücüler|suruculer|diskler)( var| bulunuyor)?$/.test(x) ||
     /^(sürücü|surucu) (listesi|listele|liste)$/.test(x);
-}
-
-globalThis.isDriveListRequest = isDriveListRequest;
-
-function safeDriveListRequest(q){
-  try { return isDriveListRequest(q); }
-  catch { return false; }
 }
 function isCameraRequest(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
