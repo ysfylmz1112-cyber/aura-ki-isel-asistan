@@ -679,7 +679,7 @@ async function ensureLocalAI(mode = "chat", onProgress = () => {}) {
   return enginePromise;
 }
 
-function compactLongUserRequest(text, maxChars = 9000) {
+function compactLongUserRequest(text, maxChars = 6000) {
   const source = String(text || "").replace(/\\r/g, "").trim();
   if (source.length <= maxChars) return source;
 
@@ -723,8 +723,8 @@ function compactLongUserRequest(text, maxChars = 9000) {
   };
 
   // Önce kritik teknik bölümler.
-  priority.forEach(s => addSection(s, 1000));
-  normal.forEach(s => addSection(s, 430));
+  priority.forEach(s => addSection(s, 800));
+  normal.forEach(s => addSection(s, 250));
 
   let output = result.join("\\n\\n");
   if (output.length > maxChars) output = output.slice(0, maxChars);
@@ -911,7 +911,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
 
   const wantsTools = desktopAvailable() && (generalToolIntent || developmentIntent);
 
-  const toolExample = JSON.stringify({tool:"desktop_tool_name", args:{}});
+  const promptValue = compactLongUserRequest(value, 6000);
   const toolProtocol = wantsTools
     ? "\nARAÇ PROTOKOLÜ: Gerektiğinde yalnızca tek JSON nesnesi üret: " + JSON.stringify({tool:"desktop_tool_name",args:{}}) + ". JSON dışında metin yazma. Araç sonucu gelince göreve devam et.\nKULLANILABİLEN ARAÇLAR:\n" + toolDirectoryPrompt(lowerValue,effectiveMode)
     : "";
@@ -924,7 +924,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         toolProtocol
     },
     ...cleanMessages(codeLikeMode ? history.slice(-2) : history),
-    { role:"user", content:value }
+    { role:"user", content:promptValue }
   ];
 
   for(let round=0; round<5; round++){
@@ -932,7 +932,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
       messages,
       temperature:codeLikeMode?0.16:0.45,
       top_p:codeLikeMode?0.82:0.85,
-      max_tokens:effectiveMode==="background-code"?1150:(effectiveMode==="code"?1400:192),
+      max_tokens:effectiveMode==="background-code"?850:(effectiveMode==="code"?950:192),
       stream:false
     });
     const response = await Promise.race([
