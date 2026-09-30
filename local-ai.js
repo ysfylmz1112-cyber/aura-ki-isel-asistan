@@ -297,8 +297,7 @@ const TOOLS = [
       name: "desktop_create_directory",
       description: "İzinli bir klasör oluşturur. Kullanıcı onayı gösterilir.",
       parameters: {
-        type:"object",        properties:{ path:{type:"string"} },
-        required:["path"],
+        type:"object",        properties:{ path:{type:"string"} },        required:["path"],
         additionalProperties:false
       }
     }
@@ -597,8 +596,7 @@ async function ensureLocalAI(mode = "chat", onProgress = () => {}) {
   };
 
   enginePromise = (async()=>{
-    try {      if (engine) {
-        onProgress({percent:0,text:"AURA model değiştiriyor: "+target});
+    try {      if (engine) {        onProgress({percent:0,text:"AURA model değiştiriyor: "+target});
         await engine.reload(target);
         activeModel=target;
       } else {
@@ -741,7 +739,10 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   const value = String(message || "").trim();
   if (!value) throw new Error("Mesaj boş.");
 
-  const localEngine = await ensureLocalAI(mode,onProgress);
+  const lowerValue = value.toLocaleLowerCase("tr-TR");
+  const developmentIntent = mode === "code" || /unity|oyun yap|oyun geliştir|oyun gelistir|proje oluştur|proje olustur|dosya oluştur|dosya olustur|dosya yaz|kod yaz|kodu düzelt|kodu duzelt|hata düzelt|hata duzelt|build al|derle|compile|script oluştur|script olustur|sahne oluştur|sahne olustur|component oluştur|component olustur|prefab oluştur|prefab olustur/.test(lowerValue);
+  const effectiveMode = developmentIntent ? "code" : mode;
+  const localEngine = await ensureLocalAI(effectiveMode,onProgress);
   const memoryItems = compactMemory(memory);
   const memoryContext = memoryItems.length
     ? "\nKALICI HAFIZA:\n" + JSON.stringify(memoryItems)
@@ -755,9 +756,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     ? "\nPC BAĞLAM ÖZETİ:\n" + compactEnvironment(environment)
     : "";
 
-  const lowerValue = value.toLocaleLowerCase("tr-TR");
   /openclaw|güncel|guncel|araştır|arastir|internette|web|site|dosya|klasör|klasor|uygulama|oyun|bilgisayar|masaüstü|masaustu|sistem|kullanım|kullanim|hatırla|hatirla|unut|geçen hafta|gecen hafta|dün|dun|bugün|bugun|konuşma geçmişi|konusma gecmisi|pano|clipboard|ekran görüntüsü|ekran goruntusu|screenshot|bildirim|notification|unity|cpu|ram|gpu|disk|performans|donanım|donanim|hava|sıcaklık|sicaklik|derece|pil|batarya/.test(lowerValue);
-  const developmentIntent = mode === "code" || /unity|oyun yap|oyun geliştir|oyun gelistir|proje oluştur|proje olustur|dosya oluştur|dosya olustur|dosya yaz|kod yaz|kodu düzelt|kodu duzelt|hata düzelt|hata duzelt|build al|derle|compile|script oluştur|script olustur|sahne oluştur|sahne olustur|component oluştur|component olustur|prefab oluştur|prefab olustur/.test(lowerValue);
   const wantsTools = desktopAvailable() && (generalToolIntent || developmentIntent);
 
   const toolExample = JSON.stringify({tool:"desktop_tool_name", args:{}});
@@ -772,16 +771,16 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         (desktopAvailable() ? "\nMasaüstü ajanı BAĞLI." : "\nMasaüstü ajanı BAĞLI DEĞİL.") +
         toolProtocol
     },
-    ...cleanMessages(mode === "code" ? history.slice(-4) : history),
+    ...cleanMessages(effectiveMode === "code" ? history.slice(-4) : history),
     { role:"user", content:value }
   ];
 
   for(let round=0; round<8; round++){
     const responsePromise = localEngine.chat.completions.create({
       messages,
-      temperature:mode==="code"?0.16:0.45,
-      top_p:mode==="code"?0.82:0.85,
-      max_tokens:mode==="code"?2200:320,
+      temperature:effectiveMode==="code"?0.16:0.45,
+      top_p:effectiveMode==="code"?0.82:0.85,
+      max_tokens:effectiveMode==="code"?2600:320,
       stream:false
     });
     const response = await Promise.race([
