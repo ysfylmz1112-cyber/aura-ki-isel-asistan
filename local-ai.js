@@ -928,17 +928,41 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   ];
 
   for(let round=0; round<5; round++){
-    const responsePromise = localEngine.chat.completions.create({
-      messages,
-      temperature:codeLikeMode?0.16:0.45,
-      top_p:codeLikeMode?0.82:0.85,
-      max_tokens:effectiveMode==="background-code"?850:(effectiveMode==="code"?950:192),
-      stream:false
-    });
-    const response = await Promise.race([
-      responsePromise,
-      new Promise((_, reject) => setTimeout(() => reject(new Error("Yerel AI yanıtı zaman aşımına uğradı. Model henüz hazır olmayabilir; tekrar dene.")), 60000))
-    ]);
+    let response;
+    try {
+      const responsePromise = localEngine.chat.completions.create({
+        messages,
+        temperature:codeLikeMode?0.16:0.45,
+        top_p:codeLikeMode?0.82:0.85,
+        max_tokens:effectiveMode==="background-code"?850:(effectiveMode==="code"?950:192),
+        stream:false
+      });
+      response = await Promise.race([
+        responsePromise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Yerel AI yanıtı zaman aşımına uğradı. Model henüz hazır olmayabilir; tekrar dene.")), 60000))
+      ]);
+    } catch (error) {
+      const msg=String(error?.message||error);
+      if (/context window|prompt tokens exceed|maximum context|context length|too many tokens/i.test(msg)) {
+        // Son çare: geçmişi, PC bağlamını ve araç listesini kaldırıp isteği daha da küçült.
+        // Böylece WebLLM 4096 context modellerinde de cevap üretmeye devam eder.
+        const emergencyPrompt=compactLongUserRequest(value,3600);
+        const emergencyMessages=[
+          {role:"system",content:SYSTEM_PROMPT+modePrompt+"
+Çok uzun kullanıcı isteği acil sıkıştırma modunda işlendi. Eksik ayrıntı uydurma; mevcut ana gereksinimlere göre ilerle."},
+          {role:"user",content:emergencyPrompt}
+        ];
+        response=await localEngine.chat.completions.create({
+          messages:emergencyMessages,
+          temperature:codeLikeMode?0.14:0.4,
+          top_p:0.82,
+          max_tokens:codeLikeMode?650:160,
+          stream:false
+        });
+      } else {
+        throw error;
+      }
+    }
 
     const assistantMessage=response && response.choices && response.choices[0] ? response.choices[0].message : null;
     if(!assistantMessage) throw new Error("Yerel AI cevap üretmedi.");
