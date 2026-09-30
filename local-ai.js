@@ -35,6 +35,9 @@ const SYSTEM_PROMPT = [
   "PC, dosya, uygulama ve sistem işlemlerinde masaüstü ajanının güvenlik ve onay kurallarına uy; bunları aşma.",
   "Kalıcı hafızaya yalnızca kullanıcı açıkça hatırlamamı istediğinde yaz. Geçmiş konuşma sorularında konuşma geçmişini ara.",
   "Unity görevlerinde önce mevcut projeyi incele; gerçek dosyaları oluştur/değiştir, mevcut yapıyı rastgele silme ve sonucu doğrula.",
+  "Unity/oyun geliştirme isteğinde yalnızca mevcut kullanıcı mesajının görevine odaklan. Sohbet geçmişindeki başka bir konuya atlama.",
+  "Kullanıcı mevcut mesajında açıkça hava durumu istemedikçe desktop_get_weather aracını ASLA kullanma. Unity oyunundaki hava, yağmur, sis, zaman veya iklim sistemi gerçek İstanbul hava durumu değildir.",
+  "Unity/oyun geliştirme görevinde web/hava araçlarını kullanma; önce Unity proje yapısını bul ve ilgili gerçek dosyaları incele.",
   "Kod görevlerinde gerçek çalışabilir kod üret; pseudocode verme. İstenen dili ve dosya yapısını koru.",
   "OpenClaw'ı yalnızca kullanıcı açıkça istediğinde kullan.",
   "Araç gerekiyorsa yalnızca izin verilen aracı JSON çağrısıyla kullan; araç sonucundan sonra ilk göreve devam et.",
@@ -731,7 +734,9 @@ function toolDirectoryPrompt(query = "", mode = "chat") {
   const unity=/unity|kamyon|nakliye|oyun geliştir|oyun gelistir|oyun yap|oyun projesi|game dev/.test(q) || isCodeMode(mode);
   const files=/dosya|klasör|klasor|kod|script|proje|oku|yaz|oluştur|olustur|düzenle|duzenle|sil|taşı|tasi|kopya|kopyala|build|derle/.test(q);
   const pc=/bilgisayar|pc|sistem|cpu|ram|gpu|disk|donanım|donanim|performans|çalışan|calisan|uygulama|program|oyun|masaüstü|masaustu/.test(q);
-  const web=/güncel|guncel|araştır|arastir|internette|web|site|haber|kaynak|hava/.test(q);
+  // Unity/oyun geliştirme görevlerinde "hava durumu", "trafik", "yağmur" gibi
+  // kelimeler oyun mekaniği olabilir; bunları gerçek dünya hava aracına yönlendirme.
+  const web=!unity && /güncel|guncel|araştır|arastir|internette|web|site|haber|kaynak|hava/.test(q);
   const memory=/hafıza|hafiza|hatırla|hatirla|unut|geçmiş|gecmis|dün|dun|bugün|bugun|geçen hafta|gecen hafta/.test(q);
 
   if(unity) add([
@@ -825,7 +830,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   if (!value) throw new Error("Mesaj boş.");
 
   const lowerValue = value.toLocaleLowerCase("tr-TR");
-  const gameDevelopmentIntent = /unity|oyun yap|oyun yapalım|oyun yapalim|oyun geliştir|oyun gelistir|oyun oluştur|oyun olustur|oyun yapmaya|game dev|game development|oyun projesi|oyun projesi oluştur|oyun projesi olustur/.test(lowerValue);
+  const gameDevelopmentIntent = /unity|kamyon|nakliye|taşıma oyunu|tasima oyunu|oyun yap|oyun yapalım|oyun yapalim|oyun geliştir|oyun gelistir|oyun oluştur|oyun olustur|oyun yapmaya|game dev|game development|oyun projesi|oyun projesi oluştur|oyun projesi olustur/.test(lowerValue);
   const developmentIntent = mode === "code" || gameDevelopmentIntent || /proje oluştur|proje olustur|dosya oluştur|dosya olustur|dosya yaz|kod yaz|kodu düzelt|kodu duzelt|hata düzelt|hata duzelt|build al|derle|compile|script oluştur|script olustur|sahne oluştur|sahne olustur|component oluştur|component olustur|prefab oluştur|prefab olustur/.test(lowerValue);
   const effectiveMode = gameDevelopmentIntent ? "background-code" : (developmentIntent ? "code" : mode);
   const codeLikeMode = isCodeMode(effectiveMode);
@@ -835,7 +840,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     ? "\nKALICI HAFIZA:\n" + JSON.stringify(memoryItems)
     : "\nKALICI HAFIZA: boş.";
 
-  const generalToolIntent = /openclaw|güncel|guncel|araştır|arastir|internette|web|site|dosya|klasör|klasor|uygulama|oyun|bilgisayar|masaüstü|masaustu|sistem|kullanım|kullanim|hatırla|hatirla|unut|geçen hafta|gecen hafta|dün|dun|bugün|bugun|konuşma geçmişi|konusma gecmisi|pano|clipboard|ekran görüntüsü|ekran goruntusu|screenshot|bildirim|notification|unity|cpu|ram|gpu|disk|performans|donanım|donanim|hava|sıcaklık|sicaklik|derece|pil|batarya/.test(lowerValue);
+  const generalToolIntent = /openclaw|güncel|guncel|araştır|arastir|internette|web|site|dosya|klasör|klasor|uygulama|oyun|bilgisayar|masaüstü|masaustu|sistem|kullanım|kullanim|hatırla|hatirla|unut|geçen hafta|gecen hafta|dün|dun|bugün|bugun|konuşma geçmişi|konusma gecmisi|pano|clipboard|ekran görüntüsü|ekran goruntusu|screenshot|bildirim|notification|unity|kamyon|nakliye|cpu|ram|gpu|disk|performans|donanım|donanim|hava|sıcaklık|sicaklik|derece|pil|batarya/.test(lowerValue);
 
   const modePrompt = effectiveMode === "background-code"
     ? "\nOYUN GELİŞTİRME ARKA PLAN MODU: Bu görev kaynak tüketimini düşük tutan Coder modeliyle yürütülüyor. Gerçek dosyaları oluştur/değiştir ve Unity işlemlerini arka planda çalıştır. Kullanıcı bilgisayarını normal şekilde kullanmaya devam edebilmeli."
