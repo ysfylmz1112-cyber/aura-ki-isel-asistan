@@ -38,7 +38,7 @@ const SYSTEM_PROMPT = [
   "ZAMANLI HAFIZA: Kullanıcı geçmiş konuşmalarından söz ederse konuşma geçmişi aracını kullan. 'dün', 'geçen hafta', 'bugün' gibi ifadeleri araca aynen taşı.",
   "WEB ARAŞTIRMA: Güncel bilgi gerektiğinde araştırma aracını kullan; mümkünse birden fazla arama varyasyonu çalıştırılmış sonuçları karşılaştır ve kaynak adreslerini yanıta dahil et.",
   "PC CORE: Canlı CPU/RAM/GPU/disk/ağ değerlerini yalnızca masaüstü aracı döndürdüğü verilerle söyle; ölçülmeyen sıcaklık veya performansı uydurma.",
-  "UNITY GELİŞTİRME: Kullanıcı Unity ile oyun/proje yapmamı istediğinde görevi gerçekten uygula. Önce desktop_find_unity_projects ile projeyi bul veya gerekirse desktop_create_unity_project kullan. Sonra desktop_unity_project_tree ile yapıyı incele; gerekli C#/.asmdef/.meta/.json/.yaml/.unity ve ProjectSettings dosyalarını desktop_unity_read_file ile oku; desktop_unity_write_file ve desktop_unity_create_directory ile düzenle. Oyun mekaniği, oyuncu, kamera, UI, düşman, envanter, sahne, prefab ve ayarları için gerçek Unity dosyaları üret. Gerekirse projeye Editor otomasyon scripti yazıp desktop_unity_run_editor ile çalıştır. Sonunda desktop_unity_build ile Windows build al veya Unity Editor ile aç. Kullanıcı onay mekanizmasını aşma.",
+  "UNITY GELİŞTİRME: Kullanıcı Unity ile oyun/proje yapmamı istediğinde görevi gerçekten uygula. Önce desktop_find_unity_projects ile projeyi bul veya gerekirse desktop_create_unity_project kullan. Sonra desktop_unity_project_tree ile yapıyı incele; kritik C#/.asmdef/.meta/.json/.yaml/.unity ve ProjectSettings dosyalarını desktop_unity_read_file ile oku. Değişiklikleri mümkün olduğunca tek desktop_unity_autopilot planında uygula: gerçek dosyaları oluştur/değiştir, Assets/Editor altında geçici veya kalıcı Editor otomasyon kodu üret, static methodu batchmode çalıştır, gerekiyorsa build al ve projeyi aç. Oyun mekaniği, oyuncu, kamera, UI, düşman, envanter, sahne, prefab, input ve ayarlar için gerçek Unity dosyaları üret. Var olan projeyi bozacak rastgele dosya silme veya sahne ezme yapma; önce mevcut yapıyı incele. Kullanıcı onay mekanizmasını aşma.",
   "KOD ÜRETİM: Her yaygın programlama dilinde gerçek ve çalıştırılabilir kod üret. Pseudocode veya yarım örnek verme. İstenen dili aynen kullan. Tam dosya istenirse tam dosyayı ver. Importları, bağımlılıkları, hata yönetimini ve isim tutarlılığını düşün.",
   "KOD DÜZELTME: Hata verildiğinde problemi kısa biçimde belirle ve düzeltilmiş tam kodu üret. Kullanıcı istemedikçe uzun eğitim metnine girme.",
   "KOD MODU: C#, C++, C, Java, Kotlin, Swift, Python, JavaScript, TypeScript, Rust, Go, PHP, Ruby, Lua, Dart, SQL, HTML, CSS, Bash, PowerShell ve diğer yaygın dillerde kod yaz.",
@@ -297,8 +297,7 @@ const TOOLS = [
       name: "desktop_create_directory",
       description: "İzinli bir klasör oluşturur. Kullanıcı onayı gösterilir.",
       parameters: {
-        type:"object",
-        properties:{ path:{type:"string"} },
+        type:"object",        properties:{ path:{type:"string"} },
         required:["path"],
         additionalProperties:false
       }
@@ -530,6 +529,7 @@ const TOOLS = [
     }
   },
   {type:"function",function:{name:"desktop_create_unity_project",description:"İzinli kullanıcı klasöründe gerçek Unity proje oluşturur.",parameters:{type:"object",properties:{projectPath:{type:"string"},projectName:{type:"string"}},required:["projectPath"],additionalProperties:false}}},
+  {type:"function",function:{name:"desktop_unity_autopilot",description:"Unity geliştirme görevini tek planda uygular: mevcut projeyi doğrular, birden çok dosyayı yazar, isteğe bağlı Editor otomasyon scriptini batchmode çalıştırır, isterse Windows build alır ve projeyi açar. Kod/oyun geliştirme görevlerinde ilk tercih edilen araçtır.",parameters:{type:"object",properties:{projectPath:{type:"string"},files:{type:"array",items:{type:"object",properties:{relativePath:{type:"string"},content:{type:"string"}},required:["relativePath","content"],additionalProperties:false}},editor:{type:"object",properties:{relativePath:{type:"string"},content:{type:"string"},method:{type:"string"},args:{type:"array",items:{type:"string"}}},required:["content","method"],additionalProperties:false},build:{type:"boolean"},open:{type:"boolean"}},required:["projectPath"],additionalProperties:false}}},
   {type:"function",function:{name:"desktop_unity_create_script",description:"Unity Assets altında gerçek C# script oluşturur veya günceller.",parameters:{type:"object",properties:{projectPath:{type:"string"},relativePath:{type:"string"},content:{type:"string"}},required:["projectPath","relativePath","content"],additionalProperties:false}}},
   {type:"function",function:{name:"desktop_unity_open_project",description:"Unity projesini Editor ile açar.",parameters:{type:"object",properties:{projectPath:{type:"string"}},required:["projectPath"],additionalProperties:false}}},
   {type:"function",function:{name:"desktop_unity_build",description:"Unity projesinden Windows build alır.",parameters:{type:"object",properties:{projectPath:{type:"string"},target:{type:"string"}},required:["projectPath"],additionalProperties:false}}},
@@ -597,8 +597,7 @@ async function ensureLocalAI(mode = "chat", onProgress = () => {}) {
   };
 
   enginePromise = (async()=>{
-    try {
-      if (engine) {
+    try {      if (engine) {
         onProgress({percent:0,text:"AURA model değiştiriyor: "+target});
         await engine.reload(target);
         activeModel=target;
@@ -763,7 +762,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
 
   const toolExample = JSON.stringify({tool:"desktop_tool_name", args:{}});
   const toolProtocol = wantsTools
-    ? "\nARAÇ KULLANIMI: OpenAI tools alanı kullanılmıyor. Araç gerekiyorsa yalnızca " + toolExample + " biçiminde tek JSON nesnesi üret. JSON dışında metin yazma. Araç sonucu geldiğinde göreve devam et.\nGELİŞTİRME GÖREVİ: Kullanıcı kod/oyun/Unity istediğinde araçları gerçekten kullan; sadece kodu sohbet mesajında bırakma. Önce proje/dosya yapısını kontrol et, sonra gerekli dosyaları oluştur/değiştir, gerekiyorsa Unity Editor veya derleme komutunu çalıştır ve sonucu doğrula.\nKULLANILABİLEN ARAÇLAR:\n" + toolDirectoryPrompt()
+    ? "\nARAÇ KULLANIMI: OpenAI tools alanı kullanılmıyor. Araç gerekiyorsa yalnızca " + toolExample + " biçiminde tek JSON nesnesi üret. JSON dışında metin yazma. Araç sonucu geldiğinde göreve devam et.\nGELİŞTİRME GÖREVİ: Kullanıcı kod/oyun/Unity istediğinde araçları gerçekten kullan; sadece kodu sohbet mesajında bırakma. Önce proje/dosya yapısını kontrol et, sonra gerekli dosyaları oluştur/değiştir, gerekiyorsa Unity Editor veya derleme komutunu çalıştır ve sonucu doğrula. Unity görevinde mümkünse desktop_unity_autopilot kullan; bu araçla birden fazla dosyayı tek planla uygula ve Editor otomasyonunu çalıştır. Araç sonucu hata verirse hatayı analiz edip düzeltme planını yeni araç çağrısıyla uygula. Görevi bitmiş saymadan önce dosyaların ve build çıktısının gerçekten oluştuğunu doğrula.\nKULLANILABİLEN ARAÇLAR:\n" + toolDirectoryPrompt()
     : "";
 
   const messages = [
@@ -777,7 +776,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     { role:"user", content:value }
   ];
 
-  for(let round=0; round<3; round++){
+  for(let round=0; round<8; round++){
     const responsePromise = localEngine.chat.completions.create({
       messages,
       temperature:mode==="code"?0.16:0.45,
