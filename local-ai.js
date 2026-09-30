@@ -30,23 +30,14 @@ function desktopAvailable() {
 
 const MODEL_ID = CHAT_MODEL_ID;
 const SYSTEM_PROMPT = [
-  "AURA 5.0: Telefon kumandası AURA Desktop içindeki yerel, token korumalı sunucudur; telefon üzerinden gelen komutlar da masaüstü onay mekanizmalarını aşmamalıdır.",
-  "Sen AURA'sın: kişisel, yerel ve Türkçe bir AI asistanısın.",
-  "Önce kullanıcının ne istediğini doğru anla. Bilmediğin bilgiyi uydurma.",
-  "Güncel bilgi gerektiğinde yalnızca izin verilen web araçlarını kullan ve kaynağı ayırt et.",
-  "Kullanıcının kalıcı hafızası ve konuşma geçmişi sana ayrıca verilebilir. Bunları gerçek bağlam olarak kullan; yeni bilgi kaydetmeden önce açık bir hatırlama isteği gelmiş olmalı.",
-  "ZAMANLI HAFIZA: Kullanıcı geçmiş konuşmalarından söz ederse konuşma geçmişi aracını kullan. 'dün', 'geçen hafta', 'bugün' gibi ifadeleri araca aynen taşı.",
-  "WEB ARAŞTIRMA: Güncel bilgi gerektiğinde araştırma aracını kullan; mümkünse birden fazla arama varyasyonu çalıştırılmış sonuçları karşılaştır ve kaynak adreslerini yanıta dahil et.",
-  "PC CORE: Canlı CPU/RAM/GPU/disk/ağ değerlerini yalnızca masaüstü aracı döndürdüğü verilerle söyle; ölçülmeyen sıcaklık veya performansı uydurma.",
-  "UNITY GELİŞTİRME: Kullanıcı Unity ile oyun/proje yapmamı istediğinde görevi gerçekten uygula. Önce desktop_find_unity_projects ile projeyi bul veya gerekirse desktop_create_unity_project kullan. Sonra desktop_unity_project_tree ile yapıyı incele; kritik C#/.asmdef/.meta/.json/.yaml/.unity ve ProjectSettings dosyalarını desktop_unity_read_file ile oku. Değişiklikleri mümkün olduğunca tek desktop_unity_autopilot planında uygula: gerçek dosyaları oluştur/değiştir, Assets/Editor altında geçici veya kalıcı Editor otomasyon kodu üret, static methodu batchmode çalıştır, gerekiyorsa build al ve projeyi aç. Oyun mekaniği, oyuncu, kamera, UI, düşman, envanter, sahne, prefab, input ve ayarlar için gerçek Unity dosyaları üret. Var olan projeyi bozacak rastgele dosya silme veya sahne ezme yapma; önce mevcut yapıyı incele. Kullanıcı onay mekanizmasını aşma.",
-  "KOD ÜRETİM: Her yaygın programlama dilinde gerçek ve çalıştırılabilir kod üret. Pseudocode veya yarım örnek verme. İstenen dili aynen kullan. Tam dosya istenirse tam dosyayı ver. Importları, bağımlılıkları, hata yönetimini ve isim tutarlılığını düşün.",
-  "KOD DÜZELTME: Hata verildiğinde problemi kısa biçimde belirle ve düzeltilmiş tam kodu üret. Kullanıcı istemedikçe uzun eğitim metnine girme.",
-  "KOD MODU: C#, C++, C, Java, Kotlin, Swift, Python, JavaScript, TypeScript, Rust, Go, PHP, Ruby, Lua, Dart, SQL, HTML, CSS, Bash, PowerShell ve diğer yaygın dillerde kod yaz.",
-  "HATIRLATICILAR: Kullanıcı belirli bir gelecek zaman için hatırlatma isterse desktop_reminder_create kullan. '10 dakika sonra' gibi göreli zamanı kendin hesaplayıp dueAt olarak milliseconds ver. Belirsiz zaman varsa önce kullanıcıdan netleştirme iste. Hatırlatıcıları kullanıcı istemedikçe kendiliğinden oluşturma veya değiştirme.",
-  "OPENCLAW: OpenClaw bağlıysa karmaşık/uzun görevleri OpenClaw Gateway ajanına devredebilirsin. OpenClaw bağlantı durumunu openclaw_status ile kontrol et; kullanıcı açıkça OpenClaw ile çalışmak istediğinde openclaw_chat kullan. Tokenı istemeden veya cevaba yazmadan kullan.",
-  "Masaüstü ajanı bağlıysa PC, dosya, klasör, uygulama, oyun, Unity ve sistem araçlarını yalnızca görev gerçekten gerektiriyorsa kullan.",
-  "Kullanıcı bir kod, oyun, Unity projesi, dosya düzenleme veya geliştirme görevi istediğinde görevi tamamlamak için gerekli masaüstü araçlarını kullanabilirsin. Dosya yazma/silme/taşıma, uygulama çalıştırma ve komut çalıştırma işlemleri masaüstü ajanının kullanıcı onayına tabidir; bu onayı atlatmaya çalışma.",
-  "PowerShell aracı, kullanıcı açıkça bir geliştirme/oyun/Unity görevi verdiğinde de gerekli dosya, proje, derleme veya araç kurulum adımlarını gerçekleştirmek için kullanılabilir; ancak yönetici yükseltmesi veya onay atlatma yapılamaz.",
+  "AURA: yerel Türkçe kişisel masaüstü AI asistanısın.",
+  "Bilmediğin bilgiyi uydurma. Güncel bilgi gerekiyorsa web araştırma araçlarını kullan.",
+  "PC, dosya, uygulama ve sistem işlemlerinde masaüstü ajanının güvenlik ve onay kurallarına uy; bunları aşma.",
+  "Kalıcı hafızaya yalnızca kullanıcı açıkça hatırlamamı istediğinde yaz. Geçmiş konuşma sorularında konuşma geçmişini ara.",
+  "Unity görevlerinde önce mevcut projeyi incele; gerçek dosyaları oluştur/değiştir, mevcut yapıyı rastgele silme ve sonucu doğrula.",
+  "Kod görevlerinde gerçek çalışabilir kod üret; pseudocode verme. İstenen dili ve dosya yapısını koru.",
+  "OpenClaw'ı yalnızca kullanıcı açıkça istediğinde kullan.",
+  "Araç gerekiyorsa yalnızca izin verilen aracı JSON çağrısıyla kullan; araç sonucundan sonra ilk göreve devam et.",
   "Türkçe konuş."
 ].join("\n");
 
@@ -691,32 +682,25 @@ function cleanMessages(history) {
     .slice(-2)
     .map(m => ({
       role:m.role,
-      content:String(m.content || "").slice(0,700)
+      content:String(m.content || "").slice(0,480)
     }));
 }
 
 function compactEnvironment(environment) {
   if (!environment || typeof environment !== "object") return "";
-  const apps=Array.isArray(environment.apps)
-    ? environment.apps.slice(0,20).map(x=>String(x?.name||"")).filter(Boolean)
-    : [];
-  const games=Array.isArray(environment.games)
-    ? environment.games.slice(0,20).map(x=>String(x?.name||"")).filter(Boolean)
-    : [];
+  const apps=Array.isArray(environment.apps) ? environment.apps.slice(0,8).map(x=>String(x?.name||"")).filter(Boolean) : [];
+  const games=Array.isArray(environment.games) ? environment.games.slice(0,8).map(x=>String(x?.name||"")).filter(Boolean) : [];
   const processItems=Array.isArray(environment.runningProcesses)
     ? environment.runningProcesses
     : (Array.isArray(environment.runningProcesses?.items) ? environment.runningProcesses.items : []);
-  const running=processItems.slice(0,20).map(x=>String(x?.name||"")).filter(Boolean);
-  const roots=Array.isArray(environment.roots) ? environment.roots.length : 0;
+  const running=processItems.slice(0,8).map(x=>String(x?.name||"")).filter(Boolean);
   return JSON.stringify({
     scannedAt:environment.scannedAt||null,
-    roots,
+    roots:Array.isArray(environment.roots)?environment.roots.length:0,
     appCount:Array.isArray(environment.apps)?environment.apps.length:0,
     gameCount:Array.isArray(environment.games)?environment.games.length:0,
     runningCount:Number(environment.runningProcesses?.count ?? processItems.length),
-    apps,
-    games,
-    running
+    apps,games,running
   });
 }
 
@@ -733,19 +717,70 @@ async function executeTool(toolCall) {
 
 function compactMemory(memory){
   const items=Array.isArray(memory)?memory:[];
-  return items.slice(-30).map(x=>({
-    text:String(x?.text||"").slice(0,600),
-    tags:Array.isArray(x?.tags)?x.tags.slice(0,6):[]
+  return items.slice(-10).map(x=>({
+    text:String(x?.text||"").slice(0,360),
+    tags:Array.isArray(x?.tags)?x.tags.slice(0,4):[]
   })).filter(x=>x.text);
 }
 
-function toolDirectoryPrompt() {
-  return TOOLS.map(function(tool) {
-    const fn = tool && tool.function ? tool.function : {};
-    const schema = fn && fn.parameters && fn.parameters.properties ? fn.parameters.properties : {};
-    const keys = Object.keys(schema);
-    return "- " + String(fn.name || "") + (keys.length ? " args: " + keys.join(", ") : " args: yok") + " — " + String(fn.description || "");
-  }).join("\n");
+function toolDirectoryPrompt(query = "", mode = "chat") {
+  const q=String(query||"").toLocaleLowerCase("tr-TR");
+  const selected=new Set();
+  const add=(names)=>names.forEach(name=>selected.add(name));
+
+  const unity=/unity|kamyon|nakliye|oyun geliştir|oyun gelistir|oyun yap|oyun projesi|game dev/.test(q) || isCodeMode(mode);
+  const files=/dosya|klasör|klasor|kod|script|proje|oku|yaz|oluştur|olustur|düzenle|duzenle|sil|taşı|tasi|kopya|kopyala|build|derle/.test(q);
+  const pc=/bilgisayar|pc|sistem|cpu|ram|gpu|disk|donanım|donanim|performans|çalışan|calisan|uygulama|program|oyun|masaüstü|masaustu/.test(q);
+  const web=/güncel|guncel|araştır|arastir|internette|web|site|haber|kaynak|hava/.test(q);
+  const memory=/hafıza|hafiza|hatırla|hatirla|unut|geçmiş|gecmis|dün|dun|bugün|bugun|geçen hafta|gecen hafta/.test(q);
+
+  if(unity) add([
+    "desktop_find_unity_projects","desktop_create_unity_project","desktop_unity_project_tree",
+    "desktop_unity_read_file","desktop_unity_write_file","desktop_unity_create_directory",
+    "desktop_unity_autopilot","desktop_unity_create_script","desktop_unity_open_project",
+    "desktop_unity_build","desktop_unity_run_editor"
+  ]);
+  if(files) add([
+    "desktop_search_files","desktop_list_directory","desktop_read_text_file","desktop_write_text_file",
+    "desktop_create_directory","desktop_copy_path","desktop_move_path","desktop_delete_path",
+    "desktop_open_path","desktop_run_powershell"
+  ]);
+  if(pc) add([
+    "desktop_scan_environment","desktop_get_environment_profile","desktop_get_usage_report",
+    "desktop_get_hardware_metrics","desktop_get_system_info","desktop_list_drives",
+    "desktop_get_running_apps","desktop_get_background_tasks",
+    "desktop_find_and_launch_app","desktop_close_app","desktop_restart_app","desktop_launch_app"
+  ]);
+  if(web) add(["desktop_web_research","desktop_web_search","desktop_fetch_web_page","desktop_get_weather"]);
+  if(memory) add([
+    "desktop_memory_save","desktop_memory_search","desktop_memory_list","desktop_memory_forget",
+    "desktop_conversation_search","desktop_memory_clear"
+  ]);
+  if(/hatırlat|hatirlat|alarm/.test(q)) add(["desktop_reminder_create","desktop_reminder_list","desktop_reminder_cancel"]);
+  if(/pano|clipboard/.test(q)) add(["desktop_clipboard_read","desktop_clipboard_write"]);
+  if(/ekran görüntüsü|ekran goruntusu|screenshot/.test(q)) add(["desktop_capture_screen"]);
+  if(/bildirim|notification/.test(q)) add(["desktop_notify"]);
+  if(/telefon|phone/.test(q)) add(["desktop_open_external_url"]);
+  if(/openclaw/.test(q)) add(["openclaw_status","openclaw_chat"]);
+
+  if(selected.size===0){
+    add([
+      "desktop_get_system_info","desktop_get_hardware_metrics","desktop_list_drives",
+      "desktop_search_files","desktop_read_text_file","desktop_find_and_launch_app",
+      "desktop_web_search","desktop_memory_search"
+    ]);
+  }
+
+  const compact=[];
+  for(const tool of TOOLS){
+    const fn=tool?.function;
+    if(!fn || !selected.has(fn.name)) continue;
+    const schema=fn.parameters?.properties||{};
+    const keys=Object.keys(schema);
+    compact.push("- "+fn.name+(keys.length?"("+keys.join(",")+")":"()")+" — "+String(fn.description||"").slice(0,120));
+    if(compact.length>=16) break;
+  }
+  return compact.join("\n");
 }
 
 function extractJsonObject(text) {
@@ -780,9 +815,9 @@ function extractManualToolCall(text) {
 }
 
 function assistantToolResultMessage(toolCall, result) {
-  return "AURA ARAÇ SONUCU\nAraç: " + toolCall.name +
-    "\nSonuç:\n" + JSON.stringify(result).slice(0, 7000) +
-    "\n\nŞimdi kullanıcının ilk isteğine göre nihai cevabı ver. Başka bir araç gerçekten gerekiyorsa yalnızca JSON formatında yeni araç çağrısı üret.";
+  return "ARAÇ SONUCU\nAraç: " + toolCall.name +
+    "\nSonuç:\n" + JSON.stringify(result).slice(0, 2600) +
+    "\n\nİlk göreve devam et. Başka bir araç gerekiyorsa yalnızca JSON çağrısı üret.";
 }
 
 export async function askLocalAI(message, history = [], onProgress = () => {}, environment = null, mode = "chat", memory = []) {
@@ -816,7 +851,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
 
   const toolExample = JSON.stringify({tool:"desktop_tool_name", args:{}});
   const toolProtocol = wantsTools
-    ? "\nARAÇ KULLANIMI: OpenAI tools alanı kullanılmıyor. Araç gerekiyorsa yalnızca " + toolExample + " biçiminde tek JSON nesnesi üret. JSON dışında metin yazma. Araç sonucu geldiğinde göreve devam et.\nGELİŞTİRME GÖREVİ: Kullanıcı kod/oyun/Unity istediğinde araçları gerçekten kullan; sadece kodu sohbet mesajında bırakma. Önce proje/dosya yapısını kontrol et, sonra gerekli dosyaları oluştur/değiştir, gerekiyorsa Unity Editor veya derleme komutunu çalıştır ve sonucu doğrula. Unity görevinde mümkünse desktop_unity_autopilot kullan; bu araçla birden fazla dosyayı tek planla uygula ve Editor otomasyonunu çalıştır. Oyun/Unity görevi arka plan modunda çalışırken düşük kaynak tüketimli Coder modeli kullan ve Unity Editor/build süreçlerini düşük öncelikli arka plan işlemleri olarak yürüt. Araç sonucu hata verirse hatayı analiz edip düzeltme planını yeni araç çağrısıyla uygula. Görevi bitmiş saymadan önce dosyaların ve build çıktısının gerçekten oluştuğunu doğrula.\nKULLANILABİLEN ARAÇLAR:\n" + toolDirectoryPrompt()
+    ? "\nARAÇ PROTOKOLÜ: Gerektiğinde yalnızca tek JSON nesnesi üret: " + JSON.stringify({tool:"desktop_tool_name",args:{}}) + ". JSON dışında metin yazma. Araç sonucu gelince göreve devam et.\nKULLANILABİLEN ARAÇLAR:\n" + toolDirectoryPrompt(lowerValue,effectiveMode)
     : "";
 
   const messages = [
@@ -826,7 +861,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         (desktopAvailable() ? "\nMasaüstü ajanı BAĞLI." : "\nMasaüstü ajanı BAĞLI DEĞİL.") +
         toolProtocol
     },
-    ...cleanMessages(codeLikeMode ? history.slice(-4) : history),
+    ...cleanMessages(codeLikeMode ? history.slice(-2) : history),
     { role:"user", content:value }
   ];
 
