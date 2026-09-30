@@ -679,6 +679,63 @@ async function ensureLocalAI(mode = "chat", onProgress = () => {}) {
   return enginePromise;
 }
 
+function compactLongUserRequest(text, maxChars = 9000) {
+  const source = String(text || "").replace(/\\r/g, "").trim();
+  if (source.length <= maxChars) return source;
+
+  // Çok uzun isteklerde bölüm başlıklarını ve her bölümün ana maddelerini koru.
+  // Böylece model 4096 token sınırına takılmazken görevin kapsamını kaybetmez.
+  const lines = source.split("\\n");
+  const sections = [];
+  let current = [];
+
+  const flush = () => {
+    if (current.length) {
+      sections.push(current.join("\\n").trim());
+      current = [];
+    }
+  };
+
+  for (const line of lines) {
+    if (/^#{1,4}\\s+/.test(line.trim()) && current.length) flush();
+    current.push(line);
+  }
+  flush();
+
+  const priority = sections.filter(s =>
+    /İLK PROTOTİP|TEKNİK YAPI|GELİŞTİRME KURALI|OYUN DÖNGÜSÜ|GERÇEKÇİLİK/i.test(s)
+  );
+  const normal = sections.filter(s => !priority.includes(s));
+
+  const result = [];
+  const seen = new Set();
+  const addSection = (section, limit) => {
+    if (!section || seen.has(section)) return;
+    seen.add(section);
+    const lines = section.split("\\n");
+    const head = lines[0] || "";
+    const body = lines.slice(1)
+      .filter(x => x.trim())
+      .slice(0, 7)
+      .join("\\n");
+    const compact = (head + "\\n" + body).slice(0, limit).trim();
+    if (compact) result.push(compact);
+  };
+
+  // Önce kritik teknik bölümler.
+  priority.forEach(s => addSection(s, 1000));
+  normal.forEach(s => addSection(s, 430));
+
+  let output = result.join("\\n\\n");
+  if (output.length > maxChars) output = output.slice(0, maxChars);
+
+  return [
+    "[UZUN İSTEK SIKIŞTIRILDI]",
+    "Aşağıdaki metin kullanıcının uzun isteğinin bölüm başlıklarını ve ana gereksinimlerini koruyan sıkıştırılmış halidir. Eksik ayrıntıları uydurma; mevcut gereksinimlere göre ilerle.",
+    output
+  ].join("\\n\\n");
+}
+
 function cleanMessages(history) {
   return (Array.isArray(history) ? history : [])
     .filter(m => m && (m.role === "user" || m.role === "assistant"))
