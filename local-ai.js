@@ -911,7 +911,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
 
   const wantsTools = desktopAvailable() && (generalToolIntent || developmentIntent);
 
-  const promptValue = compactLongUserRequest(value, 6000);
+  const promptValue = compactLongUserRequest(value, effectiveMode==="background-code" ? 3600 : (codeLikeMode ? 4500 : 6000));
   const toolProtocol = wantsTools
     ? "\nARAÇ PROTOKOLÜ: Gerektiğinde yalnızca tek JSON nesnesi üret: " + JSON.stringify({tool:"desktop_tool_name",args:{}}) + ". JSON dışında metin yazma. Araç sonucu gelince göreve devam et.\nKULLANILABİLEN ARAÇLAR:\n" + toolDirectoryPrompt(lowerValue,effectiveMode)
     : "";
@@ -934,19 +934,19 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         messages,
         temperature:codeLikeMode?0.16:0.45,
         top_p:codeLikeMode?0.82:0.85,
-        max_tokens:effectiveMode==="background-code"?850:(effectiveMode==="code"?950:192),
+        max_tokens:effectiveMode==="background-code"?650:(effectiveMode==="code"?900:192),
         stream:false
       });
       response = await Promise.race([
         responsePromise,
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Yerel AI yanıtı zaman aşımına uğradı. Model henüz hazır olmayabilir; tekrar dene.")), 60000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Yerel AI yanıtı zaman aşımına uğradı. Model henüz hazır olmayabilir; tekrar dene.")), effectiveMode==="background-code" ? 180000 : (codeLikeMode ? 120000 : 90000)))
       ]);
     } catch (error) {
       const msg=String(error?.message||error);
       if (/context window|prompt tokens exceed|maximum context|context length|too many tokens/i.test(msg)) {
         // Son çare: geçmişi, PC bağlamını ve araç listesini kaldırıp isteği daha da küçült.
         // Böylece WebLLM 4096 context modellerinde de cevap üretmeye devam eder.
-        const emergencyPrompt=compactLongUserRequest(value,3600);
+        const emergencyPrompt=compactLongUserRequest(value,2600);
         const emergencyMessages=[
           {role:"system",content:SYSTEM_PROMPT+modePrompt+"\nÇok uzun kullanıcı isteği acil sıkıştırma modunda işlendi. Eksik ayrıntı uydurma; mevcut ana gereksinimlere göre iler."},
           {role:"user",content:emergencyPrompt}
@@ -955,7 +955,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
           messages:emergencyMessages,
           temperature:codeLikeMode?0.14:0.4,
           top_p:0.82,
-          max_tokens:codeLikeMode?650:160,
+          max_tokens:codeLikeMode?500:160,
           stream:false
         });
       } else {
