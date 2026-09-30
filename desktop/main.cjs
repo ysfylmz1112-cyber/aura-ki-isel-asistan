@@ -27,6 +27,96 @@ let phoneState = { version:1, updatedAt:null, items:[] };
 const REMOTE_FILE = path.join(app.getPath('userData'), 'aura-remote.json');
 
 function normalizePath(value) { return path.resolve(String(value || '')); }
+
+const backgroundTasks = new Map();
+
+function appendCapped(current, chunk, maxLength = 24000) {
+  const value = String(current || '') + String(chunk || '');
+  return value.length > maxLength ? value.slice(-maxLength) : value;
+}
+
+function lowerProcessPriority(pid, priority = 'BelowNormal') {
+  if (process.platform !== 'win32' || !Number.isInteger(Number(pid))) return;
+  const id = Number(pid);
+  const safePriority = ['Idle','BelowNormal','Normal'].includes(priority) ? priority : 'BelowNormal';
+  const command = "$p=Get-Process -Id " + id + " -ErrorAction SilentlyContinue; if($p){try{$p.PriorityClass='" + safePriority + "'}catch{}}";
+  execFile('powershell.exe', ['-NoProfile','-NonInteractive','-Command', command], {
+    windowsHide:true,
+    maxBuffer:512*1024
+  }, () => {});
+}
+
+function runBackgroundProcess(executable, args = [], options = {}) {
+  const priority = ['Idle','BelowNormal','Normal'].includes(options.priority) ? options.priority : 'BelowNormal';
+  const taskId = 'bg_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8);
+  const startedAt = new Date().toISOString();
+
+  return new Promise((resolve, reject) => {
+    const child = spawn(executable, Array.isArray(args) ? args.map(x => String(x)) : [], {
+      windowsHide:true,
+      stdio:['ignore','pipe','pipe']
+    });
+
+    const task = {
+      id:taskId,
+      pid:child.pid || null,
+      process:String(path.basename(executable || 'background-process')),
+      priority,
+      startedAt,
+      state:'running'
+    };
+    backgroundTasks.set(taskId, task);
+
+    let stdout = '';
+    let stderr = '';
+
+    child.once('spawn', () => {
+      task.pid = child.pid || null;
+      lowerProcessPriority(child.pid, priority);
+    });
+
+    child.stdout?.on('data', data => { stdout = appendCapped(stdout, data); });
+    child.stderr?.on('data', data => { stderr = appendCapped(stderr, data); });
+
+    child.once('error', error => {
+      task.state='failed';
+      task.error=String(error?.message || error);
+      backgroundTasks.delete(taskId);
+      reject(Object.assign(error, { auraResult: { ok:false, taskId, pid:task.pid, process:task.process, priority, stdout, stderr } }));
+    });
+
+    child.once('close', code => {
+      const exitCode = Number.isFinite(Number(code)) ? Number(code) : 0;
+      const result = {
+        ok:exitCode===0,
+        taskId,
+        pid:task.pid,
+        process:task.process,
+        priority,
+        startedAt,
+        finishedAt:new Date().toISOString(),
+        exitCode,
+        stdout,
+        stderr
+      };
+      backgroundTasks.delete(taskId);
+      if (exitCode !== 0) {
+        task.state='failed';
+        reject(Object.assign(new Error(stderr || stdout || (task.process + ' arka plan işlemi ' + exitCode + ' koduyla sonlandı.')), { auraResult:result }));
+        return;
+      }
+      resolve(result);
+    });
+  });
+}
+
+function getBackgroundTaskStatus() {
+  return {
+    active:true,
+    count:backgroundTasks.size,
+    tasks:[...backgroundTasks.values()].map(x=>({...x}))
+  };
+}
 function allowedRoots() {
   const home = os.homedir();
   return [
@@ -1840,13 +1930,7 @@ async function unityRunEditorMethod(projectPath,method,args=[]){
   if(!ok)throw new Error('Kullanıcı işlemi iptal etti.');
   const cli=['-batchmode','-quit','-projectPath',root,'-executeMethod',name];
   for(const arg of safeArgs)cli.push('-auraArg',arg);
-  return await new Promise((resolve,reject)=>{
-    execFile(editor,cli,{windowsHide:false,maxBuffer:12*1024*1024},(error,stdout,stderr)=>{
-      const result={ok:!error,exitCode:error?.code??0,stdout:String(stdout||'').slice(-20000),stderr:String(stderr||'').slice(-12000),method:name,projectPath:root};
-      if(error) return reject(Object.assign(new Error(String(stderr||stdout||error.message)),{auraResult:result}));
-      resolve(result);
-    });
-  });
+  return await runBackgroundProcess(editor,cli,{priority:'BelowNormal'});
 }
 
 async function createUnityProject(projectPath,projectName='AURA Game'){
@@ -1854,7 +1938,7 @@ async function createUnityProject(projectPath,projectName='AURA Game'){
   const ok=await confirmAction('AURA — Unity projesi oluşturma izni','AURA şu klasörde yeni bir Unity projesi oluşturacak:\n\n'+root+'\n\nDevam edilsin mi?'); if(!ok)throw new Error('Kullanıcı işlemi iptal etti.');
   const editor=findUnityEditorExecutable(); if(!editor)throw new Error('Unity Editor bulunamadı. UNITY_EDITOR ortam değişkeniyle Unity.exe yolunu gösterebilirsin.');
   await fsp.mkdir(root,{recursive:true});
-  await new Promise((resolve,reject)=>execFile(editor,['-quit','-batchmode','-createProject',root],{windowsHide:false,maxBuffer:4*1024*1024},(e,so,se)=>e?reject(new Error(String(se||so||e.message))):resolve()));
+  await runBackgroundProcess(editor,['-quit','-batchmode','-createProject',root],{priority:'BelowNormal'});
   return {ok:true,path:root,projectName,unityEditor:editor,message:'Unity projesi oluşturuldu.'};
 }
 
@@ -1918,8 +2002,8 @@ async function buildUnityProject(projectPath,target='StandaloneWindows64'){
   const bootstrap=path.join(root,'Assets','Scripts','AURABuild.cs');
   const source=['using UnityEditor;','public static class AURABuild {',' public static void Build(){','  BuildPipeline.BuildPlayer(EditorBuildSettings.scenes, "'+buildFile.replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'", BuildTarget.StandaloneWindows64, BuildOptions.None);',' }','}'].join('\n');
   await writeTextFile(bootstrap,source);
-  const result=await new Promise((resolve,reject)=>execFile(editor,['-batchmode','-quit','-projectPath',root,'-executeMethod','AURABuild.Build','-logFile','-'],{windowsHide:false,maxBuffer:8*1024*1024},(e,so,se)=>e?reject(new Error(String(se||so||e.message))):resolve({stdout:String(so||''),stderr:String(se||'')})));
-  return {ok:true,project:root,target,buildFile,log:String(result.stdout||'').slice(-10000)};
+  const result=await runBackgroundProcess(editor,['-batchmode','-quit','-projectPath',root,'-executeMethod','AURABuild.Build','-logFile','-'],{priority:'BelowNormal'});
+  return {ok:true,project:root,target,buildFile,taskId:result.taskId,priority:result.priority,exitCode:result.exitCode,log:appendCapped(result.stdout||'',result.stderr||'',16000)};
 }
 async function handleTool(tool,args) {
   switch(tool) {
@@ -1974,6 +2058,7 @@ async function handleTool(tool,args) {
     case 'desktop_scan_environment': return scanEnvironment({mode:args?.mode==='deep'?'deep':'quick',force:Boolean(args?.force)});
     case 'desktop_cancel_scan': return cancelEnvironmentScan();
     case 'desktop_get_scan_status': return getScanStatus();
+    case 'desktop_get_background_tasks': return getBackgroundTaskStatus();
     case 'desktop_get_environment_profile': return getEnvironmentProfile();
     case 'desktop_get_running_apps': return getRunningApps();
     case 'desktop_get_usage_report': return getUsageReport();
@@ -2311,7 +2396,9 @@ app.whenReady().then(async()=>{
       'code-mode',
       'phone-remote-control',
       'qr-phone-pairing',
-      'openclaw-gateway'
+      'openclaw-gateway',
+      'background-game-builds',
+      'background-unity-automation'
     ]
   }));
 
