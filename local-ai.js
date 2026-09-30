@@ -62,6 +62,14 @@ const TOOLS = [
   {
     type: "function",
     function: {
+      name: "desktop_get_background_tasks",
+      description: "AURA'nın arka planda çalışan oyun/Unity işlemlerini ve düşük öncelikli görevlerini listeler.",
+      parameters: {type:"object",properties:{},additionalProperties:false}
+    }
+  },
+  {
+    type: "function",
+    function: {
       name: "desktop_get_environment_profile",
       description: "AURA'nın bilgisayar profilini getirir: tanınan uygulamalar, oyunlar, masaüstü ve izinli klasörlerin yapısı.",
       parameters: { type:"object", properties:{}, additionalProperties:false }
@@ -601,7 +609,12 @@ async function createEngine(modelId, config, onProgress) {
   return result;
 }
 
+function isCodeMode(mode){
+  return mode === "code" || mode === "background-code";
+}
+
 function desiredModel(mode){
+  if (mode === "background-code") return CODE_FALLBACK_MODEL_ID;
   return mode === "code" ? CODE_MODEL_ID : CHAT_MODEL_ID;
 }
 
@@ -777,8 +790,10 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   if (!value) throw new Error("Mesaj boş.");
 
   const lowerValue = value.toLocaleLowerCase("tr-TR");
-  const developmentIntent = mode === "code" || /unity|oyun yap|oyun geliştir|oyun gelistir|proje oluştur|proje olustur|dosya oluştur|dosya olustur|dosya yaz|kod yaz|kodu düzelt|kodu duzelt|hata düzelt|hata duzelt|build al|derle|compile|script oluştur|script olustur|sahne oluştur|sahne olustur|component oluştur|component olustur|prefab oluştur|prefab olustur/.test(lowerValue);
-  const effectiveMode = developmentIntent ? "code" : mode;
+  const gameDevelopmentIntent = /unity|oyun yap|oyun yapalım|oyun yapalim|oyun geliştir|oyun gelistir|oyun oluştur|oyun olustur|oyun yapmaya|game dev|game development|oyun projesi|oyun projesi oluştur|oyun projesi olustur/.test(lowerValue);
+  const developmentIntent = mode === "code" || gameDevelopmentIntent || /proje oluştur|proje olustur|dosya oluştur|dosya olustur|dosya yaz|kod yaz|kodu düzelt|kodu duzelt|hata düzelt|hata duzelt|build al|derle|compile|script oluştur|script olustur|sahne oluştur|sahne olustur|component oluştur|component olustur|prefab oluştur|prefab olustur/.test(lowerValue);
+  const effectiveMode = gameDevelopmentIntent ? "background-code" : (developmentIntent ? "code" : mode);
+  const codeLikeMode = isCodeMode(effectiveMode);
   const localEngine = await ensureLocalAI(effectiveMode,onProgress);
   const memoryItems = compactMemory(memory);
   const memoryContext = memoryItems.length
@@ -787,9 +802,11 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
 
   const generalToolIntent = /openclaw|güncel|guncel|araştır|arastir|internette|web|site|dosya|klasör|klasor|uygulama|oyun|bilgisayar|masaüstü|masaustu|sistem|kullanım|kullanim|hatırla|hatirla|unut|geçen hafta|gecen hafta|dün|dun|bugün|bugun|konuşma geçmişi|konusma gecmisi|pano|clipboard|ekran görüntüsü|ekran goruntusu|screenshot|bildirim|notification|unity|cpu|ram|gpu|disk|performans|donanım|donanim|hava|sıcaklık|sicaklik|derece|pil|batarya/.test(lowerValue);
 
-  const modePrompt = effectiveMode === "code"
-    ? "\nKOD MODU AKTİF: Doğrudan çalışan kod üret. İstenen dili kullan. Gerekli importları ve dosya yapısını unutma."
-    : "\nSOHBET MODU AKTİF: Net, mantıklı ve doğal cevap ver.";
+  const modePrompt = effectiveMode === "background-code"
+    ? "\nOYUN GELİŞTİRME ARKA PLAN MODU: Bu görev kaynak tüketimini düşük tutan Coder modeliyle yürütülüyor. Gerçek dosyaları oluştur/değiştir ve Unity işlemlerini arka planda çalıştır. Kullanıcı bilgisayarını normal şekilde kullanmaya devam edebilmeli."
+    : effectiveMode === "code"
+      ? "\nKOD MODU AKTİF: Doğrudan çalışan kod üret. İstenen dili kullan. Gerekli importları ve dosya yapısını unutma."
+      : "\nSOHBET MODU AKTİF: Net, mantıklı ve doğal cevap ver.";
 
   const pcContext = desktopAvailable() && environment
     ? "\nPC BAĞLAM ÖZETİ:\n" + compactEnvironment(environment)
@@ -799,7 +816,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
 
   const toolExample = JSON.stringify({tool:"desktop_tool_name", args:{}});
   const toolProtocol = wantsTools
-    ? "\nARAÇ KULLANIMI: OpenAI tools alanı kullanılmıyor. Araç gerekiyorsa yalnızca " + toolExample + " biçiminde tek JSON nesnesi üret. JSON dışında metin yazma. Araç sonucu geldiğinde göreve devam et.\nGELİŞTİRME GÖREVİ: Kullanıcı kod/oyun/Unity istediğinde araçları gerçekten kullan; sadece kodu sohbet mesajında bırakma. Önce proje/dosya yapısını kontrol et, sonra gerekli dosyaları oluştur/değiştir, gerekiyorsa Unity Editor veya derleme komutunu çalıştır ve sonucu doğrula. Unity görevinde mümkünse desktop_unity_autopilot kullan; bu araçla birden fazla dosyayı tek planla uygula ve Editor otomasyonunu çalıştır. Araç sonucu hata verirse hatayı analiz edip düzeltme planını yeni araç çağrısıyla uygula. Görevi bitmiş saymadan önce dosyaların ve build çıktısının gerçekten oluştuğunu doğrula.\nKULLANILABİLEN ARAÇLAR:\n" + toolDirectoryPrompt()
+    ? "\nARAÇ KULLANIMI: OpenAI tools alanı kullanılmıyor. Araç gerekiyorsa yalnızca " + toolExample + " biçiminde tek JSON nesnesi üret. JSON dışında metin yazma. Araç sonucu geldiğinde göreve devam et.\nGELİŞTİRME GÖREVİ: Kullanıcı kod/oyun/Unity istediğinde araçları gerçekten kullan; sadece kodu sohbet mesajında bırakma. Önce proje/dosya yapısını kontrol et, sonra gerekli dosyaları oluştur/değiştir, gerekiyorsa Unity Editor veya derleme komutunu çalıştır ve sonucu doğrula. Unity görevinde mümkünse desktop_unity_autopilot kullan; bu araçla birden fazla dosyayı tek planla uygula ve Editor otomasyonunu çalıştır. Oyun/Unity görevi arka plan modunda çalışırken düşük kaynak tüketimli Coder modeli kullan ve Unity Editor/build süreçlerini düşük öncelikli arka plan işlemleri olarak yürüt. Araç sonucu hata verirse hatayı analiz edip düzeltme planını yeni araç çağrısıyla uygula. Görevi bitmiş saymadan önce dosyaların ve build çıktısının gerçekten oluştuğunu doğrula.\nKULLANILABİLEN ARAÇLAR:\n" + toolDirectoryPrompt()
     : "";
 
   const messages = [
@@ -809,16 +826,16 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         (desktopAvailable() ? "\nMasaüstü ajanı BAĞLI." : "\nMasaüstü ajanı BAĞLI DEĞİL.") +
         toolProtocol
     },
-    ...cleanMessages(effectiveMode === "code" ? history.slice(-4) : history),
+    ...cleanMessages(codeLikeMode ? history.slice(-4) : history),
     { role:"user", content:value }
   ];
 
   for(let round=0; round<5; round++){
     const responsePromise = localEngine.chat.completions.create({
       messages,
-      temperature:effectiveMode==="code"?0.16:0.45,
-      top_p:effectiveMode==="code"?0.82:0.85,
-      max_tokens:effectiveMode==="code"?1400:192,
+      temperature:codeLikeMode?0.16:0.45,
+      top_p:codeLikeMode?0.82:0.85,
+      max_tokens:effectiveMode==="background-code"?1150:(effectiveMode==="code"?1400:192),
       stream:false
     });
     const response = await Promise.race([
