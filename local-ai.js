@@ -297,8 +297,7 @@ const TOOLS = [
       name: "desktop_create_directory",
       description: "İzinli bir klasör oluşturur. Kullanıcı onayı gösterilir.",
       parameters: {
-        type:"object",        properties:{ path:{type:"string"} },        required:["path"],
-        additionalProperties:false
+        type:"object",        properties:{ path:{type:"string"} },        required:["path"],        additionalProperties:false
       }
     }
   },
@@ -597,8 +596,7 @@ async function ensureLocalAI(mode = "chat", onProgress = () => {}) {
 
   enginePromise = (async()=>{
     try {      if (engine) {        onProgress({percent:0,text:"AURA model değiştiriyor: "+target});
-        await engine.reload(target);
-        activeModel=target;
+        await engine.reload(target);        activeModel=target;
       } else {
         await createEngine(target,config,onProgress);
       }
@@ -748,7 +746,9 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     ? "\nKALICI HAFIZA:\n" + JSON.stringify(memoryItems)
     : "\nKALICI HAFIZA: boş.";
 
-  const modePrompt = mode === "code"
+  const generalToolIntent = /openclaw|güncel|guncel|araştır|arastir|internette|web|site|dosya|klasör|klasor|uygulama|oyun|bilgisayar|masaüstü|masaustu|sistem|kullanım|kullanim|hatırla|hatirla|unut|geçen hafta|gecen hafta|dün|dun|bugün|bugun|konuşma geçmişi|konusma gecmisi|pano|clipboard|ekran görüntüsü|ekran goruntusu|screenshot|bildirim|notification|unity|cpu|ram|gpu|disk|performans|donanım|donanim|hava|sıcaklık|sicaklik|derece|pil|batarya/.test(lowerValue);
+
+  const modePrompt = effectiveMode === "code"
     ? "\nKOD MODU AKTİF: Doğrudan çalışan kod üret. İstenen dili kullan. Gerekli importları ve dosya yapısını unutma."
     : "\nSOHBET MODU AKTİF: Net, mantıklı ve doğal cevap ver.";
 
@@ -756,7 +756,6 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     ? "\nPC BAĞLAM ÖZETİ:\n" + compactEnvironment(environment)
     : "";
 
-  /openclaw|güncel|guncel|araştır|arastir|internette|web|site|dosya|klasör|klasor|uygulama|oyun|bilgisayar|masaüstü|masaustu|sistem|kullanım|kullanim|hatırla|hatirla|unut|geçen hafta|gecen hafta|dün|dun|bugün|bugun|konuşma geçmişi|konusma gecmisi|pano|clipboard|ekran görüntüsü|ekran goruntusu|screenshot|bildirim|notification|unity|cpu|ram|gpu|disk|performans|donanım|donanim|hava|sıcaklık|sicaklik|derece|pil|batarya/.test(lowerValue);
   const wantsTools = desktopAvailable() && (generalToolIntent || developmentIntent);
 
   const toolExample = JSON.stringify({tool:"desktop_tool_name", args:{}});
