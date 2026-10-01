@@ -344,8 +344,8 @@ async function cancelRoutine(query){
   return {ok:true,removed:1,routine:target};
 }
 
-function dailyBriefing(){
-  const h=hardwareMetricsCache?.data||null;
+async function dailyBriefing(){
+  const h=await getHardwareMetrics();
   const reminders=listReminders().items.filter(x=>x.status==='active').slice(0,5);
   const routines=listRoutines().items.filter(x=>x.status==='active').slice(0,5);
   return {
