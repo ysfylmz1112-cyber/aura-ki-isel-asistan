@@ -2182,6 +2182,30 @@ async function buildUnityProject(projectPath,target='StandaloneWindows64'){
   const result=await runBackgroundProcess(editor,['-batchmode','-quit','-projectPath',root,'-executeMethod','AURABuild.Build','-logFile','-'],{priority:'BelowNormal'});
   return {ok:true,project:root,target,buildFile,taskId:result.taskId,priority:result.priority,exitCode:result.exitCode,log:appendCapped(result.stdout||'',result.stderr||'',16000)};
 }
+async function getAuraSystemHealth(){
+  const results=await Promise.allSettled([getHardwareMetrics(),getUsageReport(),getEnvironmentProfile(),getBackgroundTaskStatus(),Promise.resolve(listMemory()),Promise.resolve(listReminders()),Promise.resolve(listRoutines()),Promise.resolve(getRemoteControlInfo())]);
+  const v=(i,f)=>results[i]?.status==='fulfilled'?results[i].value:f;
+  const hw=v(0,{}), usage=v(1,{}), profile=v(2,{}), background=v(3,{}), memory=v(4,{items:[]}), reminders=v(5,{items:[]}), routines=v(6,{items:[]}), remote=v(7,{enabled:false});
+  const warnings=[]; const cpu=Number(hw?.cpu?.usage), ram=Number(hw?.memory?.usedPercent), disk=Number(hw?.disks?.[0]?.usedPercent), temp=Number(hw?.gpu?.temperatureC);
+  if(Number.isFinite(cpu)&&cpu>=90) warnings.push('CPU kullanımı çok yüksek.');
+  if(Number.isFinite(ram)&&ram>=90) warnings.push('RAM kullanımı çok yüksek.');
+  if(Number.isFinite(disk)&&disk>=90) warnings.push('Ana disk doluluk oranı çok yüksek.');
+  if(Number.isFinite(temp)&&temp>=85) warnings.push('GPU sıcaklığı yüksek.');
+  return {ok:true,version:'6.0.0',user:os.userInfo().username,hardware:hw,usage,profileSummary:{apps:Number(profile?.applicationSummary?.userApps||0),games:Array.isArray(profile?.games)?profile.games.length:0,processes:Number(profile?.runningProcesses?.count||0)},background,memory:{count:Array.isArray(memory?.items)?memory.items.length:0},reminders:{count:Array.isArray(reminders?.items)?reminders.items.length:0},routines:{count:Array.isArray(routines?.items)?routines.items.length:0},remote,warnings};
+}
+
+async function getAuraAppCatalog(){
+  const profile=await getEnvironmentProfile();
+  const apps=Array.isArray(profile?.apps)?profile.apps:[]; const games=Array.isArray(profile?.games)?profile.games:[];
+  return {ok:true,apps:apps.slice(0,250),games:games.slice(0,250),counts:{apps:apps.length,games:games.length}};
+}
+
+function getAuraMemoryStats(){
+  const items=Array.isArray(memoryState?.items)?memoryState.items:[]; const tags={};
+  for(const item of items) for(const tag of (Array.isArray(item.tags)?item.tags:[])) tags[tag]=(tags[tag]||0)+1;
+  const newest=[...items].sort((a,b)=>String(b.updatedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.createdAt||'')))[0]||null;
+  return {ok:true,count:items.length,tags,newest};
+}
 async function handleTool(tool,args) {
   switch(tool) {
     case 'openclaw_status': return openclaw.status();
@@ -2192,6 +2216,9 @@ async function handleTool(tool,args) {
     })();
     case 'openclaw_chat': return openclaw.chat(args?.input||'',args||{});
     case 'desktop_get_hardware_metrics': return getHardwareMetrics();
+    case 'desktop_get_system_health': return getAuraSystemHealth();
+    case 'desktop_get_app_catalog': return getAuraAppCatalog();
+    case 'desktop_get_memory_stats': return getAuraMemoryStats();
     case 'desktop_reminder_create': return createReminder(args||{});
     case 'desktop_reminder_list': return listReminders();
     case 'desktop_reminder_cancel': return cancelReminder(args?.query);
@@ -2562,7 +2589,7 @@ app.whenReady().then(async()=>{
 
   ipcMain.handle('aura:desktop-info',async()=>({
     connected:true,
-    version:'5.4.0',
+    version:'6.0.0',
     mode:'secure-local-agent-pc-aware-core',
     roots:allowedRoots(),
     features:[
