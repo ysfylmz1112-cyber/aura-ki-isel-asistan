@@ -1580,16 +1580,22 @@ async function findUnityProjects(maxResults=20){
     path.join(os.homedir(),'Downloads'),
     ...extraRoots
   ].map(normalizePath);
+  const limit=Math.max(1,Math.min(50,Number(maxResults)||20));
   const found=[];
   const seen=new Set();
-  const skip=new Set(['node_modules','.git','Library','Temp','Logs','obj','bin','.vs','.idea']);
+  const skip=new Set(['Library','Temp','Logs','obj','bin','Builds','UserSettings','node_modules','.git','.vs','.idea','PackagesCache']);
+
   async function walk(dir,depth){
-    if(depth>6 || found.length>=maxResults) return;
+    if(depth>5 || found.length>=limit) return;
     let entries=[];
     try{ entries=await fsp.readdir(dir,{withFileTypes:true}); }catch{return;}
-    const hasAssets=entries.some(e=>e.isDirectory()&&e.name==='Assets');
-    const hasProjectSettings=entries.some(e=>e.isDirectory()&&e.name==='ProjectSettings');
-    if(hasAssets&&hasProjectSettings){
+    let hasAssets=false,hasSettings=false;
+    for(const e of entries){
+      if(!e.isDirectory()) continue;
+      if(e.name==='Assets') hasAssets=true;
+      else if(e.name==='ProjectSettings') hasSettings=true;
+    }
+    if(hasAssets&&hasSettings){
       const key=dir.toLowerCase();
       if(!seen.has(key)){
         seen.add(key);
@@ -1597,16 +1603,48 @@ async function findUnityProjects(maxResults=20){
       }
       return;
     }
-    for(const e of entries.filter(e=>e.isDirectory()&&!skip.has(e.name)&&!e.name.startsWith('.')).slice(0,120)){
-      if(found.length>=maxResults) break;
+    const dirs=entries
+      .filter(e=>e.isDirectory()&&!skip.has(e.name)&&!e.name.startsWith('.'))
+      .slice(0,80);
+    for(const e of dirs){
+      if(found.length>=limit) break;
       await walk(path.join(dir,e.name),depth+1);
     }
   }
-  for(const root of roots){
-    if(found.length>=maxResults) break;
-    await walk(root,0);
-  }
-  return {count:found.length,items:found.slice(0,maxResults)};
+
+  await Promise.all(roots.map(root=>walk(root,0)));
+  return {count:found.length,items:found.slice(0,limit)};
+}
+
+async function unityHealthCheck(projectPath){
+  const editor=findUnityEditorExecutable() || findUnityEditor();
+  const root=normalizePath(projectPath||'');
+  const result={
+    ok:false,
+    unityEditor:editor||null,
+    unityEditorExists:Boolean(editor&&fs.existsSync(editor)),
+    projectPath:root||null,
+    projectExists:Boolean(root&&fs.existsSync(root)),
+    isUnityProject:false,
+    assets:false,
+    projectSettings:false,
+    packages:false,
+    scripts:0,
+    scenes:0
+  };
+  if(!root) return result;
+  result.assets=fs.existsSync(path.join(root,'Assets'));
+  result.projectSettings=fs.existsSync(path.join(root,'ProjectSettings'));
+  result.packages=fs.existsSync(path.join(root,'Packages'));
+  result.isUnityProject=result.assets&&result.projectSettings;
+  if(!result.isUnityProject) return result;
+  try{
+    const tree=await unityProjectTree(root,5,1800);
+    result.scripts=tree.items.filter(x=>x.type==='file'&&/\\.cs$/i.test(x.path)).length;
+    result.scenes=tree.items.filter(x=>x.type==='file'&&/\\.unity$/i.test(x.path)).length;
+  }catch{}
+  result.ok=result.unityEditorExists&&result.isUnityProject;
+  return result;
 }
 
 const WEATHER_CACHE_TTL=10*60*1000;
@@ -2033,6 +2071,7 @@ async function handleTool(tool,args) {
     case 'desktop_open_camera': return openCamera();
     case 'desktop_open_windows_utility': return openWindowsUtility(args.kind);
     case 'desktop_find_unity_projects': return findUnityProjects(args.maxResults||20);
+    case 'desktop_unity_health_check': return unityHealthCheck(args.projectPath||'');
     case 'desktop_get_system_info': return await systemInfo();
     case 'desktop_list_directory': return listDirectory(normalizePath(args.path));
     case 'desktop_read_text_file': return {path:normalizePath(args.path),content:await readTextFile(normalizePath(args.path))};
