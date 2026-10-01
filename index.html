@@ -1089,6 +1089,9 @@ function safeDriveListRequest(q){
     /^(hangi|neler|ne) (sürücüler|suruculer|diskler)( var| bulunuyor)?$/.test(x) ||
     /^(sürücü|surucu) (listesi|listele|liste)$/.test(x);
 }
+function isDriveListRequest(q){
+  return safeDriveListRequest(q);
+}
 function isCameraRequest(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
   return /^(kamera|kamerayı aç|kamerayi ac|kamera aç|kamera ac|webcam|webcamı aç|webcami ac|cam aç|cam ac)$/.test(x);
@@ -1510,7 +1513,13 @@ async function run(q) {
   setCoreState("thinking");
 
   try {
+    const diagnosticsDirect=isDiagnosticsRequest(q);
     const quick = quickLocalAnswer(q);
+    if (diagnosticsDirect) {
+      const answer=await handleDirectCommand(q);
+      if(myGeneration===runGeneration) finish(q,answer||"AURA teşhisi tamamlanamadı.",false);
+      return;
+    }
     const modeCommand=/^(kod modu|kod modunu aç|kod modunu ac|sohbet modu|sohbet moduna dön|sohbet moduna don)$/i.test(q);
     if(modeCommand){
       mode=q.toLocaleLowerCase("tr-TR").includes("sohbet")?"chat":"code";
