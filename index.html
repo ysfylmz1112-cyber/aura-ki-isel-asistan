@@ -1047,8 +1047,8 @@ function isDiagnosticsRequest(q){
     .replace(/[?.!,;:]+/g,' ')
     .replace(/\\s+/g,' ')
     .trim();
-  return /^(aura\\s+)?(kendini\\s+(test\\s+et|kontrol\\s+et)|çekirdeği\\s+test\\s+et|cekirdegi\\s+test\\s+et|sistem\\s+(teşhis|teshis)|diagnostics|self\\s+test)$/.test(x) ||
-    /^(aura\\s+)?kendini\\s+(test|kontrol)$/.test(x);
+  return /^(aura\s+)?(kendini\s+(test\s+et|kontrol\s+et)|çekirdeği\\s+test\s+et|cekirdegi\\s+test\s+et|sistem\s+(teşhis|teshis)|diagnostics|self\s+test)$/.test(x) ||
+    /^(aura\s+)?kendini\s+(test|kontrol)$/.test(x);
 }
 function isHealthRequest(q){
   const x=String(q||'').toLocaleLowerCase('tr-TR').trim();
