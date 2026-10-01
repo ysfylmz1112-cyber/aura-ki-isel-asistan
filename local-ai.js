@@ -37,7 +37,7 @@ const SYSTEM_PROMPT = [
   "Bilmediğin bilgiyi uydurma. Güncel bilgi gerekiyorsa web araştırma araçlarını kullan.",
   "PC, dosya, uygulama ve sistem işlemlerinde masaüstü ajanının güvenlik ve onay kurallarına uy; bunları aşma.",
   "Kalıcı hafızaya yalnızca kullanıcı açıkça hatırlamamı istediğinde yaz. Geçmiş konuşma sorularında konuşma geçmişini ara.",
-  "Unity görevlerinde önce mevcut projeyi incele; gerçek dosyaları oluştur/değiştir, mevcut yapıyı rastgele silme ve sonucu doğrula.",
+  "Unity görevlerinde önce mevcut projeyi ve Unity Editor kurulumunu incele; gerçek dosyaları oluştur/değiştir, mevcut yapıyı rastgele silme ve sonucu doğrula. Unity için mümkün olduğunca desktop_unity_autopilot ve desktop_unity_health_check araçlarını kullan.",
   "Unity/oyun geliştirme isteğinde yalnızca mevcut kullanıcı mesajının görevine odaklan. Sohbet geçmişindeki başka bir konuya atlama.",
   "Kullanıcı mevcut mesajında açıkça hava durumu istemedikçe desktop_get_weather aracını ASLA kullanma. Unity oyunundaki hava, yağmur, sis, zaman veya iklim sistemi gerçek İstanbul hava durumu değildir.",
   "Unity/oyun geliştirme görevinde web/hava araçlarını kullanma; önce Unity proje yapısını bul ve ilgili gerçek dosyaları incele.",
@@ -576,6 +576,7 @@ const TOOLS = [
   {type:"function",function:{name:"desktop_unity_open_project",description:"Unity projesini Editor ile açar.",parameters:{type:"object",properties:{projectPath:{type:"string"}},required:["projectPath"],additionalProperties:false}}},
   {type:"function",function:{name:"desktop_unity_build",description:"Unity projesinden Windows build alır.",parameters:{type:"object",properties:{projectPath:{type:"string"},target:{type:"string"}},required:["projectPath"],additionalProperties:false}}},
   {type:"function",function:{name:"desktop_unity_project_tree",description:"Unity projesinin dosya ve klasör yapısını listeler; Library/Temp gibi üretilen klasörleri atlar.",parameters:{type:"object",properties:{projectPath:{type:"string"},maxDepth:{type:"number"},maxEntries:{type:"number"}},required:["projectPath"],additionalProperties:false}}},
+  {type:"function",function:{name:"desktop_unity_health_check",description:"Unity Editor kurulumunu ve verilen Unity projesinin Assets/ProjectSettings/Packages yapısını hızlıca doğrular; script ve sahne sayılarını döndürür.",parameters:{type:"object",properties:{projectPath:{type:"string"}},required:["projectPath"],additionalProperties:false}}},
   {type:"function",function:{name:"desktop_unity_read_file",description:"Unity projesindeki metin tabanlı dosyaları okur.",parameters:{type:"object",properties:{projectPath:{type:"string"},relativePath:{type:"string"}},required:["projectPath","relativePath"],additionalProperties:false}}},
   {type:"function",function:{name:"desktop_unity_write_file",description:"Unity projesindeki metin tabanlı dosyayı oluşturur veya değiştirir; kullanıcı onayı gerekir.",parameters:{type:"object",properties:{projectPath:{type:"string"},relativePath:{type:"string"},content:{type:"string"}},required:["projectPath","relativePath","content"],additionalProperties:false}}},
   {type:"function",function:{name:"desktop_unity_create_directory",description:"Unity projesi içinde klasör oluşturur; kullanıcı onayı gerekir.",parameters:{type:"object",properties:{projectPath:{type:"string"},relativePath:{type:"string"}},required:["projectPath","relativePath"],additionalProperties:false}}},
@@ -800,7 +801,7 @@ function toolDirectoryPrompt(query = "", mode = "chat") {
   const memory=/hafıza|hafiza|hatırla|hatirla|unut|geçmiş|gecmis|dün|dun|bugün|bugun|geçen hafta|gecen hafta/.test(q);
 
   if(unity) add([
-    "desktop_find_unity_projects","desktop_create_unity_project","desktop_unity_project_tree",
+    "desktop_find_unity_projects","desktop_create_unity_project","desktop_unity_health_check","desktop_unity_project_tree",
     "desktop_unity_read_file","desktop_unity_write_file","desktop_unity_create_directory",
     "desktop_unity_autopilot","desktop_unity_create_script","desktop_unity_open_project",
     "desktop_unity_build","desktop_unity_run_editor"
