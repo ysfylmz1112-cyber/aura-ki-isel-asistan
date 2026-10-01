@@ -2182,6 +2182,45 @@ async function buildUnityProject(projectPath,target='StandaloneWindows64'){
   const result=await runBackgroundProcess(editor,['-batchmode','-quit','-projectPath',root,'-executeMethod','AURABuild.Build','-logFile','-'],{priority:'BelowNormal'});
   return {ok:true,project:root,target,buildFile,taskId:result.taskId,priority:result.priority,exitCode:result.exitCode,log:appendCapped(result.stdout||'',result.stderr||'',16000)};
 }
+async function getAuraSelfDiagnostics(){
+  const checks=[];
+  const add=(name,ok,detail)=>checks.push({name,ok:Boolean(ok),detail:String(detail||'')});
+  try{
+    const root=path.resolve(__dirname,'..');
+    const renderer=path.join(__dirname,'renderer');
+    const indexPath=app.isPackaged?path.join(renderer,'index.html'):path.join(root,'index.html');
+    const aiPath=app.isPackaged?path.join(renderer,'local-ai.js'):path.join(root,'local-ai.js');
+    const [indexExists,aiExists]=await Promise.all([
+      fsp.access(indexPath).then(()=>true).catch(()=>false),
+      fsp.access(aiPath).then(()=>true).catch(()=>false)
+    ]);
+    add('Renderer index.html',indexExists,indexPath);
+    add('Renderer local-ai.js',aiExists,aiPath);
+    if(aiExists){
+      const source=await fsp.readFile(aiPath,'utf8');
+      add('Drive intent',source.includes('function isDriveListRequest'),source.includes('function isDriveListRequest')?'isDriveListRequest mevcut':'isDriveListRequest eksik');
+      add('Hardware tool',source.includes('desktop_get_hardware_metrics'),source.includes('desktop_get_hardware_metrics')?'araç mevcut':'araç eksik');
+      add('Diagnostics tool',source.includes('desktop_self_diagnostics'),source.includes('desktop_self_diagnostics')?'araç mevcut':'araç eksik');
+    }
+    if(indexExists){
+      const source=await fsp.readFile(indexPath,'utf8');
+      add('Safe drive intent',source.includes('function safeDriveListRequest'),source.includes('function safeDriveListRequest')?'safeDriveListRequest mevcut':'safeDriveListRequest eksik');
+      add('Core state',source.includes('setCoreState'),source.includes('setCoreState')?'çekirdek durum sistemi mevcut':'çekirdek durum sistemi eksik');
+    }
+  }catch(error){
+    add('Renderer dosya kontrolü',false,error?.message||error);
+  }
+  try{ const drives=await listDrives(); add('Sürücü aracı',Array.isArray(drives)&&drives.length>0,Array.isArray(drives)?drives.length+' sürücü bulundu':'sonuç alınamadı'); }
+  catch(error){ add('Sürücü aracı',false,error?.message||error); }
+  try{ const hw=await getHardwareMetrics(); add('Donanım aracı',Boolean(hw),hw?.cpu?'CPU verisi hazır':'donanım verisi eksik'); }
+  catch(error){ add('Donanım aracı',false,error?.message||error); }
+  add('Kalıcı hafıza',Array.isArray(memoryState?.items),Array.isArray(memoryState?.items)?memoryState.items.length+' kayıt':'hafıza durumu bozuk');
+  add('Konuşma geçmişi',Array.isArray(conversationState?.items),Array.isArray(conversationState?.items)?conversationState.items.length+' kayıt':'geçmiş durumu bozuk');
+  add('Telefon bağlantısı',Boolean(remoteServerPort),remoteServerPort?'HTTP '+remoteServerPort+' hazır':'remote sunucusu kapalı');
+  const failed=checks.filter(x=>!x.ok);
+  return {ok:failed.length===0,version:'6.1.0',checkedAt:new Date().toISOString(),summary:failed.length?failed.length+' kontrol başarısız.':'Tüm temel AURA kontrolleri başarılı.',checks};
+}
+
 async function getAuraSystemHealth(){
   const results=await Promise.allSettled([getHardwareMetrics(),getUsageReport(),getEnvironmentProfile(),getBackgroundTaskStatus(),Promise.resolve(listMemory()),Promise.resolve(listReminders()),Promise.resolve(listRoutines()),Promise.resolve(getRemoteControlInfo())]);
   const v=(i,f)=>results[i]?.status==='fulfilled'?results[i].value:f;
@@ -2191,7 +2230,7 @@ async function getAuraSystemHealth(){
   if(Number.isFinite(ram)&&ram>=90) warnings.push('RAM kullanımı çok yüksek.');
   if(Number.isFinite(disk)&&disk>=90) warnings.push('Ana disk doluluk oranı çok yüksek.');
   if(Number.isFinite(temp)&&temp>=85) warnings.push('GPU sıcaklığı yüksek.');
-  return {ok:true,version:'6.0.0',user:os.userInfo().username,hardware:hw,usage,profileSummary:{apps:Number(profile?.applicationSummary?.userApps||0),games:Array.isArray(profile?.games)?profile.games.length:0,processes:Number(profile?.runningProcesses?.count||0)},background,memory:{count:Array.isArray(memory?.items)?memory.items.length:0},reminders:{count:Array.isArray(reminders?.items)?reminders.items.length:0},routines:{count:Array.isArray(routines?.items)?routines.items.length:0},remote,warnings};
+  return {ok:true,version:'6.1.0',user:os.userInfo().username,hardware:hw,usage,profileSummary:{apps:Number(profile?.applicationSummary?.userApps||0),games:Array.isArray(profile?.games)?profile.games.length:0,processes:Number(profile?.runningProcesses?.count||0)},background,memory:{count:Array.isArray(memory?.items)?memory.items.length:0},reminders:{count:Array.isArray(reminders?.items)?reminders.items.length:0},routines:{count:Array.isArray(routines?.items)?routines.items.length:0},remote,warnings};
 }
 
 async function getAuraAppCatalog(){
@@ -2215,6 +2254,7 @@ async function handleTool(tool,args) {
       return openclaw.configure(args||{});
     })();
     case 'openclaw_chat': return openclaw.chat(args?.input||'',args||{});
+    case 'desktop_self_diagnostics': return getAuraSelfDiagnostics();
     case 'desktop_get_hardware_metrics': return getHardwareMetrics();
     case 'desktop_get_system_health': return getAuraSystemHealth();
     case 'desktop_get_app_catalog': return getAuraAppCatalog();
