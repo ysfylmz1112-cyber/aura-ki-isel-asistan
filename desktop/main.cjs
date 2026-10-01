@@ -153,11 +153,14 @@ const PROFILE_FILE = path.join(app.getPath('userData'), 'aura-device-profile.jso
 const MEMORY_FILE = path.join(app.getPath('userData'), 'aura-memory.json');
 const CONVERSATION_FILE = path.join(app.getPath('userData'), 'aura-conversations.json');
 const REMINDERS_FILE = path.join(app.getPath('userData'), 'aura-reminders.json');
+const ROUTINES_FILE = path.join(app.getPath('userData'), 'aura-routines.json');
 let usageState = { launches: [], counts: {}, lastLaunch: null };
 let memoryState = { version:1, items:[] };
 let conversationState = { version:1, items:[] };
 let reminderState = { version:1, items:[] };
+let routineState = { version:1, items:[] };
 const reminderTimers = new Map();
+const routineTimers = new Map();
 let memoryWritePromise = Promise.resolve();
 let conversationWritePromise = Promise.resolve();
 let hardwareSnapshot = null;
@@ -218,6 +221,142 @@ async function loadReminderState(){
   for(const item of reminderState.items){
     if(item.status==='active') scheduleReminder(item);
   }
+}
+
+async function loadRoutineState(){
+  try{
+    const raw=await fsp.readFile(ROUTINES_FILE,'utf8');
+    const data=JSON.parse(raw);
+    routineState={
+      version:1,
+      items:Array.isArray(data?.items)
+        ? data.items.filter(x=>x&&typeof x.id==='string'&&typeof x.text==='string'&&typeof x.repeat==='string'&&Number.isFinite(Number(x.nextAt))).slice(-200)
+        : []
+    };
+  }catch{
+    routineState={version:1,items:[]};
+  }
+  for(const item of routineState.items){
+    if(item.status==='active') scheduleRoutine(item);
+  }
+}
+
+async function saveRoutineState(){
+  await fsp.mkdir(path.dirname(ROUTINES_FILE),{recursive:true});
+  await fsp.writeFile(ROUTINES_FILE,JSON.stringify(routineState,null,2),'utf8');
+}
+
+function clearRoutineTimer(id){
+  const timer=routineTimers.get(id);
+  if(timer){clearTimeout(timer);routineTimers.delete(id);}
+}
+
+function nextRoutineTime(item, from=Date.now()){
+  const d=new Date(Number(from));
+  if(item.repeat==='interval'){
+    return d.getTime()+Math.max(60000,Number(item.intervalMs)||3600000);
+  }
+  if(item.repeat==='weekly'){
+    d.setDate(d.getDate()+7);
+    return d.getTime();
+  }
+  d.setDate(d.getDate()+1);
+  return d.getTime();
+}
+
+function scheduleRoutine(item){
+  if(!item||item.status!=='active') return;
+  clearRoutineTimer(item.id);
+  const fire=async()=>{
+    const current=routineState.items.find(x=>x.id===item.id);
+    if(!current||current.status!=='active') return;
+    const now=Date.now();
+    if(Number(current.nextAt)>now){
+      const timer=setTimeout(fire,Math.min(Number(current.nextAt)-now,2147480000));
+      routineTimers.set(current.id,timer);
+      return;
+    }
+    try{
+      showAuraNotification(current.title||'AURA Rutin',current.text).catch?.(()=>{});
+    }finally{
+      current.lastRunAt=new Date().toISOString();
+      current.nextAt=nextRoutineTime(current,Math.max(now,Number(current.nextAt)));
+      current.runCount=Number(current.runCount||0)+1;
+      routineTimers.delete(current.id);
+      await saveRoutineState();
+      scheduleRoutine(current);
+    }
+  };
+  const delay=Math.max(0,Number(item.nextAt)-Date.now());
+  const timer=setTimeout(fire,Math.min(delay,2147480000));
+  routineTimers.set(item.id,timer);
+}
+
+async function createRoutine({text,title,nextAt,repeat='daily',intervalMs=0}={}){
+  const value=String(text||'').trim();
+  const when=Number(nextAt);
+  const rep=String(repeat||'daily').toLowerCase();
+  if(!value) throw new Error('Rutin metni boş.');
+  if(!Number.isFinite(when)||when<=Date.now()) throw new Error('Rutin başlangıç zamanı gelecek bir zaman olmalı.');
+  if(!['daily','weekly','interval'].includes(rep)) throw new Error('Rutin tekrarı daily, weekly veya interval olmalı.');
+  if(rep==='interval' && Number(intervalMs)<60000) throw new Error('Interval rutin en az 1 dakika olmalı.');
+  const item={
+    id:'routine_'+Date.now().toString(36)+'_'+crypto.randomBytes(4).toString('hex'),
+    title:String(title||'AURA Rutin').slice(0,120),
+    text:value.slice(0,1000),
+    repeat:rep,
+    intervalMs:rep==='interval'?Number(intervalMs):0,
+    nextAt:when,
+    createdAt:new Date().toISOString(),
+    lastRunAt:null,
+    runCount:0,
+    status:'active'
+  };
+  routineState.items.unshift(item);
+  routineState.items=routineState.items.slice(0,200);
+  scheduleRoutine(item);
+  await saveRoutineState();
+  return {ok:true,item,items:listRoutines().items};
+}
+
+function listRoutines(){
+  return {
+    count:routineState.items.filter(x=>x.status==='active').length,
+    items:routineState.items.slice().sort((a,b)=>Number(a.nextAt)-Number(b.nextAt)).slice(0,100)
+  };
+}
+
+async function cancelRoutine(query){
+  const q=String(query||'').trim();
+  if(!q) throw new Error('İptal edilecek rutini belirt.');
+  const n=normalizedSearchText(q);
+  const active=routineState.items.filter(x=>x.status==='active');
+  const matches=active.map(x=>({...x,score:memorySearchScore(n,normalizedSearchText(x.text+' '+x.title))}))
+    .filter(x=>x.score>0).sort((a,b)=>b.score-a.score);
+  if(!matches.length) return {ok:true,removed:0,message:'Eşleşen aktif rutin bulunamadı.'};
+  const target=routineState.items.find(x=>x.id===matches[0].id);
+  if(target){
+    target.status='cancelled';
+    target.cancelledAt=new Date().toISOString();
+    clearRoutineTimer(target.id);
+  }
+  await saveRoutineState();
+  return {ok:true,removed:1,routine:target};
+}
+
+function dailyBriefing(){
+  const h=hardwareMetricsCache?.data||null;
+  const reminders=listReminders().items.filter(x=>x.status==='active').slice(0,5);
+  const routines=listRoutines().items.filter(x=>x.status==='active').slice(0,5);
+  return {
+    ok:true,
+    generatedAt:new Date().toISOString(),
+    user:os.userInfo().username,
+    hardware:h,
+    reminders,
+    routines,
+    message:'AURA günlük durum özeti hazır.'
+  };
 }
 
 async function saveReminderState(){
@@ -2056,6 +2195,10 @@ async function handleTool(tool,args) {
     case 'desktop_reminder_create': return createReminder(args||{});
     case 'desktop_reminder_list': return listReminders();
     case 'desktop_reminder_cancel': return cancelReminder(args?.query);
+    case 'desktop_routine_create': return createRoutine(args||{});
+    case 'desktop_routine_list': return listRoutines();
+    case 'desktop_routine_cancel': return cancelRoutine(args?.query);
+    case 'desktop_daily_briefing': return dailyBriefing();
     case 'desktop_clipboard_read': return readClipboardText();
     case 'desktop_clipboard_write': return writeClipboardText(args.text);
     case 'desktop_capture_screen': return captureAuraScreen(args.name||'aura');
@@ -2386,6 +2529,7 @@ app.whenReady().then(async()=>{
   await loadMemoryState();
   await loadConversationState();
   await loadReminderState();
+  await loadRoutineState();
   await startRemoteControlServer();
 
   ipcMain.handle('aura:tool',async(event,payload)=>{
@@ -2418,7 +2562,7 @@ app.whenReady().then(async()=>{
 
   ipcMain.handle('aura:desktop-info',async()=>({
     connected:true,
-    version:'5.3.4',
+    version:'5.4.0',
     mode:'secure-local-agent-pc-aware-core',
     roots:allowedRoots(),
     features:[
