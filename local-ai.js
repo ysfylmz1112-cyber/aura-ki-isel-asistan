@@ -19,8 +19,11 @@ globalThis.isDriveListRequest = isDriveListRequest;
 import { CreateMLCEngine } from "https://esm.run/@mlc-ai/web-llm@0.2.85";
 
 const CHAT_MODEL_ID = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
-const CODE_MODEL_ID = "Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC";
-const CODE_FALLBACK_MODEL_ID = "Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC";
+// 1.5B Coder varsayılan: Windows/WebGPU üzerinde UI donmasını önler.
+// Büyük model yalnızca ileride açıkça opt-in yapılırsa kullanılabilir.
+const CODE_MODEL_ID = "Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC";
+const CODE_LARGE_MODEL_ID = "Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC";
+const CODE_FALLBACK_MODEL_ID = CODE_MODEL_ID;
 const WEB_MODEL_ID = CHAT_MODEL_ID;
 const DESKTOP_MODEL_ID = CHAT_MODEL_ID;
 
@@ -608,7 +611,7 @@ function isCodeMode(mode){
 }
 
 function desiredModel(mode){
-  if (mode === "background-code") return CODE_FALLBACK_MODEL_ID;
+  if (mode === "background-code") return CODE_MODEL_ID;
   return mode === "code" ? CODE_MODEL_ID : CHAT_MODEL_ID;
 }
 
@@ -652,8 +655,8 @@ async function ensureLocalAI(mode = "chat", onProgress = () => {}) {
       const message=String(error?.message||error);
       const memoryError=/memory|alloc|out of memory|device lost|device|buffer|gpu|webgpu/i.test(message);
 
-      if(mode==="code" && memoryError && target===CODE_MODEL_ID){
-        onProgress({percent:0,text:"7B kod modeli için bellek yetersiz; küçük Coder modele geçiliyor..."});
+      if(mode==="code" && memoryError && target===CODE_LARGE_MODEL_ID){
+        onProgress({percent:0,text:"Büyük Coder modeli için bellek yetersiz; küçük Coder modele geçiliyor..."});
         try {
           if(engine) await engine.unload().catch(()=>{});
           engine=null;
@@ -927,7 +930,8 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     { role:"user", content:promptValue }
   ];
 
-  for(let round=0; round<5; round++){
+  const seenToolCalls = new Set();
+  for(let round=0; round<3; round++){
     let response;
     try {
       const responsePromise = localEngine.chat.completions.create({
@@ -970,6 +974,11 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     if(wantsTools){
       const manual=extractManualToolCall(assistantMessage.content);
       if(manual){
+        const signature = manual.name + ":" + JSON.stringify(manual.args || {});
+        if (seenToolCalls.has(signature)) {
+          return "Aynı araç çağrısı tekrarlandı; işlemi durdurdum. Unity/PC görevi için mevcut sonucu kullan veya daha spesifik bir istek ver.";
+        }
+        seenToolCalls.add(signature);
         let result;
         try {
           result=await desktopCall(manual.name,manual.args);
