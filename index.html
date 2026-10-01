@@ -957,6 +957,34 @@ function isMemorySearchRequest(q){
   return /hafızanda.*var mı|hafizanda.*var mi|hafızada.*ara|hafizada.*ara/.test(x);
 }
 
+function isRoutineListRequest(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
+  return /^(rutinler|rutinlerim|rutinlerimi göster|rutinlerimi goster)$/.test(x);
+}
+function isRoutineCancelRequest(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
+  return /^(rutini iptal et|rutini sil)\s+.+$/.test(x);
+}
+function extractRoutineCancelPayload(q){
+  return String(q||"").trim().replace(/^(rutini iptal et|rutini sil)\s*/i,"").trim();
+}
+async function handleRoutineCommand(q){
+  if(isRoutineListRequest(q)){
+    const result=await callDesktop("desktop_routine_list",{});
+    const items=Array.isArray(result?.items)?result.items.filter(x=>x.status==="active"):[];
+    if(!items.length)return "Şu anda aktif rutinin yok kanka. 🔁";
+    return "Aktif rutinlerin:\n\n"+items.map((x,i)=>{
+      const when=new Date(Number(x.nextAt)).toLocaleString("tr-TR");
+      return (i+1)+". "+when+" · "+String(x.text||x.title||"Rutin");
+    }).join("\n");
+  }
+  if(isRoutineCancelRequest(q)){
+    const result=await callDesktop("desktop_routine_cancel",{query:extractRoutineCancelPayload(q)});
+    return result?.removed ? "Tamam kanka, rutini iptal ettim. 🔁" : "Eşleşen aktif rutin bulamadım.";
+  }
+  return null;
+}
+
 function isReminderListRequest(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
   return /^(hatırlatıcılar|hatirlaticilar|hatırlatıcılarım|hatirlaticilarim|hatırlatmalarım|hatirlatmalarim|hatırlatıcılarımı göster|hatirlaticilarimi goster)$/.test(x);
@@ -1450,11 +1478,12 @@ async function run(q) {
     }
     const memoryDirect = isMemorySaveRequest(q) || isMemoryForgetRequest(q) || isMemoryListRequest(q) || isMemorySearchRequest(q) || isMemoryClearRequest(q);
     const reminderDirect = isReminderListRequest(q) || isReminderCancelRequest(q) || isReminderRequest(q);
+    const routineDirect = isRoutineListRequest(q) || isRoutineCancelRequest(q);
     const appControl=extractAppControlCommand(q);
   const utilityRequest=isWindowsUtilityRequest(q);
     const phoneTransfer=isPhoneTransferRequest(q);
     const driveRequest=safeDriveListRequest(q);
-    const direct = memoryDirect || reminderDirect || phoneTransfer || isScreenshotRequest(q) || isClipboardReadRequest(q) || isClipboardWriteRequest(q) || isScanCancelRequest(q) || isCameraRequest(q) || !!utilityRequest || isPCRequest(q) || isDeepPCRequest(q) || isUsageRequest(q) || isWeatherRequest(q) || isBatteryRequest(q) || isSystemRequest(q) || isHardwareRequest(q) || isUnityProjectRequest(q) || isConversationHistoryRequest(q) || isDesktopListRequest(q) || isRunningAppsRequest(q) || driveRequest || !!appControl || !!extractOpenTarget(q);
+    const direct = memoryDirect || reminderDirect || routineDirect || phoneTransfer || isScreenshotRequest(q) || isClipboardReadRequest(q) || isClipboardWriteRequest(q) || isScanCancelRequest(q) || isCameraRequest(q) || !!utilityRequest || isPCRequest(q) || isDeepPCRequest(q) || isUsageRequest(q) || isWeatherRequest(q) || isBatteryRequest(q) || isSystemRequest(q) || isHardwareRequest(q) || isUnityProjectRequest(q) || isConversationHistoryRequest(q) || isDesktopListRequest(q) || isRunningAppsRequest(q) || driveRequest || !!appControl || !!extractOpenTarget(q);
     if (quick) {
       if(myGeneration===runGeneration) finish(q, quick, false);
       return;
@@ -1462,6 +1491,11 @@ async function run(q) {
     if (memoryDirect) {
       const answer = await handleMemoryCommand(q);
       if(myGeneration===runGeneration) finish(q, answer || "Hafıza işlemi tamamlanamadı.", false);
+      return;
+    }
+    if (routineDirect) {
+      const answer = await handleRoutineCommand(q);
+      if(myGeneration===runGeneration) finish(q, answer || "Rutin işlemi tamamlanamadı.", false);
       return;
     }
     if (reminderDirect) {
