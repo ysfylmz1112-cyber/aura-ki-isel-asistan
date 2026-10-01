@@ -26,6 +26,7 @@ const CODE_LARGE_MODEL_ID = "Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC";
 const CODE_FALLBACK_MODEL_ID = CODE_MODEL_ID;
 const WEB_MODEL_ID = CHAT_MODEL_ID;
 const DESKTOP_MODEL_ID = CHAT_MODEL_ID;
+const AURA_CORE_VERSION = '5.4.0';
 
 function desktopAvailable() {
   return !!globalThis.auraDesktop?.isDesktop;
@@ -462,6 +463,38 @@ const TOOLS = [
         properties:{name:{type:"string"}},
         additionalProperties:false
       }
+    }
+  },
+  {
+    type:"function",
+    function:{
+      name:"desktop_routine_create",
+      description:"Kalıcı tekrarlayan AURA rutini oluşturur. Günlük, haftalık veya belirli aralıklarla Windows bildirimi gösterebilir.",
+      parameters:{type:"object",properties:{text:{type:"string"},title:{type:"string"},nextAt:{type:"number"},repeat:{type:"string",enum:["daily","weekly","interval"]},intervalMs:{type:"number"}},required:["text","nextAt"],additionalProperties:false}
+    }
+  },
+  {
+    type:"function",
+    function:{
+      name:"desktop_routine_list",
+      description:"Aktif AURA rutinlerini listeler.",
+      parameters:{type:"object",properties:{},additionalProperties:false}
+    }
+  },
+  {
+    type:"function",
+    function:{
+      name:"desktop_routine_cancel",
+      description:"Belirtilen tekrarlayan AURA rutinini iptal eder.",
+      parameters:{type:"object",properties:{query:{type:"string"}},required:["query"],additionalProperties:false}
+    }
+  },
+  {
+    type:"function",
+    function:{
+      name:"desktop_daily_briefing",
+      description:"AURA'nın tek çağrıda günlük durum özetini verir: kullanıcı, canlı donanım, aktif hatırlatıcılar ve rutinler.",
+      parameters:{type:"object",properties:{},additionalProperties:false}
     }
   },
   {
