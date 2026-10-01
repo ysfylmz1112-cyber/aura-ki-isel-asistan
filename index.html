@@ -603,7 +603,7 @@ function getLocalAIModel() {
 async function loadLocalAI() {
   if (localAIModule) return localAIModule;
   if (!localAIPromise) {
-    localAIPromise = import("./local-ai.js?v=5.4.0").then((mod) => {
+    localAIPromise = import("./local-ai.js?v=6.1.1").then((mod) => {
       localAIModule = mod;
       return mod;
     });
@@ -1042,8 +1042,13 @@ function isUnityProjectRequest(q){
   return /unity projelerimi bul|unity projelerini bul|unity projelerim|unity projeleri/.test(x);
 }
 function isDiagnosticsRequest(q){
-  const x=String(q||'').toLocaleLowerCase('tr-TR').trim();
-  return /^(aura kendini test et|aura kendini kontrol et|çekirdeği test et|cekirdegi test et|sistem teşhis|sistem teshis|diagnostics|self test)$/.test(x);
+  const x=String(q||'')
+    .toLocaleLowerCase('tr-TR')
+    .replace(/[?.!,;:]+/g,' ')
+    .replace(/\\s+/g,' ')
+    .trim();
+  return /^(aura\\s+)?(kendini\\s+(test\\s+et|kontrol\\s+et)|çekirdeği\\s+test\\s+et|cekirdegi\\s+test\\s+et|sistem\\s+(teşhis|teshis)|diagnostics|self\\s+test)$/.test(x) ||
+    /^(aura\\s+)?kendini\\s+(test|kontrol)$/.test(x);
 }
 function isHealthRequest(q){
   const x=String(q||'').toLocaleLowerCase('tr-TR').trim();
