@@ -120,7 +120,7 @@ input,.composer,.composerArea,.topbar,.sidebar{pointer-events:auto;position:rela
     <div id="usageTop" class="usageText">Kullanım raporu henüz alınmadı.</div>
     <div class="sideLabel" style="padding-left:0">SON SOHBETLER</div>
     <div class="history" id="history"></div>
-    <div class="footer">AURA OS 5.3 · LOCAL AI · MEMORY · PC CORE · PHONE · WEB · CODE</div>
+    <div class="footer">AURA OS 6.0 · LOCAL AI · MEMORY · PC CORE · PHONE · WEB · CODE</div>
   </div>
 </aside>
 
@@ -128,7 +128,7 @@ input,.composer,.composerArea,.topbar,.sidebar{pointer-events:auto;position:rela
   <header class="topbar">
     <div class="topLeft">
       <span class="coreDot"></span>
-      <div><div class="modelName">AURA</div><div class="modelMeta" id="sub">AURA 5.4 · Yerel AI · Hafıza · PC Core · Telefon · Web · Kod</div></div>
+      <div><div class="modelName">AURA</div><div class="modelMeta" id="sub">AURA 6.0 · Yerel AI · Hafıza · PC Core · Telefon · Web · Kod</div></div>
     </div>
     <div class="topActions">
       <button class="btn" id="phoneBtn" title="Telefon kumandası">📱 Telefon</button>
@@ -865,7 +865,7 @@ function isClipboardWriteRequest(q){
 function quickLocalAnswer(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
   if(/^(ne yapabilirsin|neler yapabilirsin|özelliklerin|ozelliklerin|yardım|yardim)$/.test(x))
-    return "PC'ni anlayabilir, uygulama ve oyun açıp kapatabilir, dosya ve Unity projeleriyle çalışabilir, hafıza ve eski konuşmaları arayabilir, web araştırması yapabilir, kod yazabilir; pano, ekran görüntüsü ve Windows bildirim araçlarını da kullanabilirim.";
+    return "PC'ni anlayabilir, sistem sağlığını denetleyebilir, uygulama ve oyun açıp kapatabilir, dosya ve Unity projeleriyle çalışabilir, kalıcı hafıza ve konuşma geçmişini arayabilir, web araştırması yapabilir, kod yazabilir; pano, ekran görüntüsü, telefon bağlantısı, hatırlatıcı ve rutinleri de kullanabilirim.";
   if(/^(nasılsın|nasilsin|nasılsın\?|nasilsin\?)$/.test(x))
     return "İyiyim kanka, hazırım. Ne yapmamı istersin?";
   if(/^(merhaba|selam|selamlar|sa|slm|mrb)$/.test(x))
@@ -1040,6 +1040,18 @@ function isHardwareRequest(q){
 function isUnityProjectRequest(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
   return /unity projelerimi bul|unity projelerini bul|unity projelerim|unity projeleri/.test(x);
+}
+function isHealthRequest(q){
+  const x=String(q||'').toLocaleLowerCase('tr-TR').trim();
+  return /^(sistem sağlığı|sistem sagligi|aura durumu|aura sağlık|aura saglik|pc sağlığı|pc sagligi|sistemi kontrol et|kendini kontrol et)$/.test(x);
+}
+function isAppCatalogRequest(q){
+  const x=String(q||'').toLocaleLowerCase('tr-TR').trim();
+  return /^(uygulamalarım|uygulamalarim|oyunlarım|oyunlarim|yüklü uygulamalar|yuklu uygulamalar|uygulama listem|oyun listem)$/.test(x);
+}
+function isMemoryStatsRequest(q){
+  const x=String(q||'').toLocaleLowerCase('tr-TR').trim();
+  return /^(hafıza istatistikleri|hafiza istatistikleri|hafıza özeti|hafiza ozeti|hafızam kaç kayıt|hafizam kac kayit)$/.test(x);
 }
 function isSystemRequest(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
@@ -1282,6 +1294,25 @@ async function handleDirectCommand(q) {
     return formatUsageReport(report);
   }
 
+  if (isHealthRequest(q)) {
+    const result=await callDesktop('desktop_get_system_health',{});
+    const hw=result?.hardware||{};
+    const cpu=Number(hw?.cpu?.usage), ram=Number(hw?.memory?.usedPercent), disk=Number(hw?.disks?.[0]?.usedPercent);
+    const warnings=Array.isArray(result?.warnings)?result.warnings:[];
+    return 'AURA sağlık kontrolü: CPU '+(Number.isFinite(cpu)?Math.round(cpu)+'%':'—')+' · RAM '+(Number.isFinite(ram)?Math.round(ram)+'%':'—')+' · Disk '+(Number.isFinite(disk)?Math.round(disk)+'%':'—')+' · Hafıza '+(result?.memory?.count??0)+' kayıt · '+(warnings.length?warnings.join(' '):'kritik uyarı yok.')+' ';
+  }
+
+  if (isAppCatalogRequest(q)) {
+    const result=await callDesktop('desktop_get_app_catalog',{});
+    const apps=Array.isArray(result?.apps)?result.apps:[], games=Array.isArray(result?.games)?result.games:[];
+    return 'AURA kataloğu: '+apps.length+' uygulama, '+games.length+' oyun bulundu.\n\n'+games.slice(0,20).map((x,i)=>(i+1)+'. '+String(x?.name||'Oyun')).join('\n');
+  }
+
+  if (isMemoryStatsRequest(q)) {
+    const result=await callDesktop('desktop_get_memory_stats',{});
+    const tags=Object.entries(result?.tags||{}).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k,v])=>k+' ('+v+')').join(', ');
+    return 'Hafıza özeti: '+(result?.count??0)+' kayıt. '+(tags?'Etiketler: '+tags+'.':'Etiket yok.');
+  }
   if (isSystemRequest(q)) {
     const info=await callDesktop("desktop_get_system_info",{});
     return "Sistem: "+info.os+" · CPU: "+info.cpu+" · "+info.cpuCount+" çekirdek · RAM: "+info.memoryGB+" GB · Boş RAM: "+info.freeMemoryGB+" GB.";
@@ -1334,6 +1365,7 @@ async function handleDirectCommand(q) {
   }
 
   const driveRequest = safeDriveListRequest(q);
+    const healthDirect=isHealthRequest(q), catalogDirect=isAppCatalogRequest(q), memoryStatsDirect=isMemoryStatsRequest(q);
   if (driveRequest) {
     const result=await callDesktop("desktop_list_drives",{});
     const items=Array.isArray(result)?result:[];
@@ -1483,9 +1515,14 @@ async function run(q) {
   const utilityRequest=isWindowsUtilityRequest(q);
     const phoneTransfer=isPhoneTransferRequest(q);
     const driveRequest=safeDriveListRequest(q);
-    const direct = memoryDirect || reminderDirect || routineDirect || phoneTransfer || isScreenshotRequest(q) || isClipboardReadRequest(q) || isClipboardWriteRequest(q) || isScanCancelRequest(q) || isCameraRequest(q) || !!utilityRequest || isPCRequest(q) || isDeepPCRequest(q) || isUsageRequest(q) || isWeatherRequest(q) || isBatteryRequest(q) || isSystemRequest(q) || isHardwareRequest(q) || isUnityProjectRequest(q) || isConversationHistoryRequest(q) || isDesktopListRequest(q) || isRunningAppsRequest(q) || driveRequest || !!appControl || !!extractOpenTarget(q);
+    const direct = healthDirect || catalogDirect || memoryStatsDirect || memoryDirect || reminderDirect || routineDirect || phoneTransfer || isScreenshotRequest(q) || isClipboardReadRequest(q) || isClipboardWriteRequest(q) || isScanCancelRequest(q) || isCameraRequest(q) || !!utilityRequest || isPCRequest(q) || isDeepPCRequest(q) || isUsageRequest(q) || isWeatherRequest(q) || isBatteryRequest(q) || isSystemRequest(q) || isHardwareRequest(q) || isUnityProjectRequest(q) || isConversationHistoryRequest(q) || isDesktopListRequest(q) || isRunningAppsRequest(q) || driveRequest || !!appControl || !!extractOpenTarget(q);
     if (quick) {
       if(myGeneration===runGeneration) finish(q, quick, false);
+      return;
+    }
+    if (healthDirect || catalogDirect || memoryStatsDirect) {
+      const answer=await handleDirectCommand(q);
+      if(myGeneration===runGeneration) finish(q,answer||'Kontrol tamamlanamadı.',false);
       return;
     }
     if (memoryDirect) {
