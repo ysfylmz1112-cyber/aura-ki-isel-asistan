@@ -26,7 +26,7 @@ const CODE_LARGE_MODEL_ID = "Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC";
 const CODE_FALLBACK_MODEL_ID = CODE_MODEL_ID;
 const WEB_MODEL_ID = CHAT_MODEL_ID;
 const DESKTOP_MODEL_ID = CHAT_MODEL_ID;
-const AURA_CORE_VERSION = '5.4.0';
+const AURA_CORE_VERSION = '6.0.0';
 
 function desktopAvailable() {
   return !!globalThis.auraDesktop?.isDesktop;
@@ -216,6 +216,30 @@ const TOOLS = [
       name: "desktop_get_system_info",
       description: "İşletim sistemi, CPU, RAM ve kullanıcı klasörü gibi sistem bilgilerini alır.",
       parameters: { type:"object", properties:{}, additionalProperties:false }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_get_system_health",
+      description: "AURA sistem sağlık kontrolü: CPU, RAM, disk, GPU sıcaklığı, arka plan görevleri, hafıza, hatırlatıcılar, rutinler ve telefon bağlantısını tek sonuçta verir.",
+      parameters: {type:"object",properties:{},additionalProperties:false}
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_get_app_catalog",
+      description: "Kullanıcının keşfedilmiş Windows uygulamalarını ve oyunlarını katalog halinde getirir.",
+      parameters: {type:"object",properties:{},additionalProperties:false}
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_get_memory_stats",
+      description: "AURA kalıcı hafızasının kayıt sayısını, etiketlerini ve en yeni kaydını verir.",
+      parameters: {type:"object",properties:{},additionalProperties:false}
     }
   },
   {
@@ -864,7 +888,7 @@ function toolDirectoryPrompt(query = "", mode = "chat") {
 
   if(selected.size===0){
     add([
-      "desktop_get_system_info","desktop_get_hardware_metrics","desktop_list_drives",
+      "desktop_get_system_info","desktop_get_hardware_metrics","desktop_get_system_health","desktop_get_app_catalog","desktop_get_memory_stats","desktop_list_drives",
       "desktop_search_files","desktop_read_text_file","desktop_find_and_launch_app",
       "desktop_web_search","desktop_memory_search"
     ]);
