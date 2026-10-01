@@ -1,6 +1,6 @@
 {
   "name": "aura-desktop",
-  "version": "6.1.0",
+  "version": "6.1.1",
   "private": true,
   "description": "AURA local desktop AI assistant",
   "main": "main.cjs",
