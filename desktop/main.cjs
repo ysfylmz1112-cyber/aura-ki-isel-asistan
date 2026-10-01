@@ -2196,16 +2196,16 @@ async function getAuraSelfDiagnostics(){
     ]);
     add('Renderer index.html',indexExists,indexPath);
     add('Renderer local-ai.js',aiExists,aiPath);
+    let indexSource='';
+    if(indexExists){
+      indexSource=await fsp.readFile(indexPath,'utf8');
+      add('Drive intent',indexSource.includes('function isDriveListRequest') && indexSource.includes('function safeDriveListRequest'),indexSource.includes('function isDriveListRequest')?'isDriveListRequest mevcut':'isDriveListRequest eksik');
+      add('Core state',indexSource.includes('setCoreState'),indexSource.includes('setCoreState')?'çekirdek durum sistemi mevcut':'çekirdek durum sistemi eksik');
+      add('Self-test routing',indexSource.includes('isDiagnosticsRequest(q)') && indexSource.includes('desktop_self_diagnostics'),indexSource.includes('isDiagnosticsRequest(q)')?'kendini test yönlendirmesi mevcut':'kendini test yönlendirmesi eksik');
+    }
     if(aiExists){
       const source=await fsp.readFile(aiPath,'utf8');
-      add('Drive intent',source.includes('function isDriveListRequest'),source.includes('function isDriveListRequest')?'isDriveListRequest mevcut':'isDriveListRequest eksik');
-      add('Hardware tool',source.includes('desktop_get_hardware_metrics'),source.includes('desktop_get_hardware_metrics')?'araç mevcut':'araç eksik');
-      add('Diagnostics tool',source.includes('desktop_self_diagnostics'),source.includes('desktop_self_diagnostics')?'araç mevcut':'araç eksik');
-    }
-    if(indexExists){
-      const source=await fsp.readFile(indexPath,'utf8');
-      add('Safe drive intent',source.includes('function safeDriveListRequest'),source.includes('function safeDriveListRequest')?'safeDriveListRequest mevcut':'safeDriveListRequest eksik');
-      add('Core state',source.includes('setCoreState'),source.includes('setCoreState')?'çekirdek durum sistemi mevcut':'çekirdek durum sistemi eksik');
+      add('Local AI module',source.includes('CreateMLCEngine'),source.includes('CreateMLCEngine')?'yerel AI motoru mevcut':'yerel AI motoru eksik');
     }
   }catch(error){
     add('Renderer dosya kontrolü',false,error?.message||error);
