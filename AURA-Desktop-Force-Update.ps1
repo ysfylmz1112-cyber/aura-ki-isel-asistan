@@ -37,7 +37,7 @@ Start-Sleep -Milliseconds 1200
 
 $files = @(
   @{ Local = Join-Path $repoRoot 'index.html'; GitPath = 'index.html'; Required = 'function safeDriveListRequest'; Name = 'arayuz' },
-  @{ Local = Join-Path $repoRoot 'local-ai.js'; GitPath = 'local-ai.js'; Required = 'function isDriveListRequest'; Name = 'yerel-ai' },
+  @{ Local = Join-Path $repoRoot 'local-ai.js'; GitPath = 'local-ai.js'; Required = 'CreateMLCEngine'; Name = 'yerel-ai' },
   @{ Local = Join-Path $desktopDir 'main.cjs'; GitPath = 'desktop/main.cjs'; Required = "app.whenReady().then(async()=>"; Name = 'desktop-core' },
   @{ Local = Join-Path $desktopDir 'prepare-renderer.cjs'; GitPath = 'desktop/prepare-renderer.cjs'; Required = 'AURA renderer sync'; Name = 'renderer-sync' },
   @{ Local = Join-Path $desktopDir 'preload.cjs'; GitPath = 'desktop/preload.cjs'; Required = 'contextBridge.exposeInMainWorld'; Name = 'preload' },
