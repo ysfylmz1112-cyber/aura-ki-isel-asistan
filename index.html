@@ -128,7 +128,7 @@ input,.composer,.composerArea,.topbar,.sidebar{pointer-events:auto;position:rela
   <header class="topbar">
     <div class="topLeft">
       <span class="coreDot"></span>
-      <div><div class="modelName">AURA</div><div class="modelMeta" id="sub">AURA 6.0 · Yerel AI · Hafıza · PC Core · Telefon · Web · Kod</div></div>
+      <div><div class="modelName">AURA</div><div class="modelMeta" id="sub">AURA 6.1 · Yerel AI · Hafıza · PC Core · Telefon · Web · Kod</div></div>
     </div>
     <div class="topActions">
       <button class="btn" id="phoneBtn" title="Telefon kumandası">📱 Telefon</button>
@@ -1041,6 +1041,10 @@ function isUnityProjectRequest(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
   return /unity projelerimi bul|unity projelerini bul|unity projelerim|unity projeleri/.test(x);
 }
+function isDiagnosticsRequest(q){
+  const x=String(q||'').toLocaleLowerCase('tr-TR').trim();
+  return /^(aura kendini test et|aura kendini kontrol et|çekirdeği test et|cekirdegi test et|sistem teşhis|sistem teshis|diagnostics|self test)$/.test(x);
+}
 function isHealthRequest(q){
   const x=String(q||'').toLocaleLowerCase('tr-TR').trim();
   return /^(sistem sağlığı|sistem sagligi|aura durumu|aura sağlık|aura saglik|pc sağlığı|pc sagligi|sistemi kontrol et|kendini kontrol et)$/.test(x);
@@ -1294,6 +1298,13 @@ async function handleDirectCommand(q) {
     return formatUsageReport(report);
   }
 
+  if (isDiagnosticsRequest(q)) {
+    const result=await callDesktop('desktop_self_diagnostics',{});
+    const checks=Array.isArray(result?.checks)?result.checks:[];
+    const lines=checks.map(x=>(x.ok?'✓':'✗')+' '+x.name+' — '+x.detail).join('\n');
+    return (result?.summary||'AURA teşhis tamamlandı.')+'\n\n'+lines;
+  }
+
   if (isHealthRequest(q)) {
     const result=await callDesktop('desktop_get_system_health',{});
     const hw=result?.hardware||{};
@@ -1514,13 +1525,13 @@ async function run(q) {
   const utilityRequest=isWindowsUtilityRequest(q);
     const phoneTransfer=isPhoneTransferRequest(q);
     const driveRequest=safeDriveListRequest(q);
-    const healthDirect=isHealthRequest(q), catalogDirect=isAppCatalogRequest(q), memoryStatsDirect=isMemoryStatsRequest(q);
-    const direct = healthDirect || catalogDirect || memoryStatsDirect || memoryDirect || reminderDirect || routineDirect || phoneTransfer || isScreenshotRequest(q) || isClipboardReadRequest(q) || isClipboardWriteRequest(q) || isScanCancelRequest(q) || isCameraRequest(q) || !!utilityRequest || isPCRequest(q) || isDeepPCRequest(q) || isUsageRequest(q) || isWeatherRequest(q) || isBatteryRequest(q) || isSystemRequest(q) || isHardwareRequest(q) || isUnityProjectRequest(q) || isConversationHistoryRequest(q) || isDesktopListRequest(q) || isRunningAppsRequest(q) || driveRequest || !!appControl || !!extractOpenTarget(q);
+    const diagnosticsDirect=isDiagnosticsRequest(q), healthDirect=isHealthRequest(q), catalogDirect=isAppCatalogRequest(q), memoryStatsDirect=isMemoryStatsRequest(q);
+    const direct = diagnosticsDirect || healthDirect || catalogDirect || memoryStatsDirect || memoryDirect || reminderDirect || routineDirect || phoneTransfer || isScreenshotRequest(q) || isClipboardReadRequest(q) || isClipboardWriteRequest(q) || isScanCancelRequest(q) || isCameraRequest(q) || !!utilityRequest || isPCRequest(q) || isDeepPCRequest(q) || isUsageRequest(q) || isWeatherRequest(q) || isBatteryRequest(q) || isSystemRequest(q) || isHardwareRequest(q) || isUnityProjectRequest(q) || isConversationHistoryRequest(q) || isDesktopListRequest(q) || isRunningAppsRequest(q) || driveRequest || !!appControl || !!extractOpenTarget(q);
     if (quick) {
       if(myGeneration===runGeneration) finish(q, quick, false);
       return;
     }
-    if (healthDirect || catalogDirect || memoryStatsDirect) {
+    if (diagnosticsDirect || healthDirect || catalogDirect || memoryStatsDirect) {
       const answer=await handleDirectCommand(q);
       if(myGeneration===runGeneration) finish(q,answer||'Kontrol tamamlanamadı.',false);
       return;
