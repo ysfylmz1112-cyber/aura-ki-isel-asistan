@@ -402,8 +402,14 @@ function extractWeatherCity(q){
 }
 function isWeatherRequest(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
-  return /(?:hava|hava durumu|sıcaklık|sicaklik|kaç derece|kac derece|weather)/.test(x) &&
-    !/(pc|gpu|cpu|işlemci|ram|donanım|donanim|ekran kartı|ekran karti)/.test(x);
+
+  // Uzun bir kullanıcı isteğinin içinde "hava", "yağmur" vb. geçmesi
+  // tek başına hava durumu komutu değildir. Böyle istekler yerel AI'ya gider.
+  if(x.length>180) return false;
+
+  // Sadece gerçek hava durumu sorularını yakala.
+  return /^(?:aura[, ]*)?(?:bugün|bugun|şu an|su an|şimdi|simdi)?\s*(?:istanbul|ankara|izmir|bursa|antalya|adana|konya|gaziantep|diyarbakır|diyarbakir|kayseri|mersin|trabzon|samsun|eskişehir|eskisehir|londra|berlin|paris|roma|tokyo|new york)?\s*(?:için\s*)?(?:hava(?: durumu)?|hava nasıl|hava nasil|sıcaklık|sicaklik|kaç derece|kac derece|weather)\b/.test(x) ||
+    /^(?:aura[, ]*)?(?:bugün|bugun|şu an|su an|şimdi|simdi)?\s*(?:hava(?: durumu)?|hava nasıl|hava nasil|sıcaklık|sicaklik|kaç derece|kac derece|weather)\b/.test(x);
 }
 function isReminderRequest(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
