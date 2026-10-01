@@ -1365,7 +1365,6 @@ async function handleDirectCommand(q) {
   }
 
   const driveRequest = safeDriveListRequest(q);
-    const healthDirect=isHealthRequest(q), catalogDirect=isAppCatalogRequest(q), memoryStatsDirect=isMemoryStatsRequest(q);
   if (driveRequest) {
     const result=await callDesktop("desktop_list_drives",{});
     const items=Array.isArray(result)?result:[];
