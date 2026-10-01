@@ -128,7 +128,7 @@ input,.composer,.composerArea,.topbar,.sidebar{pointer-events:auto;position:rela
   <header class="topbar">
     <div class="topLeft">
       <span class="coreDot"></span>
-      <div><div class="modelName">AURA</div><div class="modelMeta" id="sub">AURA 5.3 · Yerel AI · Hafıza · PC Core · Telefon · Web · Kod</div></div>
+      <div><div class="modelName">AURA</div><div class="modelMeta" id="sub">AURA 5.4 · Yerel AI · Hafıza · PC Core · Telefon · Web · Kod</div></div>
     </div>
     <div class="topActions">
       <button class="btn" id="phoneBtn" title="Telefon kumandası">📱 Telefon</button>
@@ -603,7 +603,7 @@ function getLocalAIModel() {
 async function loadLocalAI() {
   if (localAIModule) return localAIModule;
   if (!localAIPromise) {
-    localAIPromise = import("./local-ai.js?v=5.3.4").then((mod) => {
+    localAIPromise = import("./local-ai.js?v=5.4.0").then((mod) => {
       localAIModule = mod;
       return mod;
     });
