@@ -1539,7 +1539,7 @@ async function run(q) {
   const utilityRequest=isWindowsUtilityRequest(q);
     const phoneTransfer=isPhoneTransferRequest(q);
     const driveRequest=safeDriveListRequest(q);
-    const diagnosticsDirect=isDiagnosticsRequest(q), healthDirect=isHealthRequest(q), catalogDirect=isAppCatalogRequest(q), memoryStatsDirect=isMemoryStatsRequest(q);
+    const healthDirect=isHealthRequest(q), catalogDirect=isAppCatalogRequest(q), memoryStatsDirect=isMemoryStatsRequest(q);
     const direct = diagnosticsDirect || healthDirect || catalogDirect || memoryStatsDirect || memoryDirect || reminderDirect || routineDirect || phoneTransfer || isScreenshotRequest(q) || isClipboardReadRequest(q) || isClipboardWriteRequest(q) || isScanCancelRequest(q) || isCameraRequest(q) || !!utilityRequest || isPCRequest(q) || isDeepPCRequest(q) || isUsageRequest(q) || isWeatherRequest(q) || isBatteryRequest(q) || isSystemRequest(q) || isHardwareRequest(q) || isUnityProjectRequest(q) || isConversationHistoryRequest(q) || isDesktopListRequest(q) || isRunningAppsRequest(q) || driveRequest || !!appControl || !!extractOpenTarget(q);
     if (quick) {
       if(myGeneration===runGeneration) finish(q, quick, false);
