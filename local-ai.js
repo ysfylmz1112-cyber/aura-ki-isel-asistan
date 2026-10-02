@@ -1176,6 +1176,8 @@ function updateAgentPlanFromToolResult(plan, toolName, toolResult) {
   next.history = Array.isArray(next.history) ? [...next.history] : [];
   const tool = String(toolName || "unknown_tool");
   const status = failed ? "failed" : "completed";
+  const isInputTool = /desktop_(mouse_click|keyboard_type|keyboard_key)/i.test(tool);
+  const isContextTool = /desktop_(get_screen_context|get_foreground_window)/i.test(tool);
   next.history.push({ tool, status, at: new Date().toISOString(), summary: textResult.slice(0, 500) });
   next.history = next.history.slice(-20);
   next.lastTool = tool;
@@ -1187,7 +1189,13 @@ function updateAgentPlanFromToolResult(plan, toolName, toolResult) {
     next.nextAction = "Hatanın nedenini analiz et ve uygun düzeltme veya alternatif araç seç.";
   } else {
     next.completedSteps.push(tool);
-    next.nextAction = "Sonucu değerlendir; doğrulama kriterleri tamamlanmadıysa sıradaki adıma geç.";
+    if (isContextTool && next.executionStatus !== "recovery") {
+      next.nextAction = "Ekran/aktif pencere bağlamını kullanarak hedefi doğrula; ardından gerekiyorsa kullanıcı onaylı etkileşimi uygula.";
+    } else if (isInputTool && next.executionStatus !== "recovery") {
+      next.nextAction = "Mouse/klavye işleminin etkisini ekran veya aktif pencere bağlamıyla doğrula; beklenen sonuç yoksa başarı iddiasında bulunma.";
+    } else {
+      next.nextAction = "Sonucu değerlendir; doğrulama kriterleri tamamlanmadıysa sıradaki adıma geç.";
+    }
   }
   return next;
 }
