@@ -1165,7 +1165,9 @@ function buildDeveloperAgentInstruction(plan) {
     "Kod değişikliğinden önce mevcut dosya/proje durumunu oku ve değişecek dosyanın snapshot'ını oluştur. " +
     "Değişiklik başarısız olursa mümkünse snapshot'tan geri dönmeden önce kullanıcı onayını koru. " +
     "Değişiklikten sonra uygun bir test, build, compile veya sağlık kontrolü çalıştır. " +
-    "Test başarısızsa hatanın nedenini analiz et, küçük ve kontrollü bir düzeltme yap ve testi yeniden çalıştır. " +
+    "Test başarısızsa önce hatanın nedenini analiz et; küçük ve kontrollü bir düzeltme güvenliyse uygula ve testi yeniden çalıştır. " +
+    "Aynı dosyada tekrarlanan başarısızlık sürerse mevcut snapshotId ile desktop_restore_file_snapshot çağrısını kullanarak geri alma isteği başlat ve geri yükleme sonucunu doğrula. " +
+    "Geri alma mevcut dosyanın üzerine yazacağı için kullanıcı onayını asla atlama. " +
     "Doğrulanmamış kodu başarılı ilan etme. Kullanıcı istemedikçe ilgisiz dosyaları değiştirme. " +
     "Silme veya geniş kapsamlı değişikliklerde mevcut onay kurallarını koru.";
 }
@@ -1210,6 +1212,7 @@ function updateAgentPlanFromToolResult(plan, toolName, toolResult) {
     if (name.includes("unity_write_file") || name.includes("write_text_file")) next.developerChangePlan.status = "changed";
     if (name.includes("unity_health_check") || name.includes("unity_build") || name.includes("run_powershell")) {
       next.developerChangePlan.testStrategy = [...new Set([...(next.developerChangePlan.testStrategy || []), name])];
+      if (name.includes("health_check") || name.includes("build") || name.includes("run_powershell")) next.developerChangePlan.status = "verified_or_failed";
     }
   }
   const textResult = typeof toolResult === "string" ? toolResult : JSON.stringify(toolResult ?? "");
