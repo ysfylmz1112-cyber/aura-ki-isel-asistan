@@ -927,7 +927,8 @@ function buildAgentPlan(query, mode = "chat") {
   const toolHints = [];
 
   const code = mode === "code" || /kod|script|proje|unity|oyun geliştir|oyun gelistir|dosya oluştur|dosya olustur/.test(q);
-  const terminalOps = /powershell|terminal|komut satırı|komut satiri|shell|cmd|komut çalıştır|komut calistir|script çalıştır|script calistir/.test(q);
+  const mediaOps = /ekran görüntüsü|ekran goruntusu|screenshot|ekranı gör|ekrani gor|pano|clipboard|panoya|kopyala|yapıştır|yapistir/.test(q);
+  const terminalOps = !mediaOps && /powershell|terminal|komut satırı|komut satiri|shell|cmd|komut çalıştır|komut calistir|script çalıştır|script calistir/.test(q);
   const appOps = !terminalOps && /uygulama|program|uygulamayı|uygulamayi|programı|programi|aç|ac|başlat|baslat|kapat|çalışan|calisan/.test(q);
   const fileOps = !appOps && /dosya|klasör|klasor|metin dosyası|dosyası|dosyayi|dosyayı|oku|yaz|oluştur|olustur|sil|taşı|tasi|kopyala|kopya|aç|ac/.test(q);
   const pc = /bilgisayar|pc|uygulama|program|sistem|cpu|ram|gpu|disk|masaüstü|masaustu/.test(q);
@@ -938,6 +939,12 @@ function buildAgentPlan(query, mode = "chat") {
   if (code) {
     steps.push("görevi ve mevcut proje durumunu belirle", "gerekli dosya/proje araçlarını seç", "değişikliği uygula", "sonucu doğrula");
     toolHints.push("desktop_find_unity_projects", "desktop_unity_health_check", "desktop_unity_project_tree", "desktop_unity_read_file", "desktop_unity_write_file");
+  } else if (mediaOps) {
+    steps.push("istenen ekran/pano bilgisini belirle", "gerekli erişimi ve işlem riskini kontrol et", "ekran görüntüsü veya pano işlemini uygula", "çıktıyı doğrula");
+    toolHints.push("desktop_capture_screen", "desktop_clipboard_read", "desktop_clipboard_write");
+    if (/pano|clipboard|kopyala|yapıştır|yapistir/.test(q)) {
+      toolHints.push("desktop_clipboard_read", "desktop_clipboard_write");
+    }
   } else if (terminalOps) {
     steps.push("komutu ve hedefi belirle", "komutun riskini ve kapsamını kontrol et", "PowerShell işlemini onay kurallarına göre çalıştır", "çıktıyı ve sonucu doğrula");
     toolHints.push("desktop_run_powershell", "desktop_get_system_info");
