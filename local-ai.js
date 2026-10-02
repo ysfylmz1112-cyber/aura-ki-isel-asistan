@@ -972,6 +972,23 @@ function buildAgentPlan(query, mode = "chat") {
   };
 }
 
+function selectAgentTools(plan, availableTools = []) {
+  const names = Array.isArray(availableTools) ? availableTools.map(String) : [];
+  const hints = new Set(Array.isArray(plan?.toolHints) ? plan.toolHints : []);
+  const scored = names.map(name => {
+    let score = 0;
+    if (hints.has(name)) score += 100;
+    if (plan?.mode === "code" && /unity|code|file|project|github|test/i.test(name)) score += 20;
+    if (plan?.mode === "chat" && /memory|conversation/i.test(name)) score += 10;
+    if (plan?.requiresApproval && /delete|remove|write|run|execute|move|kill|close/i.test(name)) score -= 5;
+    return { name, score };
+  });
+  return scored
+    .filter(item => item.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .map(item => item.name);
+}
+
 function agentCorePrompt(plan) {
   return "\nAURA AGENT CORE PLANI:\n" + JSON.stringify(plan) +
     "\nPlanı körü körüne uygulama; araç sonucu planla uyuşmuyorsa planı güncelle. " +
@@ -1052,6 +1069,13 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     : "";
 
   const agentPlan = buildAgentPlan(value, effectiveMode);
+    const availableToolNames = Array.isArray(toolDirectory)
+      ? toolDirectory.map(tool => typeof tool === "string" ? tool : tool?.name).filter(Boolean)
+      : [];
+    const preferredAgentTools = selectAgentTools(agentPlan, availableToolNames);
+    if (preferredAgentTools.length) {
+      agentPlan.preferredTools = preferredAgentTools.slice(0, 8);
+    }
   const messages = [
     {
       role:"system",
