@@ -1378,7 +1378,19 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
 
   const wantsTools = desktopAvailable() && (generalToolIntent || developmentIntent);
   const wantsDeveloperSelfTest = /developer agent self[- ]test|developer agent.*self test|desktop_developer_self_test|geliştirici ajan.*self[- ]test|gelistirici ajan.*self[- ]test/i.test(lowerValue);
-  if (wantsDeveloperSelfTest && desktopAvailable()) {
+  if (wantsDeveloperSelfTest) {
+    if (!desktopAvailable()) {
+      return "Aracın ham sonucu: " + JSON.stringify({
+        ok: false,
+        error: "Masaüstü ajanı köprüsü bu AURA oturumunda bağlı değil.",
+        diagnostic: {
+          auraDesktopPresent: !!globalThis.auraDesktop,
+          isDesktop: !!globalThis.auraDesktop?.isDesktop,
+          pageProtocol: globalThis.location?.protocol || null,
+          pageOrigin: globalThis.location?.origin || null
+        }
+      });
+    }
     try {
       const selfTestResult = await desktopCall("desktop_developer_self_test", {});
       return "Aracın ham sonucu: " + JSON.stringify(selfTestResult);
