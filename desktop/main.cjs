@@ -1516,6 +1516,13 @@ async function searchFiles(root, query, maxResults=80) {
 }
 
 
+
+function desktopGetScreenContext() {
+  if (process.platform !== 'win32') return {ok:false,error:'Yalnızca Windows destekleniyor.'};
+  const script = "Add-Type -AssemblyName System.Windows.Forms; Add-Type @'\nusing System;\nusing System.Text;\nusing System.Runtime.InteropServices;\npublic static class AuraScreen { [DllImport(\"user32.dll\")] public static extern IntPtr GetForegroundWindow(); [DllImport(\"user32.dll\", CharSet=CharSet.Unicode)] public static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int count); [DllImport(\"user32.dll\")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId); }\n'@\n$h=[AuraScreen]::GetForegroundWindow(); $pid=0; [AuraScreen]::GetWindowThreadProcessId($h,[ref]$pid) | Out-Null; $sb=New-Object System.Text.StringBuilder 512; [AuraScreen]::GetWindowText($h,$sb,$sb.Capacity) | Out-Null; [pscustomobject]@{width=[System.Windows.Forms.SystemInformation]::VirtualScreen.Width;height=[System.Windows.Forms.SystemInformation]::VirtualScreen.Height;left=[System.Windows.Forms.SystemInformation]::VirtualScreen.Left;top=[System.Windows.Forms.SystemInformation]::VirtualScreen.Top;foreground=@{handle=$h.ToInt64();pid=$pid;title=$sb.ToString()}} | ConvertTo-Json -Compress";
+  return new Promise((resolve)=>{ execFile('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-Command',script],{windowsHide:true,maxBuffer:200000},(error,stdout,stderr)=>{ if(error){resolve({ok:false,error:String(stderr||error.message||error)});return;} try { resolve({ok:true,...JSON.parse(String(stdout||'{}'))}); } catch { resolve({ok:false,error:'Ekran bağlamı okunamadı.',stderr:String(stderr||'')}); } }); });
+}
+
 function desktopGetForegroundWindow() {
   if (process.platform !== 'win32') return {ok:false, error:'Yalnızca Windows destekleniyor.'};
   const script = "Add-Type @'\nusing System;\nusing System.Text;\nusing System.Runtime.InteropServices;\npublic static class AuraWindow { [DllImport(\"user32.dll\")] public static extern IntPtr GetForegroundWindow(); [DllImport(\"user32.dll\", CharSet=CharSet.Unicode)] public static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int count); [DllImport(\"user32.dll\")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId); }\n'@\n$h=[AuraWindow]::GetForegroundWindow(); $pid=0; [AuraWindow]::GetWindowThreadProcessId($h,[ref]$pid) | Out-Null; $sb=New-Object System.Text.StringBuilder 512; [AuraWindow]::GetWindowText($h,$sb,$sb.Capacity) | Out-Null; [pscustomobject]@{handle=$h.ToInt64();pid=$pid;title=$sb.ToString()} | ConvertTo-Json -Compress";
@@ -2420,6 +2427,7 @@ async function handleTool(tool,args) {
     case 'desktop_routine_list': return listRoutines();
     case 'desktop_routine_cancel': return cancelRoutine(args?.query);
     case 'desktop_daily_briefing': return dailyBriefing();
+    case 'desktop_get_screen_context': return desktopGetScreenContext();
     case 'desktop_get_foreground_window': return desktopGetForegroundWindow();
     case 'desktop_mouse_click': return desktopMouseClick(args.x,args.y,args.button,args.clicks);
     case 'desktop_keyboard_type': return desktopKeyboardType(args.text);
