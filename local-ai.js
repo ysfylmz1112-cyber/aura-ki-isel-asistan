@@ -1033,8 +1033,39 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
       }
     }
 
-    const assistantMessage=response && response.choices && response.choices[0] ? response.choices[0].message : null;
-    if(!assistantMessage) throw new Error("Yerel AI cevap üretmedi.");
+    let assistantMessage=response && response.choices && response.choices[0] ? response.choices[0].message : null;
+    const readAssistantText = (message) => {
+      if (!message) return "";
+      if (typeof message.content === "string") return message.content.trim();
+      if (Array.isArray(message.content)) {
+        return message.content
+          .map(part => typeof part === "string" ? part : String(part?.text || ""))
+          .join("")
+          .trim();
+      }
+      return String(message.content || "").trim();
+    };
+
+    // Bazı WebLLM sürümlerinde içerik dizi olarak gelebilir; boş cevapta
+    // kullanıcıyı sessiz bırakmak yerine tek seferlik küçük bir kurtarma isteği yap.
+    if (!assistantMessage || !readAssistantText(assistantMessage)) {
+      const recoveryPrompt = String(value || "").slice(0, 2200);
+      const recoveryResponse = await localEngine.chat.completions.create({
+        messages: [
+          { role:"system", content: SYSTEM_PROMPT + "\nKISA YANIT KURTARMA MODU: Kullanıcının isteğine Türkçe ve doğrudan cevap ver. Araç çağrısı yapma; gerekiyorsa eksikliği açıkça belirt." },
+          { role:"user", content: recoveryPrompt }
+        ],
+        temperature:0.35,
+        top_p:0.85,
+        max_tokens:220,
+        stream:false
+      });
+      assistantMessage = recoveryResponse?.choices?.[0]?.message || null;
+    }
+
+    if(!assistantMessage || !readAssistantText(assistantMessage)) {
+      throw new Error("Yerel AI boş cevap verdi. Modeli yeniden başlatıp tekrar dene.");
+    }
     messages.push(assistantMessage);
 
     if(wantsTools){
@@ -1059,7 +1090,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
       }
     }
 
-    const answer=String(assistantMessage.content || "").trim();
+    const answer=readAssistantText(assistantMessage);
     if(!answer) throw new Error("Yerel AI boş cevap verdi.");
     if(wantsTools && developmentIntent){
       const manualAfterAnswer=extractManualToolCall(answer);
