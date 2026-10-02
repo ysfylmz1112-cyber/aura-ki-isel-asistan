@@ -474,6 +474,14 @@ const TOOLS = [
   {
     type: "function",
     function: {
+      name: "desktop_get_foreground_window",
+      description: "Windows'ta o anda aktif olan pencerenin başlığını ve işlem kimliğini okur. Mouse/klavye etkileşiminden önce hedef pencereyi doğrulamak için kullanılır; işlem yapmaz.",
+      parameters: { type:"object", properties:{}, additionalProperties:false }
+    }
+  },
+  {
+    type: "function",
+    function: {
       name: "desktop_mouse_click",
       description: "Kullanıcı onayıyla Windows ekranında belirli koordinata sol veya sağ tıklama yapar. Koordinatlar kullanıcıdan veya güvenilir ekran bağlamından gelmelidir.",
       parameters: {
@@ -998,7 +1006,7 @@ function buildAgentPlan(query, mode = "chat") {
     toolHints.push("desktop_pc_agent_context", "desktop_get_system_info", "desktop_get_hardware_metrics", "desktop_get_battery_status");
   } else if (inputOps) {
     steps.push("istenen kullanıcı etkileşimini belirle", "hedef pencere ve işlem kapsamını kontrol et", "mouse/klavye işlemini kullanıcı onayına göre uygula", "etkileşimin sonucunu doğrula");
-    toolHints.push("desktop_capture_screen", "desktop_mouse_click", "desktop_keyboard_type", "desktop_keyboard_key");
+    toolHints.push("desktop_get_foreground_window", "desktop_capture_screen", "desktop_mouse_click", "desktop_keyboard_type", "desktop_keyboard_key");
   } else if (mediaOps) {
     steps.push("istenen ekran/pano bilgisini belirle", "gerekli erişimi ve işlem riskini kontrol et", "ekran görüntüsü veya pano işlemini uygula", "çıktıyı doğrula");
     toolHints.push("desktop_capture_screen", "desktop_clipboard_read", "desktop_clipboard_write");
