@@ -945,12 +945,12 @@ function toolDirectoryPrompt(query = "", mode = "chat") {
 
   if(unity) add([
     "desktop_find_unity_projects","desktop_create_unity_project","desktop_unity_health_check","desktop_unity_project_tree",
-    "desktop_unity_read_file","desktop_unity_write_file","desktop_unity_create_directory",
+    "desktop_unity_read_file","desktop_unity_write_file","desktop_create_file_snapshot","desktop_restore_file_snapshot","desktop_unity_create_directory",
     "desktop_unity_autopilot","desktop_unity_create_script","desktop_unity_open_project",
     "desktop_unity_build","desktop_unity_run_editor"
   ]);
   if(files) add([
-    "desktop_search_files","desktop_list_directory","desktop_read_text_file","desktop_write_text_file",
+    "desktop_search_files","desktop_list_directory","desktop_read_text_file","desktop_write_text_file","desktop_create_file_snapshot","desktop_restore_file_snapshot",
     "desktop_create_directory","desktop_copy_path","desktop_move_path","desktop_delete_path",
     "desktop_open_path","desktop_run_powershell"
   ]);
@@ -1117,7 +1117,7 @@ function buildPcToolRouter(plan, availableTools = []) {
     system: names.filter(name => /desktop_(pc_agent_context|get_system_info|get_hardware_metrics|get_environment_profile|get_battery_status)/i.test(name)),
     media: names.filter(name => /desktop_(capture_screen|clipboard_read|clipboard_write)/i.test(name)),
     input: names.filter(name => /desktop_(mouse_click|keyboard_type|keyboard_key)/i.test(name)),
-    developer: names.filter(name => /desktop_(create_file_snapshot|restore_file_snapshot|read_text_file|write_text_file|run_powershell|unity_read_file|unity_write_file|unity_project_tree|unity_health_check)/i.test(name))
+    developer: names.filter(name => /desktop_(create_file_snapshot|restore_file_snapshot|read_text_file|write_text_file|run_powershell|unity_read_file|unity_write_file|unity_project_tree|unity_health_check|unity_build)/i.test(name))
   };
   const goal = String(plan?.goal || "");
   const category = /powershell|terminal|komut|shell|cmd/i.test(goal) ? "terminal"
