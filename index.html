@@ -1735,6 +1735,35 @@ async function startVoiceInput(){
   if(busy) return;
 
   stopVoiceInput();
+
+  // Electron'da SpeechRecognition bazen mikrofon iznini/cihazını
+  // doğrudan tanıma servisine aktarmadan önce takılabiliyor. Önce
+  // gerçek mikrofon erişimini doğrula, sonra SpeechRecognition'ı başlat.
+  if(window.isSecureContext !== false && navigator.mediaDevices?.getUserMedia){
+    try{
+      subEl.textContent = "Mikrofon hazırlanıyor...";
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio:{
+          echoCancellation:true,
+          noiseSuppression:true,
+          autoGainControl:true,
+          channelCount:1
+        }
+      });
+      stream.getTracks().forEach(track=>{ try{track.stop();}catch{} });
+    }catch(error){
+      const name=String(error?.name||"");
+      const message={
+        NotAllowedError:"Mikrofon izni verilmedi. Windows mikrofon iznini açıp tekrar dene.",
+        PermissionDeniedError:"Mikrofon izni verilmedi. Windows mikrofon iznini açıp tekrar dene.",
+        NotFoundError:"Mikrofon bulunamadı. Windows'ta doğru mikrofonun bağlı olduğunu kontrol et.",
+        NotReadableError:"Mikrofon başka bir uygulama tarafından kullanılıyor olabilir.",
+        SecurityError:"AURA'nın mikrofon erişimi engellendi."
+      };
+      subEl.textContent=message[name]||("Mikrofon açılamadı: "+String(error?.message||error));
+      return;
+    }
+  }
   const requestId = ++voiceRequestId;
   const recognition = new Recognition();
   voiceRecognition = recognition;
@@ -1827,7 +1856,7 @@ async function startVoiceInput(){
       "service-not-allowed":"Sesli giriş servisine izin verilmedi.",
       "audio-capture":"Mikrofon bulunamadı veya kullanılamıyor.",
       "no-speech":"Ses algılanmadı. Mikrofona konuşup tekrar dene.",
-      "network":"Ses tanıma bağlantısı başarısız oldu.",
+      "network":"Electron ses tanıma servisine bağlanamadı. Mikrofon çalışıyor olabilir; ses tanıma servisi yanıt vermedi.",
       "language-not-supported":"Türkçe ses tanıma bu sistemde kullanılamıyor."
     };
     subEl.textContent = messages[code] || "Sesli giriş hatası: " + code;
