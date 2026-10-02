@@ -490,6 +490,18 @@ function searchConversationScore(query,item){
   return base+recency;
 }
 
+function buildRelevantContext(query, maxMemory=5, maxConversations=5) {
+  const q=String(query||'').trim();
+  if(!q) return {memory:[],conversations:[]};
+  const memory=searchMemory(q,maxMemory).items.map(x=>({
+    id:x.id,text:x.text,type:x.type,importance:x.importance,tags:x.tags,project:x.project
+  }));
+  const conversations=searchConversations(q,maxConversations).items.map(x=>({
+    at:x.at,user:x.user,assistant:x.assistant,mode:x.mode
+  }));
+  return {memory,conversations};
+}
+
 function searchConversations(query,maxResults=18){
   const q=String(query||'').trim();
   const window=conversationTimeWindow(q);
@@ -2389,6 +2401,7 @@ async function handleTool(tool,args) {
     case 'desktop_get_usage_report': return getUsageReport();
     case 'desktop_memory_save': return remember(args.text,args.tags||[],{type:args.type,importance:args.importance,project:args.project});
     case 'desktop_conversation_search': return searchConversations(args.query,args.maxResults||18);
+    case 'desktop_relevant_context': return buildRelevantContext(args.query,args.maxMemory||5,args.maxConversations||5);
     case 'desktop_conversation_log': return logConversation(args.user,args.assistant,args.mode||'chat');
     case 'desktop_memory_search': return searchMemory(args.query,args.maxResults||12);
     case 'desktop_memory_list': return listMemory();
