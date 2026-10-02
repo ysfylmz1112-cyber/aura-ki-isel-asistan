@@ -558,6 +558,26 @@ function memorySearchScore(query,text){
   return score;
 }
 
+function memoryRetentionScore(item) {
+  const importance=Math.max(1,Math.min(5,Number(item?.importance)||1));
+  const hits=Math.max(0,Number(item?.hits)||0);
+  const updated=Date.parse(item?.updatedAt||item?.createdAt||'');
+  const ageDays=Number.isFinite(updated)?Math.max(0,(Date.now()-updated)/86400000):3650;
+  const recency=Math.max(0,90-Math.min(90,ageDays));
+  const typeBoost=item?.type==="project"||item?.type==="preference"||item?.type==="goal"?20:0;
+  return importance*30 + Math.min(80,hits*2) + recency*0.6 + typeBoost;
+}
+
+function compactMemoryState(maxItems=500) {
+  const items=Array.isArray(memoryState.items)?memoryState.items:[];
+  if(items.length<=maxItems) return {removed:0,remaining:items.length};
+  const ranked=items
+    .map(item=>({...item,__retention:memoryRetentionScore(item)}))
+    .sort((a,b)=>b.__retention-a.__retention);
+  memoryState.items=ranked.slice(0,maxItems).map(({__retention,...item})=>item);
+  return {removed:items.length-memoryState.items.length,remaining:memoryState.items.length};
+}
+
 async function saveMemoryState(){
   memoryWritePromise=memoryWritePromise.then(async()=>{
     await fsp.mkdir(path.dirname(MEMORY_FILE),{recursive:true});
@@ -607,7 +627,7 @@ async function remember(text,tags=[],meta={}) {
       hits:1
     });
   }
-  memoryState.items=memoryState.items.slice(-500);
+  const retention=compactMemoryState(500);
   await saveMemoryState();
   return {ok:true,count:memoryState.items.length,remembered:value,type:classification.type,importance:classification.importance};
 }
@@ -630,6 +650,17 @@ function searchMemory(query,maxResults=12){
     .sort((a,b)=>b.score-a.score || String(b.updatedAt).localeCompare(String(a.updatedAt)))
     .slice(0,Math.max(1,Math.min(30,Number(maxResults)||12)));
   return {query:q,count:items.length,items};
+}
+
+function getMemoryHealth() {
+  const items=Array.isArray(memoryState.items)?memoryState.items:[];
+  const important=items.filter(x=>Number(x.importance||0)>=4).length;
+  const projects=items.filter(x=>x.type==="project").length;
+  const stale=items.filter(x=>{
+    const t=Date.parse(x.updatedAt||x.createdAt||'');
+    return Number.isFinite(t) && Date.now()-t>180*86400000 && Number(x.importance||1)<4;
+  }).length;
+  return {count:items.length,important,projects,staleCandidates:stale,max:500};
 }
 
 function listMemory(){
@@ -2361,6 +2392,7 @@ async function handleTool(tool,args) {
     case 'desktop_conversation_log': return logConversation(args.user,args.assistant,args.mode||'chat');
     case 'desktop_memory_search': return searchMemory(args.query,args.maxResults||12);
     case 'desktop_memory_list': return listMemory();
+    case 'desktop_memory_health': return getMemoryHealth();
     case 'desktop_memory_forget': return forgetMemory(args.query);
     case 'desktop_memory_update': return updateMemory(args.query,args.patch||{});
     case 'desktop_memory_clear': return clearMemory();
