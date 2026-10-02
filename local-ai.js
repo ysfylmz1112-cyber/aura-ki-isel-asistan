@@ -1324,6 +1324,8 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
 
   const seenToolCalls = new Set();
   let agentRound = 0;
+  let developerRepairRounds = 0;
+  const maxDeveloperRepairRounds = 2;
   for(let round=0; round<5; round++){
     agentRound = round + 1;
     let response;
@@ -1411,9 +1413,18 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
           result={error:error && error.message ? error.message : "Araç hatası"};
         }
         agentPlan = updateAgentPlanFromToolResult(agentPlan, manual.name, result);
+        const repairInstruction = agentPlan.lastToolStatus === "failed" && codeLikeMode
+          ? (++developerRepairRounds <= maxDeveloperRepairRounds
+            ? "\nDEVELOPER REPAIR: Araç başarısız oldu. Önce hatanın nedenini belirle, mevcut dosya/proje durumunu tekrar oku, yalnızca gerekli küçük düzeltmeyi uygula ve testi yeniden çalıştır. Bu onarım turu " + developerRepairRounds + "/" + maxDeveloperRepairRounds + "."
+            : "\nDEVELOPER REPAIR SINIRI: İki kontrollü onarım turu kullanıldı. Daha fazla kör değişiklik yapma; sonucu doğrulanmamış olarak bildir.")
+          : "";
         messages.push({
           role:"user",
           content:assistantToolResultMessage(manual,result) +
+            buildAgentVerificationInstruction(agentPlan) +
+            buildAgentRecoveryInstruction(agentPlan) +
+            buildDeveloperAgentInstruction(agentPlan) +
+            repairInstruction +
             "\n\nAGENT CORE DEĞERLENDİRMESİ: Bu araç sonucu görevin hangi adımını tamamladı? Eksik kaldıysa bir sonraki uygun adımı seç. Görev tamamlandıysa doğrulama yap ve sonra final cevap ver."
         });
         continue;
@@ -1429,10 +1440,19 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         try { result=await desktopCall(manualAfterAnswer.name,manualAfterAnswer.args); }
         catch(error){ result={error:error?.message||"Araç hatası"}; }
         agentPlan = updateAgentPlanFromToolResult(agentPlan, manualAfterAnswer.name, result);
+        const repairInstruction = agentPlan.lastToolStatus === "failed" && codeLikeMode
+          ? (++developerRepairRounds <= maxDeveloperRepairRounds
+            ? "\nDEVELOPER REPAIR: Hata sonrası kontrollü onarım turu " + developerRepairRounds + "/" + maxDeveloperRepairRounds + ". Önce mevcut durumu oku, küçük düzeltme yap ve yeniden doğrula."
+            : "\nDEVELOPER REPAIR SINIRI: Daha fazla otomatik değişiklik yapma; doğrulanmamış sonucu açıkça belirt.")
+          : "";
         messages.push({role:"assistant",content:answer});
         messages.push({
           role:"user",
           content:assistantToolResultMessage(manualAfterAnswer,result) +
+            buildAgentVerificationInstruction(agentPlan) +
+            buildAgentRecoveryInstruction(agentPlan) +
+            buildDeveloperAgentInstruction(agentPlan) +
+            repairInstruction +
             "\n\nAGENT CORE DEĞERLENDİRMESİ: İşlemi doğrula. Sonuç başarısızsa güvenli şekilde düzelt; başarılıysa görevin tamamlandığını açıkça kontrol et."
         });
         continue;
