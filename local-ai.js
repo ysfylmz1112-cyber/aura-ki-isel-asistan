@@ -1076,6 +1076,17 @@ function buildAgentVerificationInstruction(plan) {
     "Kriterler karşılanmıyorsa başarı iddiasında bulunma; eksik adımı tamamla veya açıkça belirt.";
 }
 
+function buildPcToolRecoveryInstruction(plan) {
+  const router = plan?.pcToolRouter;
+  if (!router) return "";
+  return "\nPC TOOL YÖNLENDİRME:\n" +
+    (router.category ? "Görev kategorisi: " + router.category + ". " : "") +
+    "Seçilen araçlar: " + (Array.isArray(router.selected) ? router.selected.join(", ") || "yok" : "yok") + ". " +
+    "İlk araç başarısız olursa aynı çağrıyı körlemesine tekrarlama; hata nedenini değerlendir, " +
+    "uygun alternatif PC aracını veya daha küçük güvenli adımı seç. " +
+    "Riskli işlemlerde mevcut onay gereksinimini koru ve gerçek sonucu tekrar doğrula.";
+}
+
 function buildAgentRecoveryInstruction(plan) {
   if (!plan?.failedSteps?.length) return "";
   const failed = plan.failedSteps.slice(-3).join(", ");
@@ -1108,11 +1119,12 @@ function updateAgentPlanFromToolResult(plan, toolName, toolResult) {
 function agentCorePrompt(plan) {
   const recovery = buildAgentRecoveryInstruction(plan);
   const verification = buildAgentVerificationInstruction(plan);
+  const pcRecovery = buildPcToolRecoveryInstruction(plan);
   return "\nAURA AGENT CORE PLANI:\n" + JSON.stringify(plan) +
     "\nPlanı körü körüne uygulama; araç sonucu planla uyuşmuyorsa planı güncelle. " +
     "Her araç sonucunu değerlendir. Planın verification kriterleri karşılanmadan görevi tamamlandı sayma. " +
     "Başarısız bir adım varsa aynı işlemi körlemesine tekrarlama; hataya göre düzeltme veya alternatif araç seç. " +
-    "Gereksiz araç çağrısı yapma." + recovery + verification;
+    "Gereksiz araç çağrısı yapma." + recovery + verification + pcRecovery;
 }
 
 function extractJsonObject(text) {
