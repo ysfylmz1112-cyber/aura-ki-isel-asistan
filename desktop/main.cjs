@@ -188,7 +188,7 @@ async function loadConversationState() {
     const raw=await fsp.readFile(CONVERSATION_FILE,'utf8');
     const data=JSON.parse(raw);
     conversationState={
-      version:1,
+      version:2,
       items:Array.isArray(data?.items)
         ? data.items.filter(x=>x && typeof x.user==='string' && typeof x.assistant==='string').slice(-1200)
         : []
@@ -533,7 +533,7 @@ async function loadMemoryState(){
         : []
     };
   } catch {
-    memoryState={version:1,items:[]};
+    memoryState={version:2,items:[]};
   }
 }
 
@@ -566,29 +566,50 @@ async function saveMemoryState(){
   return memoryWritePromise;
 }
 
-async function remember(text,tags=[]){
+function classifyMemory(text, tags=[]) {
+  const value = String(text || "").toLocaleLowerCase("tr-TR");
+  const tagText = Array.isArray(tags) ? tags.join(" ").toLocaleLowerCase("tr-TR") : "";
+  const combined = value + " " + tagText;
+  let type = "general";
+  if (/proje|project|aura|unity|github|oyun/.test(combined)) type = "project";
+  else if (/tercih|seviyorum|istemiyorum|tercih ederim|prefer/.test(combined)) type = "preference";
+  else if (/okul|ders|lise|sinav|sınav/.test(combined)) type = "education";
+  else if (/plan|hedef|hedefim|yapacağım|yapacagim/.test(combined)) type = "goal";
+  const importance = /önemli|onemli|kalıcı|kalici|her zaman|unutma|asla unutma/.test(combined) ? 5 : type === "project" || type === "preference" ? 4 : 3;
+  return { type, importance };
+}
+
+async function remember(text,tags=[],meta={}) {
   const value=String(text||'').trim();
   if(!value) throw new Error('Hafızaya kaydedilecek bilgi boş.');
   if(value.length>1200) throw new Error('Hafıza kaydı 1200 karakteri aşamaz.');
   const normalized=normalizedSearchText(value);
+  const classification=classifyMemory(value,tags);
   const existing=memoryState.items.find(x=>normalizedSearchText(x.text)===normalized);
+  const now=new Date().toISOString();
   if(existing){
-    existing.updatedAt=new Date().toISOString();
+    existing.updatedAt=now;
     existing.hits=Number(existing.hits||0)+1;
-    if(Array.isArray(tags)&&tags.length) existing.tags=[...new Set([...existing.tags,...tags.map(String)])].slice(0,12);
+    existing.type=meta.type||existing.type||classification.type;
+    existing.importance=Number(meta.importance||existing.importance||classification.importance);
+    existing.project=String(meta.project||existing.project||"").slice(0,120)||null;
+    if(Array.isArray(tags)&&tags.length) existing.tags=[...new Set([...(existing.tags||[]),...tags.map(String)])].slice(0,12);
   }else{
     memoryState.items.push({
       id:'mem_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7),
       text:value,
       tags:Array.isArray(tags)?tags.map(String).filter(Boolean).slice(0,12):[],
-      createdAt:new Date().toISOString(),
-      updatedAt:new Date().toISOString(),
+      type:meta.type||classification.type,
+      importance:Math.max(1,Math.min(5,Number(meta.importance)||classification.importance)),
+      project:String(meta.project||"").slice(0,120)||null,
+      createdAt:now,
+      updatedAt:now,
       hits:1
     });
   }
-  memoryState.items=memoryState.items.slice(-200);
+  memoryState.items=memoryState.items.slice(-500);
   await saveMemoryState();
-  return {ok:true,count:memoryState.items.length,remembered:value};
+  return {ok:true,count:memoryState.items.length,remembered:value,type:classification.type,importance:classification.importance};
 }
 
 function searchMemory(query,maxResults=12){
@@ -601,7 +622,9 @@ function searchMemory(query,maxResults=12){
       const ageDays=Number.isFinite(updated)?Math.max(0,(now-updated)/86400000):999;
       const recency=Math.max(0,90-Math.min(90,ageDays))*0.9;
       const hits=Math.min(40,Number(x.hits||0))*2;
-      return {...x,score:base+recency+hits};
+      const importance=Math.max(1,Math.min(5,Number(x.importance)||1))*12;
+      const projectBoost=x.project && q.includes(normalizedSearchText(x.project)) ? 180 : 0;
+      return {...x,score:base+recency+hits+importance+projectBoost};
     })
     .filter(x=>x.score>0)
     .sort((a,b)=>b.score-a.score || String(b.updatedAt).localeCompare(String(a.updatedAt)))
@@ -2312,7 +2335,7 @@ async function handleTool(tool,args) {
     case 'desktop_get_environment_profile': return getEnvironmentProfile();
     case 'desktop_get_running_apps': return getRunningApps();
     case 'desktop_get_usage_report': return getUsageReport();
-    case 'desktop_memory_save': return remember(args.text,args.tags||[]);
+    case 'desktop_memory_save': return remember(args.text,args.tags||[],{type:args.type,importance:args.importance,project:args.project});
     case 'desktop_conversation_search': return searchConversations(args.query,args.maxResults||18);
     case 'desktop_conversation_log': return logConversation(args.user,args.assistant,args.mode||'chat');
     case 'desktop_memory_search': return searchMemory(args.query,args.maxResults||12);
