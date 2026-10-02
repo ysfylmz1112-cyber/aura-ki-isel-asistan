@@ -948,21 +948,36 @@ function buildAgentPlan(query, mode = "chat") {
     steps.push("kullanıcı amacını belirle", "gerekli araç olup olmadığını değerlendir", "cevabı oluştur", "sonucu kontrol et");
   }
 
+  const uniqueHints = [...new Set(toolHints)];
+  const verification = code
+    ? ["hedef dosya/proje mevcut", "değişiklik uygulanmış", "ilgili test/build veya sağlık kontrolü başarılı"]
+    : pc
+      ? ["hedef durum bulundu", "işlem sonucu beklenen duruma geldi"]
+      : memory
+        ? ["ilgili kayıt bulundu", "hafıza işlemi sonucu doğrulandı"]
+        : web
+          ? ["kaynaklar bulundu", "bilgiler karşılaştırıldı", "kaynak temeli korunuyor"]
+          : ["cevap/işlem kullanıcı isteğiyle uyumlu"];
+
   return {
-    version: "agent-core-1",
+    version: "agent-core-2",
     goal: String(query || "").trim().slice(0, 1200),
     mode: String(mode || "chat"),
     steps,
-    toolHints: [...new Set(toolHints)],
+    toolHints: uniqueHints,
+    verification,
     requiresApproval: destructive,
-    policy: "Önce planla → uygun aracı seç → sonucu değerlendir → gerekiyorsa düzelt → finalden önce doğrula."
+    policy: "Önce planla → uygun aracı seç → sonucu değerlendir → gerekiyorsa düzelt → doğrulama kriterlerini kontrol et → sonra tamamla.",
+    maxExecutionRounds: 5
   };
 }
 
 function agentCorePrompt(plan) {
   return "\nAURA AGENT CORE PLANI:\n" + JSON.stringify(plan) +
     "\nPlanı körü körüne uygulama; araç sonucu planla uyuşmuyorsa planı güncelle. " +
-    "Araçtan sonra sonucu değerlendir ve görevin tamamlandığını doğrulamadan başarı iddiasında bulunma.";
+    "Her araç sonucunu değerlendir. Planın verification kriterleri karşılanmadan görevi tamamlandı sayma. " +
+    "Başarısız bir adım varsa aynı işlemi körlemesine tekrarlama; hataya göre düzeltme veya alternatif araç seç. " +
+    "Gereksiz araç çağrısı yapma.";
 }
 
 function extractJsonObject(text) {
