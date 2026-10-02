@@ -1779,18 +1779,37 @@ async function ensureLocalWhisper(){
 
     // Multilingual Whisper kullanıyoruz: Türkçe konuşma için language=turkish
     // verilecek. Encoder tam hassasiyet, decoder 4-bit: indirme/RAM dengesi.
-    const pipe = await pipeline(
-      "automatic-speech-recognition",
-      "onnx-community/whisper-tiny",
-      {
-        device: "webgpu",
-        dtype: {
-          encoder_model: "fp32",
-          decoder_model_merged: "q4"
-        },
-        progress_callback
-      }
-    );
+    let pipe;
+    try {
+      // Önce GPU: WebGPU destekleniyorsa Whisper'ı GPU üzerinde çalıştır.
+      pipe = await pipeline(
+        "automatic-speech-recognition",
+        "onnx-community/whisper-tiny",
+        {
+          device: "webgpu",
+          dtype: {
+            encoder_model: "fp32",
+            decoder_model_merged: "q4"
+          },
+          progress_callback
+        }
+      );
+      console.info("[AURA voice] Whisper WebGPU hazır.");
+    } catch (gpuError) {
+      // WebGPU her sistemde garanti değil; ses sistemi tamamen bozulmasın.
+      console.warn("[AURA voice] WebGPU kullanılamadı, WASM yedeğine geçiliyor:", gpuError);
+      subEl.textContent = "GPU ses tanıma kullanılamıyor · CPU modu hazırlanıyor...";
+      pipe = await pipeline(
+        "automatic-speech-recognition",
+        "onnx-community/whisper-tiny",
+        {
+          device: "wasm",
+          dtype: "q8",
+          progress_callback
+        }
+      );
+      console.info("[AURA voice] Whisper WASM yedeği hazır.");
+    }
 
     localWhisperPipeline = pipe;
     subEl.textContent = "Yerel Whisper hazır · mikrofonu kullanabilirsin";
@@ -1957,7 +1976,9 @@ async function startVoiceInput(){
       return;
     }
 
-    voiceAudioContext=new (window.AudioContext||window.webkitAudioContext)();
+    const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+    if(!AudioContextCtor) throw new Error("Web Audio API desteklenmiyor.");
+    voiceAudioContext=new AudioContextCtor();
     await voiceAudioContext.resume();
     voiceSampleRate=voiceAudioContext.sampleRate;
 
