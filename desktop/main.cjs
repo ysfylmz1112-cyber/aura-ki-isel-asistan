@@ -2218,7 +2218,7 @@ async function getAuraSelfDiagnostics(){
   add('Konuşma geçmişi',Array.isArray(conversationState?.items),Array.isArray(conversationState?.items)?conversationState.items.length+' kayıt':'geçmiş durumu bozuk');
   add('Telefon bağlantısı',Boolean(remoteServerPort),remoteServerPort?'HTTP '+remoteServerPort+' hazır':'remote sunucusu kapalı');
   const failed=checks.filter(x=>!x.ok);
-  return {ok:failed.length===0,version:'6.1.0',checkedAt:new Date().toISOString(),summary:failed.length?failed.length+' kontrol başarısız.':'Tüm temel AURA kontrolleri başarılı.',checks};
+  return {ok:failed.length===0,version:'6.2.0',checkedAt:new Date().toISOString(),summary:failed.length?failed.length+' kontrol başarısız.':'Tüm temel AURA kontrolleri başarılı.',checks};
 }
 
 async function getAuraSystemHealth(){
@@ -2655,7 +2655,7 @@ app.whenReady().then(async()=>{
 
   ipcMain.handle('aura:desktop-info',async()=>({
     connected:true,
-    version:'6.0.0',
+    version:'6.2.0',
     mode:'secure-local-agent-pc-aware-core',
     roots:allowedRoots(),
     features:[
