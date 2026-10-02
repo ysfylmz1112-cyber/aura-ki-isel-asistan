@@ -1157,6 +1157,23 @@ async function desktopCall(name,args) {
     const input=document.getElementById("input");
     if(input) input.placeholder="AURA'ya söyle... söylediklerin yerel sohbet geçmişine kaydedilir";
   }
-  function boot(){ addScreenUpgrade(); }
+  function boot(){
+    addScreenUpgrade();
+    const chat=document.querySelector(".chat");
+    if(chat && !chat.dataset.aura62Observer){
+      chat.dataset.aura62Observer="1";
+      const seen=new Set();
+      const capture=()=>{
+        chat.querySelectorAll(".msg.me").forEach(el=>{
+          const text=String(el.textContent||"").replace(/^SEN\\s*/,"").trim();
+          if(!text || seen.has(text)) return;
+          seen.add(text);
+          saveUserUtterance(text);
+        });
+      };
+      new MutationObserver(capture).observe(chat,{childList:true,subtree:true});
+      capture();
+    }
+  }
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",boot,{once:true}); else boot();
 })();
