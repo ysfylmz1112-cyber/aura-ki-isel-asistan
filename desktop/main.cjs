@@ -1595,6 +1595,31 @@ async function listDirectory(dirPath) {
   const entries = await fsp.readdir(dirPath,{withFileTypes:true});
   return entries.slice(0,300).map(e => ({name:e.name,type:e.isDirectory()?'directory':'file'}));
 }
+async function developerSelfTest() {
+  const checks = [
+    ['snapshot_create', typeof createFileSnapshot === 'function'],
+    ['snapshot_restore', typeof restoreFileSnapshot === 'function'],
+    ['file_read', typeof readTextFile === 'function'],
+    ['file_write', typeof writeTextFile === 'function'],
+    ['powershell', typeof runPowerShell === 'function'],
+    ['unity_read', typeof unityReadFile === 'function'],
+    ['unity_write', typeof unityWriteFile === 'function'],
+    ['unity_health', typeof unityHealthCheck === 'function'],
+    ['unity_build', typeof unityBuild === 'function']
+  ];
+  const failed = checks.filter(([, ok]) => !ok).map(([name]) => name);
+  return {
+    ok: failed.length === 0,
+    test: 'developer-agent-infrastructure',
+    checkedAt: new Date().toISOString(),
+    checks: Object.fromEntries(checks),
+    failed,
+    message: failed.length === 0
+      ? 'Developer Agent temel araç altyapısı hazır.'
+      : 'Developer Agent altyapısında eksik araç var.'
+  };
+}
+
 async function createFileSnapshot(filePath) {
   if (!isAllowedPath(filePath)) throw new Error('Bu dosyaya snapshot alma izni yok.');
   const normalized = normalizePath(filePath);
@@ -2501,6 +2526,7 @@ async function handleTool(tool,args) {
     case 'desktop_list_directory': return listDirectory(normalizePath(args.path));
     case 'desktop_read_text_file': return {path:normalizePath(args.path),content:await readTextFile(normalizePath(args.path))};
     case 'desktop_write_text_file': return writeTextFile(normalizePath(args.path),args.content);
+    case 'desktop_developer_self_test': return developerSelfTest();
     case 'desktop_create_file_snapshot': return createFileSnapshot(normalizePath(args.path));
     case 'desktop_restore_file_snapshot': return restoreFileSnapshot(args.id);
     case 'desktop_create_directory': return makeDirectory(normalizePath(args.path));
