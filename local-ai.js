@@ -932,7 +932,7 @@ function buildAgentPlan(query, mode = "chat") {
   const systemOps = !processOps && /cpu|işlemci|ram|bellek|gpu|ekran kartı|ekran karti|disk|depolama|donanım|donanim|sistem bilgisi|performans|sıcaklık|sicaklik|batarya|pil|ağ|ag|network|internet hız|internet hiz/.test(q);
   const mediaOps = !systemOps && /ekran görüntüsü|ekran goruntusu|screenshot|ekranı gör|ekrani gor|pano|clipboard|panoya|kopyala|yapıştır|yapistir/.test(q);
   const terminalOps = !mediaOps && /powershell|terminal|komut satırı|komut satiri|shell|cmd|komut çalıştır|komut calistir|script çalıştır|script calistir/.test(q);
-  const appOps = !terminalOps && /uygulama|program|uygulamayı|uygulamayi|programı|programi|aç|ac|başlat|baslat|kapat|çalışan|calisan/.test(q);
+  const appOps = !terminalOps && !fileOps && !processOps && /uygulama|program|uygulamayı|uygulamayi|programı|programi|başlat|baslat|kapat|çalışan|calisan|uygulama aç|uygulama ac|program aç|program ac/.test(q);
   const pc = /bilgisayar|pc|uygulama|program|sistem|cpu|ram|gpu|disk|masaüstü|masaustu/.test(q);
   const memory = /hafıza|hafiza|hatırla|hatirla|unut|geçmiş|gecmis|dün|dun|bugün|bugun|geçen hafta|gecen hafta/.test(q);
   const web = /güncel|guncel|araştır|arastir|internette|web|kaynak|site|haber/.test(q);
@@ -965,9 +965,9 @@ function buildAgentPlan(query, mode = "chat") {
     steps.push("komutu ve hedefi belirle", "komutun riskini ve kapsamını kontrol et", "PowerShell işlemini onay kurallarına göre çalıştır", "çıktıyı ve sonucu doğrula");
     toolHints.push("desktop_run_powershell", "desktop_get_system_info");
   } else if (appOps) {
-    steps.push("hedef uygulamayı belirle", "çalışan uygulamaları kontrol et", "açma/kapatma işlemini onay kurallarına göre uygula", "sonucu doğrula");
+    steps.push("hedef uygulamayı belirle", "mevcut çalışan uygulamaları kontrol et", "uygulamayı açma veya kapatma işlemini onay kurallarına göre uygula", "uygulamanın beklenen durumda olduğunu doğrula");
     toolHints.push("desktop_get_running_apps", "desktop_find_and_launch_app", "desktop_launch_app");
-    if (/kapat/.test(q)) toolHints.push("desktop_get_running_apps", "desktop_run_powershell");
+    if (/kapat/.test(q)) toolHints.push("desktop_run_powershell");
   } else if (fileOps) {
     steps.push("hedef dosya/klasörü belirle", "işlemin güvenli ve izinli olduğunu kontrol et", "dosya/klasör işlemini uygula", "sonucu doğrula");
     toolHints.push("desktop_list_directory", "desktop_read_text_file", "desktop_write_text_file", "desktop_create_directory", "desktop_search_files", "desktop_open_path");
@@ -992,19 +992,19 @@ function buildAgentPlan(query, mode = "chat") {
     ? ["hedef dosya/proje mevcut", "değişiklik uygulanmış", "ilgili test/build veya sağlık kontrolü başarılı"]
     : processOps
       ? ["istenen süreç/işlem bilgisi alındı", "işlem sonucu çalışan süreç durumu ile doğrulandı"]
-      : fileOps
-        ? ["hedef yol bulundu veya oluşturuldu", "dosya işlemi gerçek dosya sistemi durumu ile doğrulandı"]
-        : systemOps
-          ? ["istenen sistem/donanım ölçümü alındı", "ölçüm sonucu gerçek PC durumuyla uyumlu"]
-          :
-        ? ["hedef yol bulundu veya oluşturuldu", "işlem sonucu gerçek dosya sistemi durumuyla doğrulandı"]
-        : pc
-        ? ["hedef durum bulundu", "işlem sonucu beklenen duruma geldi"]
-        : memory
-        ? ["ilgili kayıt bulundu", "hafıza işlemi sonucu doğrulandı"]
-        : web
-          ? ["kaynaklar bulundu", "bilgiler karşılaştırıldı", "kaynak temeli korunuyor"]
-          : ["cevap/işlem kullanıcı isteğiyle uyumlu"];
+      : appOps
+        ? ["hedef uygulama belirlendi", "uygulama beklenen açık/kapalı durumuna geldi ve çalışan uygulamalarla doğrulandı"]
+        : fileOps
+          ? ["hedef yol bulundu veya oluşturuldu", "dosya işlemi gerçek dosya sistemi durumu ile doğrulandı"]
+          : systemOps
+            ? ["istenen sistem/donanım ölçümü alındı", "ölçüm sonucu gerçek PC durumuyla uyumlu"]
+            : pc
+              ? ["hedef durum bulundu", "işlem sonucu beklenen duruma geldi"]
+              : memory
+                ? ["ilgili kayıt bulundu", "hafıza işlemi sonucu doğrulandı"]
+                : web
+                  ? ["kaynaklar bulundu", "bilgiler karşılaştırıldı", "kaynak temeli korunuyor"]
+                  : ["cevap/işlem kullanıcı isteğiyle uyumlu"];
 
   return {
     version: "agent-core-2",
