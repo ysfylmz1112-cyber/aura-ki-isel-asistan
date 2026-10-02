@@ -639,6 +639,27 @@ function listMemory(){
   };
 }
 
+async function updateMemory(query, patch={}) {
+  const q=String(query||'').trim();
+  if(!q) throw new Error('Güncellenecek hafıza belirtilmedi.');
+  const matches=searchMemory(q,5).items;
+  if(!matches.length) return {ok:true,updated:0,message:'Eşleşen hafıza bulunamadı.'};
+  const target=memoryState.items.find(x=>x.id===matches[0].id);
+  if(!target) return {ok:true,updated:0,message:'Hafıza kaydı artık mevcut değil.'};
+  const nextText=String(patch.text ?? target.text).trim();
+  if(!nextText) throw new Error('Hafıza metni boş olamaz.');
+  if(nextText.length>1200) throw new Error('Hafıza kaydı 1200 karakteri aşamaz.');
+  const classification=classifyMemory(nextText,patch.tags ?? target.tags ?? []);
+  target.text=nextText;
+  target.tags=Array.isArray(patch.tags) ? [...new Set(patch.tags.map(String).filter(Boolean))].slice(0,12) : (target.tags||[]);
+  target.type=String(patch.type||classification.type);
+  target.importance=Math.max(1,Math.min(5,Number(patch.importance)||Number(target.importance)||classification.importance));
+  target.project=String(patch.project ?? target.project ?? '').slice(0,120)||null;
+  target.updatedAt=new Date().toISOString();
+  await saveMemoryState();
+  return {ok:true,updated:1,item:target};
+}
+
 async function forgetMemory(query){
   const q=String(query||'').trim();
   if(!q) throw new Error('Silinecek hafıza belirtilmedi.');
@@ -2341,6 +2362,7 @@ async function handleTool(tool,args) {
     case 'desktop_memory_search': return searchMemory(args.query,args.maxResults||12);
     case 'desktop_memory_list': return listMemory();
     case 'desktop_memory_forget': return forgetMemory(args.query);
+    case 'desktop_memory_update': return updateMemory(args.query,args.patch||{});
     case 'desktop_memory_clear': return clearMemory();
     case 'desktop_open_external_url': return openExternalUrl(args.url);
     case 'desktop_speak_text': return speakTextWindows(args.text);
