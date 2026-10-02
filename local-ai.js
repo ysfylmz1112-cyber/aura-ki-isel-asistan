@@ -1019,6 +1019,36 @@ function buildAgentPlan(query, mode = "chat") {
   };
 }
 
+function buildPcToolRouter(plan, availableTools = []) {
+  const names = Array.isArray(availableTools) ? availableTools.map(String) : [];
+  const hints = new Set(Array.isArray(plan?.toolHints) ? plan.toolHints : []);
+  const groups = {
+    terminal: names.filter(name => /desktop_run_powershell/i.test(name)),
+    files: names.filter(name => /desktop_(list_directory|read_text_file|write_text_file|create_directory|search_files|open_path|delete_path|move_path|copy_path)/i.test(name)),
+    apps: names.filter(name => /desktop_(get_running_apps|find_and_launch_app|launch_app)/i.test(name)),
+    processes: names.filter(name => /desktop_(get_background_tasks|get_running_apps)/i.test(name)),
+    system: names.filter(name => /desktop_(pc_agent_context|get_system_info|get_hardware_metrics|get_environment_profile|get_battery_status)/i.test(name)),
+    media: names.filter(name => /desktop_(capture_screen|clipboard_read|clipboard_write)/i.test(name))
+  };
+  const goal = String(plan?.goal || "");
+  const category = /powershell|terminal|komut|shell|cmd/i.test(goal) ? "terminal"
+    : /dosya|klasör|klasor/i.test(goal) ? "files"
+    : /uygulama|program/i.test(goal) ? "apps"
+    : /işlem|islem|process|süreç|surec/i.test(goal) ? "processes"
+    : /cpu|ram|gpu|disk|donanım|donanim|sistem/i.test(goal) ? "system"
+    : /ekran|screenshot|pano|clipboard/i.test(goal) ? "media"
+    : null;
+  return {
+    category,
+    selected: names.filter(name => hints.has(name)),
+    availableByGroup: groups,
+    routingRule: category
+      ? "Önce görev kategorisinin araçlarını kullan; sonuç yetersizse başka PC grubuna geç."
+      : "Agent Core toolHints sıralamasını kullan.",
+    requiresApproval: Boolean(plan?.requiresApproval)
+  };
+}
+
 function selectAgentTools(plan, availableTools = []) {
   const names = Array.isArray(availableTools) ? availableTools.map(String) : [];
   const hints = new Set(Array.isArray(plan?.toolHints) ? plan.toolHints : []);
@@ -1172,6 +1202,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     if (preferredAgentTools.length) {
       agentPlan.preferredTools = preferredAgentTools.slice(0, 8);
     }
+    agentPlan.pcToolRouter = buildPcToolRouter(agentPlan, availableToolNames);
   const messages = [
     {
       role:"system",
