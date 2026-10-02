@@ -1709,14 +1709,16 @@ document.querySelectorAll(".chip").forEach((button) => {
 let voiceRecognition = null;
 let voiceListening = false;
 let voiceRequestId = 0;
+let voiceRestartTimer = null;
 
 function stopVoiceInput(){
   voiceRequestId++;
+  voiceListening = false;
+  if(voiceRestartTimer){ clearTimeout(voiceRestartTimer); voiceRestartTimer=null; }
   const recognition = voiceRecognition;
   voiceRecognition = null;
-  voiceListening = false;
   if(recognition){
-    try{ recognition.onend = null; recognition.stop(); }catch{}
+    try{ recognition.onend = null; recognition.onerror = null; recognition.stop(); }catch{}
   }
   if(!busy){
     status.textContent = "● HAZIR";
@@ -1724,6 +1726,20 @@ function stopVoiceInput(){
   }
   micBtn.classList.remove("active");
   micBtn.title = "Sesli giriş";
+}
+
+function startRecognitionSession(recognition, requestId, state){
+  if(requestId !== voiceRequestId || !voiceListening) return;
+  try{
+    recognition.start();
+  }catch(error){
+    const message=String(error?.message||error);
+    if(/already started|start/i.test(message) && state.started) return;
+    voiceRestartTimer=setTimeout(()=>{
+      voiceRestartTimer=null;
+      startRecognitionSession(recognition,requestId,state);
+    },300);
+  }
 }
 
 async function startVoiceInput(){
@@ -1736,155 +1752,122 @@ async function startVoiceInput(){
 
   stopVoiceInput();
 
-  // Electron'da SpeechRecognition bazen mikrofon iznini/cihazını
-  // doğrudan tanıma servisine aktarmadan önce takılabiliyor. Önce
-  // gerçek mikrofon erişimini doğrula, sonra SpeechRecognition'ı başlat.
-  if(window.isSecureContext !== false && navigator.mediaDevices?.getUserMedia){
-    try{
-      subEl.textContent = "Mikrofon hazırlanıyor...";
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio:{
-          echoCancellation:true,
-          noiseSuppression:true,
-          autoGainControl:true,
-          channelCount:1
-        }
-      });
-      stream.getTracks().forEach(track=>{ try{track.stop();}catch{} });
-    }catch(error){
-      const name=String(error?.name||"");
-      const message={
-        NotAllowedError:"Mikrofon izni verilmedi. Windows mikrofon iznini açıp tekrar dene.",
-        PermissionDeniedError:"Mikrofon izni verilmedi. Windows mikrofon iznini açıp tekrar dene.",
-        NotFoundError:"Mikrofon bulunamadı. Windows'ta doğru mikrofonun bağlı olduğunu kontrol et.",
-        NotReadableError:"Mikrofon başka bir uygulama tarafından kullanılıyor olabilir.",
-        SecurityError:"AURA'nın mikrofon erişimi engellendi."
-      };
-      subEl.textContent=message[name]||("Mikrofon açılamadı: "+String(error?.message||error));
-      return;
-    }
-  }
   const requestId = ++voiceRequestId;
   const recognition = new Recognition();
+  const state = { started:false, restarts:0, lastError:"" };
   voiceRecognition = recognition;
   voiceListening = true;
-  let restartCount = 0;
-  let fallbackTried = false;
 
+  // Electron/Web Speech'te mikrofonu önce getUserMedia ile açıp hemen
+  // kapatmak bazı sistemlerde tanıma servisine boş ses oturumu bırakabiliyor.
+  // SpeechRecognition kendi mikrofon erişimini yönetsin.
   recognition.lang = "tr-TR";
   recognition.interimResults = true;
-  recognition.continuous = true;
+  recognition.continuous = false;
   recognition.maxAlternatives = 1;
 
   recognition.onstart = () => {
     if(requestId !== voiceRequestId) return;
+    state.started=true;
     status.textContent = "● DİNLİYOR";
-    subEl.textContent = "Türkçe ses · dinliyorum";
+    subEl.textContent = "Türkçe ses · konuşabilirsin";
     setCoreState("listening");
     micBtn.classList.add("active");
     micBtn.title = "Dinlemeyi durdur";
   };
 
   recognition.onaudiostart = () => {
-    if(requestId === voiceRequestId) subEl.textContent = "Mikrofon aktif · konuşabilirsin";
+    if(requestId === voiceRequestId) subEl.textContent = "Ses kanalı aktif · konuş";
+  };
+
+  recognition.onsoundstart = () => {
+    if(requestId === voiceRequestId) subEl.textContent = "Ses algılandı · konuşmaya devam et";
   };
 
   recognition.onspeechstart = () => {
-    if(requestId === voiceRequestId) subEl.textContent = "Seni duyuyorum · konuşmaya devam edebilirsin";
+    if(requestId === voiceRequestId) subEl.textContent = "Konuşmanı algıladım · dinliyorum";
   };
 
   recognition.onresult = (event) => {
     if(requestId !== voiceRequestId) return;
-    let transcript = "";
-    for(let i=event?.resultIndex||0; i<(event?.results?.length||0); i++){
+    let transcript="";
+    for(let i=event?.resultIndex||0;i<(event?.results?.length||0);i++){
       const result=event.results[i];
-      if(result?.isFinal) transcript += " " + String(result?.[0]?.transcript||"");
+      if(result?.[0]?.transcript) transcript += " "+String(result[0].transcript);
     }
-    transcript = transcript.trim() || String(event?.results?.[0]?.[0]?.transcript||"").trim();
+    transcript=transcript.trim();
     if(!transcript) return;
-    voiceInput = true;
-    input.value = transcript;
+    voiceInput=true;
+    input.value=transcript;
     stopVoiceInput();
     run(transcript);
   };
 
   recognition.onnomatch = () => {
-    if(requestId === voiceRequestId) subEl.textContent = "Söylediğini anlayamadım. Tekrar dene.";
+    if(requestId===voiceRequestId){
+      subEl.textContent="Ses geldi ama kelime eşleşmesi bulunamadı. Tekrar söyle.";
+      status.textContent="● DİNLİYOR";
+    }
   };
 
   recognition.onerror = (event) => {
     if(requestId !== voiceRequestId) return;
-    const code = String(event?.error || "");
-    // Tanıma servisi kısa oturumları sonlandırabiliyor. Kullanıcı
-    // mikrofonu kapatana kadar oturumu yeniden başlat.
-    if((code === "no-speech" || code === "aborted") && restartCount < 20){
-      restartCount++;
-      subEl.textContent = code === "no-speech"
-        ? "Ses algılanmadı · dinlemeye devam ediyorum..."
-        : "Ses oturumu yenileniyor...";
-      setTimeout(()=>{
-        if(requestId !== voiceRequestId || !voiceListening) return;
-        try{ recognition.start(); }
-        catch{
-          setTimeout(()=>{
-            if(requestId !== voiceRequestId || !voiceListening) return;
-            try{ recognition.start(); }catch{}
-          },250);
-        }
-      },120);
+    const code=String(event?.error||"unknown");
+    state.lastError=code;
+    console.warn("[AURA voice] SpeechRecognition error:",code,event);
+    const messages={
+      "not-allowed":"Ses tanıma için mikrofon izni verilmedi.",
+      "service-not-allowed":"Ses tanıma servisine izin verilmedi.",
+      "audio-capture":"Mikrofon ses tanıma tarafından alınamıyor.",
+      "network":"Ses tanıma servisine bağlantı kurulamadı.",
+      "language-not-supported":"Türkçe ses tanıma desteklenmiyor.",
+      "no-speech":"Ses algılanmadı."
+    };
+    if(code==="no-speech" && state.restarts<8){
+      state.restarts++;
+      subEl.textContent="Ses algılanmadı · tekrar dinliyorum...";
+      voiceRestartTimer=setTimeout(()=>{
+        voiceRestartTimer=null;
+        startRecognitionSession(recognition,requestId,state);
+      },250);
       return;
     }
-    const messages = {
-      "not-allowed":"Mikrofon izni verilmedi.",
-      "service-not-allowed":"Sesli giriş servisine izin verilmedi.",
-      "audio-capture":"Mikrofon bulunamadı veya kullanılamıyor.",
-      "no-speech":"Ses algılanmadı. Mikrofona konuşup tekrar dene.",
-      "network":"Electron ses tanıma servisine bağlanamadı. Mikrofon çalışıyor olabilir; ses tanıma servisi yanıt vermedi.",
-      "language-not-supported":"Türkçe ses tanıma bu sistemde kullanılamıyor."
-    };
-    subEl.textContent = messages[code] || "Sesli giriş hatası: " + code;
+    if(code==="aborted" && state.restarts<8){
+      state.restarts++;
+      subEl.textContent="Ses oturumu yenileniyor...";
+      voiceRestartTimer=setTimeout(()=>{
+        voiceRestartTimer=null;
+        startRecognitionSession(recognition,requestId,state);
+      },250);
+      return;
+    }
+    subEl.textContent=messages[code]||("Sesli giriş hatası: "+code);
+    if(code==="network"){
+      subEl.textContent="Ses tanıma servisi AURA/Electron içinde yanıt vermedi. Mikrofon izni açık ama tanıma servisi çalışmıyor.";
+    }
     stopVoiceInput();
   };
 
   recognition.onend = () => {
     if(requestId !== voiceRequestId) return;
-
-    // continuous=true olsa bile Chromium/Electron tanıma oturumunu
-    // kendisi kapatabilir. Kullanıcı hâlâ dinlemedeyse yeni oturum aç.
-    if(voiceListening && restartCount < 20){
-      restartCount++;
-      subEl.textContent = "Ses oturumu yenileniyor...";
-      setTimeout(()=>{
-        if(requestId !== voiceRequestId || !voiceListening) return;
-        try{ recognition.start(); }
-        catch{
-          setTimeout(()=>{
-            if(requestId !== voiceRequestId || !voiceListening) return;
-            try{ recognition.start(); }catch{}
-          },250);
-        }
-      },120);
+    if(voiceListening && !state.lastError && state.restarts<8){
+      state.restarts++;
+      subEl.textContent="Dinleme oturumu yenileniyor...";
+      voiceRestartTimer=setTimeout(()=>{
+        voiceRestartTimer=null;
+        startRecognitionSession(recognition,requestId,state);
+      },180);
       return;
     }
-
-    voiceRecognition = null;
-    voiceListening = false;
-    micBtn.classList.remove("active");
-    micBtn.title = "Sesli giriş";
     if(!busy){
-      status.textContent = "● HAZIR";
+      status.textContent="● HAZIR";
       setCoreState("ready");
     }
+    micBtn.classList.remove("active");
+    micBtn.title="Sesli giriş";
   };
 
-  try{
-    recognition.start();
-  }catch(error){
-    if(requestId === voiceRequestId){
-      subEl.textContent = "Mikrofon başlatılamadı: " + String(error?.message || error);
-      stopVoiceInput();
-    }
-  }
+  startRecognitionSession(recognition,requestId,state);
 }
 
 micBtn.addEventListener("click", () => {
