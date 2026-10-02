@@ -927,7 +927,8 @@ function buildAgentPlan(query, mode = "chat") {
   const toolHints = [];
 
   const code = mode === "code" || /kod|script|proje|unity|oyun geliştir|oyun gelistir|dosya oluştur|dosya olustur/.test(q);
-  const systemOps = /cpu|işlemci|ram|bellek|gpu|ekran kartı|ekran karti|disk|depolama|donanım|donanim|sistem bilgisi|performans|sıcaklık|sicaklik|batarya|pil|ağ|ag|network|internet hız|internet hiz/.test(q);
+  const processOps = /işlem|islem|process|süreç|surec|çalışan süreç|calisan surec|çalışan program|calisan program|görev yöneticisi|gorev yoneticisi/.test(q);
+  const systemOps = !processOps && /cpu|işlemci|ram|bellek|gpu|ekran kartı|ekran karti|disk|depolama|donanım|donanim|sistem bilgisi|performans|sıcaklık|sicaklik|batarya|pil|ağ|ag|network|internet hız|internet hiz/.test(q);
   const mediaOps = !systemOps && /ekran görüntüsü|ekran goruntusu|screenshot|ekranı gör|ekrani gor|pano|clipboard|panoya|kopyala|yapıştır|yapistir/.test(q);
   const terminalOps = !mediaOps && /powershell|terminal|komut satırı|komut satiri|shell|cmd|komut çalıştır|komut calistir|script çalıştır|script calistir/.test(q);
   const appOps = !terminalOps && /uygulama|program|uygulamayı|uygulamayi|programı|programi|aç|ac|başlat|baslat|kapat|çalışan|calisan/.test(q);
@@ -940,6 +941,10 @@ function buildAgentPlan(query, mode = "chat") {
   if (code) {
     steps.push("görevi ve mevcut proje durumunu belirle", "gerekli dosya/proje araçlarını seç", "değişikliği uygula", "sonucu doğrula");
     toolHints.push("desktop_find_unity_projects", "desktop_unity_health_check", "desktop_unity_project_tree", "desktop_unity_read_file", "desktop_unity_write_file");
+  } else if (processOps) {
+    steps.push("hedef işlem veya süreç bilgisini belirle", "çalışan süreçleri güvenli şekilde incele", "istenen işlemi onay kurallarına göre uygula", "işlem/süreç durumunu doğrula");
+    toolHints.push("desktop_get_background_tasks", "desktop_get_running_apps");
+    if (/kapat|sonlandır|durdur|öldür|oldur/.test(q)) toolHints.push("desktop_run_powershell");
   } else if (systemOps) {
     steps.push("istenen sistem/donanım bilgisini belirle", "gerekli PC durum araçlarını seç", "ölçümleri al", "ölçüm sonucunu doğrula");
     toolHints.push("desktop_pc_agent_context", "desktop_get_system_info", "desktop_get_hardware_metrics", "desktop_get_battery_status");
@@ -978,9 +983,11 @@ function buildAgentPlan(query, mode = "chat") {
   const uniqueHints = [...new Set(toolHints)];
   const verification = code
     ? ["hedef dosya/proje mevcut", "değişiklik uygulanmış", "ilgili test/build veya sağlık kontrolü başarılı"]
-    : systemOps
-      ? ["istenen sistem/donanım ölçümü alındı", "ölçüm sonucu gerçek PC durumuyla uyumlu"]
-      : fileOps
+    : processOps
+      ? ["istenen süreç/işlem bilgisi alındı", "işlem sonucu çalışan süreç durumu ile doğrulandı"]
+      : systemOps
+        ? ["istenen sistem/donanım ölçümü alındı", "ölçüm sonucu gerçek PC durumuyla uyumlu"]
+        : fileOps
         ? ["hedef yol bulundu veya oluşturuldu", "işlem sonucu gerçek dosya sistemi durumuyla doğrulandı"]
         : pc
         ? ["hedef durum bulundu", "işlem sonucu beklenen duruma geldi"]
