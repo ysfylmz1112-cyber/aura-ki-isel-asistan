@@ -10,6 +10,8 @@ const { search } = require('duck-duck-scrape');
 const QRCode = require('qrcode');
 const openclaw = require('./openclaw.cjs');
 
+// Chromium'un Electron içindeki Web Speech servisinin etkinleştirilmesini destekle.
+app.commandLine.appendSwitch('enable-features','WebSpeechAPI');
 const PROD_URL = 'https://aura-ki-isel-asistan.vercel.app/';
 const ALLOWED_REMOTE_ORIGIN = 'https://aura-ki-isel-asistan.vercel.app';
 const DEV_INDEX = path.join(__dirname,'..','index.html');
@@ -2598,9 +2600,16 @@ function createWindow(){
     }
   });
 
-  session.defaultSession.setPermissionRequestHandler((webContents,permission,callback)=>{
+  session.defaultSession.setPermissionRequestHandler((webContents,permission,callback,details)=>{
     if(permission !== 'media') return callback(false);
-    callback(isTrustedRenderer(webContents));
+    const trusted=isTrustedRenderer(webContents);
+    if(!trusted) return callback(false);
+    // SpeechRecognition/getUserMedia için yalnızca ses erişimini onayla;
+    // kamera gibi başka medya erişimlerini açma.
+    if(details && Array.isArray(details.mediaTypes) && details.mediaTypes.length){
+      return callback(details.mediaTypes.includes('audio') && !details.mediaTypes.includes('video'));
+    }
+    callback(true);
   });
 
   win.on('closed',()=>{
