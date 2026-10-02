@@ -2059,6 +2059,27 @@ async function getHardwareMetrics(){
   return hardwareMetricsPromise;
 }
 
+async function getPcAgentContext(options={}) {
+  const includeApps=options.includeApps!==false;
+  const includeEnvironment=options.includeEnvironment!==false;
+  const [system,hardware,background,environment,apps] = await Promise.all([
+    systemInfo(),
+    getHardwareMetrics(),
+    getBackgroundTaskStatus(),
+    includeEnvironment ? getEnvironmentProfile() : Promise.resolve(null),
+    includeApps ? getRunningApps() : Promise.resolve([])
+  ]);
+  return {
+    ok:true,
+    generatedAt:new Date().toISOString(),
+    system,
+    hardware,
+    background,
+    environment,
+    runningApps:apps
+  };
+}
+
 async function readClipboardText(){
   return {ok:true,text:String(clipboard.readText()||'').slice(0,20000)};
 }
@@ -2376,6 +2397,7 @@ async function handleTool(tool,args) {
     case 'desktop_find_unity_projects': return findUnityProjects(args.maxResults||20);
     case 'desktop_unity_health_check': return unityHealthCheck(args.projectPath||'');
     case 'desktop_get_system_info': return await systemInfo();
+    case 'desktop_pc_agent_context': return await getPcAgentContext(args||{});
     case 'desktop_list_directory': return listDirectory(normalizePath(args.path));
     case 'desktop_read_text_file': return {path:normalizePath(args.path),content:await readTextFile(normalizePath(args.path))};
     case 'desktop_write_text_file': return writeTextFile(normalizePath(args.path),args.content);
