@@ -1202,7 +1202,16 @@ function buildAgentRecoveryInstruction(plan) {
 }
 
 function updateAgentPlanFromToolResult(plan, toolName, toolResult) {
-  const next = { ...plan };
+  const next = { ...plan, developerChangePlan: plan?.developerChangePlan ? {...plan.developerChangePlan} : null };
+  if (next.developerChangePlan) {
+    const name = String(toolName || "");
+    if (name.includes("unity_project_tree") || name.includes("list_directory")) next.developerChangePlan.status = "inspected";
+    if (name.includes("unity_read_file") || name.includes("read_text_file")) next.developerChangePlan.status = "file_read";
+    if (name.includes("unity_write_file") || name.includes("write_text_file")) next.developerChangePlan.status = "changed";
+    if (name.includes("unity_health_check") || name.includes("unity_build") || name.includes("run_powershell")) {
+      next.developerChangePlan.testStrategy = [...new Set([...(next.developerChangePlan.testStrategy || []), name])];
+    }
+  }
   const textResult = typeof toolResult === "string" ? toolResult : JSON.stringify(toolResult ?? "");
   const lower = textResult.toLocaleLowerCase("tr-TR");
   const failed = /hata|başarısız|basarisiz|error|failed|exception|bulunamadı|bulunamadi/.test(lower);
