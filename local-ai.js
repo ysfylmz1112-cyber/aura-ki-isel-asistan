@@ -989,6 +989,25 @@ function selectAgentTools(plan, availableTools = []) {
     .map(item => item.name);
 }
 
+function updateAgentPlanFromToolResult(plan, toolName, toolResult) {
+  const next = { ...plan };
+  const textResult = typeof toolResult === "string" ? toolResult : JSON.stringify(toolResult ?? "");
+  const lower = textResult.toLocaleLowerCase("tr-TR");
+  const failed = /hata|başarısız|basarisiz|error|failed|exception|bulunamadı|bulunamadi/.test(lower);
+  next.completedSteps = Array.isArray(next.completedSteps) ? [...next.completedSteps] : [];
+  next.failedSteps = Array.isArray(next.failedSteps) ? [...next.failedSteps] : [];
+  next.history = Array.isArray(next.history) ? [...next.history] : [];
+  next.history.push({ tool: String(toolName || "unknown_tool"), status: failed ? "failed" : "completed", summary: textResult.slice(0, 500) });
+  if (failed) {
+    next.failedSteps.push(String(toolName || "unknown_tool"));
+    next.nextAction = "Hatanın nedenini analiz et ve uygun düzeltme veya alternatif araç seç.";
+  } else {
+    next.completedSteps.push(String(toolName || "unknown_tool"));
+    next.nextAction = "Sonucu değerlendir; doğrulama kriterleri tamamlanmadıysa sıradaki adıma geç.";
+  }
+  return next;
+}
+
 function agentCorePrompt(plan) {
   return "\nAURA AGENT CORE PLANI:\n" + JSON.stringify(plan) +
     "\nPlanı körü körüne uygulama; araç sonucu planla uyuşmuyorsa planı güncelle. " +
@@ -1176,6 +1195,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         } catch(error) {
           result={error:error && error.message ? error.message : "Araç hatası"};
         }
+        agentPlan = updateAgentPlanFromToolResult(agentPlan, manual.name, result);
         messages.push({
           role:"user",
           content:assistantToolResultMessage(manual,result) +
@@ -1193,6 +1213,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         let result;
         try { result=await desktopCall(manualAfterAnswer.name,manualAfterAnswer.args); }
         catch(error){ result={error:error?.message||"Araç hatası"}; }
+        agentPlan = updateAgentPlanFromToolResult(agentPlan, manualAfterAnswer.name, result);
         messages.push({role:"assistant",content:answer});
         messages.push({
           role:"user",
