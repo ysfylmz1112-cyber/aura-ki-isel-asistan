@@ -1350,6 +1350,32 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   const developmentIntent = mode === "code" || gameDevelopmentIntent || /proje oluştur|proje olustur|dosya oluştur|dosya olustur|dosya yaz|kod yaz|kodu düzelt|kodu duzelt|hata düzelt|hata duzelt|build al|derle|compile|script oluştur|script olustur|sahne oluştur|sahne olustur|component oluştur|component olustur|prefab oluştur|prefab olustur/.test(lowerValue);
   const effectiveMode = gameDevelopmentIntent ? "background-code" : (developmentIntent ? "code" : mode);
   const codeLikeMode = isCodeMode(effectiveMode);
+
+  // Developer self-test deterministic path: never initialize the local LLM first.
+  // Self-test only needs the Electron bridge, so a model-loading delay must not
+  // turn an infrastructure diagnostic into a misleading timeout.
+  const wantsDeveloperSelfTest = /developer agent self[- ]test|developer agent.*self test|desktop_developer_self_test|geliştirici ajan.*self[- ]test|gelistirici ajan.*self[- ]test/i.test(lowerValue);
+  if (wantsDeveloperSelfTest) {
+    if (!desktopAvailable()) {
+      return "Aracın ham sonucu: " + JSON.stringify({
+        ok: false,
+        error: "Masaüstü ajanı köprüsü bu AURA oturumunda bağlı değil.",
+        diagnostic: {
+          auraDesktopPresent: !!globalThis.auraDesktop,
+          isDesktop: !!globalThis.auraDesktop?.isDesktop,
+          pageProtocol: globalThis.location?.protocol || null,
+          pageOrigin: globalThis.location?.origin || null
+        }
+      });
+    }
+    try {
+      const selfTestResult = await desktopCall("desktop_developer_self_test", {});
+      return "Aracın ham sonucu: " + JSON.stringify(selfTestResult);
+    } catch (error) {
+      return "Aracın ham sonucu: " + JSON.stringify({ ok:false, error:String(error?.message || error) });
+    }
+  }
+
   const localEngine = await ensureLocalAI(effectiveMode,onProgress);
   const memoryItems = compactMemory(memory);
   let memoryContext = memoryItems.length
@@ -1377,28 +1403,6 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     : "";
 
   const wantsTools = desktopAvailable() && (generalToolIntent || developmentIntent);
-  const wantsDeveloperSelfTest = /developer agent self[- ]test|developer agent.*self test|desktop_developer_self_test|geliştirici ajan.*self[- ]test|gelistirici ajan.*self[- ]test/i.test(lowerValue);
-  if (wantsDeveloperSelfTest) {
-    if (!desktopAvailable()) {
-      return "Aracın ham sonucu: " + JSON.stringify({
-        ok: false,
-        error: "Masaüstü ajanı köprüsü bu AURA oturumunda bağlı değil.",
-        diagnostic: {
-          auraDesktopPresent: !!globalThis.auraDesktop,
-          isDesktop: !!globalThis.auraDesktop?.isDesktop,
-          pageProtocol: globalThis.location?.protocol || null,
-          pageOrigin: globalThis.location?.origin || null
-        }
-      });
-    }
-    try {
-      const selfTestResult = await desktopCall("desktop_developer_self_test", {});
-      return "Aracın ham sonucu: " + JSON.stringify(selfTestResult);
-    } catch (error) {
-      return "Aracın ham sonucu: " + JSON.stringify({ ok:false, error:String(error?.message || error) });
-    }
-  }
-
 
   const promptValue = compactLongUserRequest(value, effectiveMode==="background-code" ? 3600 : (codeLikeMode ? 4500 : 6000));
   const toolProtocol = wantsTools
