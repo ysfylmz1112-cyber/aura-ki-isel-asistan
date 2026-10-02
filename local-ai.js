@@ -1097,3 +1097,66 @@ async function desktopCall(name,args) {
 
   return result.result;
 }
+/* AURA 6.2 UX + AUTO MEMORY UPGRADE */
+
+(() => {
+  const AURA_UPGRADE_KEY = "aura_transcript_mirror_v1";
+  const MAX_MIRROR_ITEMS = 1200;
+  function readMirror() {
+    try { const data = JSON.parse(localStorage.getItem(AURA_UPGRADE_KEY) || "[]"); return Array.isArray(data) ? data : []; }
+    catch { return []; }
+  }
+  function writeMirror(items) {
+    try { localStorage.setItem(AURA_UPGRADE_KEY, JSON.stringify(items.slice(-MAX_MIRROR_ITEMS))); } catch {}
+  }
+  function saveUserUtterance(text) {
+    const value = String(text || "").trim();
+    if (!value) return;
+    const items = readMirror();
+    items.push({id:"u_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,7),role:"user",text:value,createdAt:new Date().toISOString()});
+    writeMirror(items);
+  }
+  function addScreenUpgrade() {
+    if (document.getElementById("aura62Style")) return;
+    const style = document.createElement("style");
+    style.id = "aura62Style";
+    style.textContent = `
+      .coreStage{background:radial-gradient(circle at 50% 46%,rgba(98,232,255,.12),transparent 20%),radial-gradient(circle at 50% 55%,rgba(119,140,255,.08),transparent 38%),linear-gradient(180deg,#03060b,#05070b 55%,#020409)}
+      .aura-scanlines{position:absolute;inset:0;pointer-events:none;z-index:4;opacity:.18;background:repeating-linear-gradient(to bottom,transparent 0,transparent 3px,rgba(98,232,255,.035) 4px);mix-blend-mode:screen}
+      .aura-grid{position:absolute;inset:0;pointer-events:none;z-index:3;opacity:.22;background-image:linear-gradient(rgba(98,232,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(98,232,255,.035) 1px,transparent 1px);background-size:42px 42px;mask-image:radial-gradient(circle at center,black 0%,transparent 68%)}
+      .aura-orbit{position:absolute;left:50%;top:50%;width:510px;height:510px;transform:translate(-50%,-50%);border:1px solid rgba(98,232,255,.09);border-radius:50%;pointer-events:none;z-index:5;box-shadow:0 0 70px rgba(98,232,255,.035);animation:auraOrbit 28s linear infinite}
+      .aura-orbit:before,.aura-orbit:after{content:"";position:absolute;border-radius:50%;width:7px;height:7px;background:#62e8ff;box-shadow:0 0 16px #62e8ff}
+      .aura-orbit:before{left:50%;top:-4px}.aura-orbit:after{right:14%;bottom:12%;background:#778cff;box-shadow:0 0 16px #778cff}
+      .aura-console{position:absolute;left:18px;bottom:18px;z-index:25;width:245px;padding:10px 11px;border:1px solid rgba(98,232,255,.10);background:rgba(5,9,14,.68);backdrop-filter:blur(12px);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.22)}
+      .aura-console b{display:block;font-size:8px;letter-spacing:1.6px;color:#8fefff}.aura-console span{display:block;margin-top:5px;font-size:8px;color:#60717e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .aura-console i{display:inline-block;width:5px;height:5px;border-radius:50%;background:#62e7aa;box-shadow:0 0 10px #62e7aa;margin-right:6px}
+      @keyframes auraOrbit{to{transform:translate(-50%,-50%) rotate(360deg)}}
+      @media(max-width:760px){.aura-console{left:10px;bottom:10px;width:calc(100% - 20px)}}
+    `;
+    document.head.appendChild(style);
+    const stage = document.querySelector(".coreStage");
+    if (!stage) return;
+    for (const cls of ["aura-grid","aura-scanlines","aura-orbit"]) {
+      if (!stage.querySelector("." + cls)) { const el=document.createElement("div"); el.className=cls; stage.appendChild(el); }
+    }
+    if (!stage.querySelector(".aura-console")) {
+      const box=document.createElement("div");
+      box.className="aura-console";
+      box.innerHTML='<b><i></i>AURA CORE // LIVE</b><span id="auraLiveConsole">Neural interface online · konuşma kaydı aktif</span>';
+      stage.appendChild(box);
+    }
+    const live=document.getElementById("auraLiveConsole");
+    const stateText={ready:"Neural interface online · bekliyor",listening:"Ses akışı alınıyor · dinliyorum",thinking:"Yerel model düşünüyor · işlem sürüyor",speaking:"Sesli yanıt üretiliyor · AURA konuşuyor"};
+    const core=document.getElementById("core");
+    if(core && live){
+      const observer=new MutationObserver(()=>{live.textContent=stateText[core.dataset.state]||stateText.ready;});
+      observer.observe(core,{attributes:true,attributeFilter:["data-state"]});
+    }
+    const welcome=document.querySelector(".welcome p");
+    if(welcome) welcome.textContent="Konuş, yaz veya mikrofonu kullan. AURA sohbetlerini yerel olarak kaydeder.";
+    const input=document.getElementById("input");
+    if(input) input.placeholder="AURA'ya söyle... söylediklerin yerel sohbet geçmişine kaydedilir";
+  }
+  function boot(){ addScreenUpgrade(); }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",boot,{once:true}); else boot();
+})();
