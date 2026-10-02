@@ -1101,7 +1101,7 @@ function buildAgentPlan(query, mode = "chat") {
     maxExecutionRounds: 5,
     developerChangePlan: code ? {
       status: "needs_inspection", targetProject: null, candidateFiles: [], changeActions: [], testStrategy: [],
-      snapshotId: null, snapshotCreated: false, rollbackAttempted: false, rollbackStatus: "not_attempted"
+      snapshotId: null, snapshotCreated: false, snapshots: [], rollbackAttempted: false, rollbackStatus: "not_attempted"
     } : null
   };
 }
@@ -1195,12 +1195,14 @@ function buildPcToolRecoveryInstruction(plan) {
 
 function buildAgentRecoveryInstruction(plan) {
   if (!plan?.failedSteps?.length) return "";
+  const snapshots = plan?.developerChangePlan?.snapshots || [];
+  const rollbackHint = snapshots.length ? " Developer Agent değişiklikten sonra doğrulama başarısızsa ilgili snapshotId'yi seçip desktop_restore_file_snapshot ile geri alma sürecini başlatmalı ve ardından dosyayı yeniden okumalıdır." : "";
   const failed = plan.failedSteps.slice(-3).join(", ");
   return "\nAGENT CORE HATA DÜZELTME:\n" +
     "Son başarısız araç/adımlar: " + failed + ". " +
     "Aynı çağrıyı körlemesine tekrarlama. Hatanın nedenini değerlendir, " +
     "gerekirse daha uygun alternatif araç veya daha küçük bir adım seç, " +
-    "sonucu tekrar doğrula. Riskli/değiştirici işlemlerde onay gereksinimini koru.";
+    "sonucu tekrar doğrula. Riskli/değiştirici işlemlerde onay gereksinimini koru."+rollbackHint;
 }
 
 function updateAgentPlanFromToolResult(plan, toolName, toolResult) {
@@ -1228,8 +1230,17 @@ function updateAgentPlanFromToolResult(plan, toolName, toolResult) {
   const isSnapshotTool = /desktop_create_file_snapshot/i.test(tool);
   const isRestoreTool = /desktop_restore_file_snapshot/i.test(tool);
   if (next.developerChangePlan) {
-    if (isSnapshotTool && !failed && toolResult?.id) { next.developerChangePlan.snapshotId=String(toolResult.id); next.developerChangePlan.snapshotCreated=true; }
-    if (isRestoreTool) { next.developerChangePlan.rollbackAttempted=true; next.developerChangePlan.rollbackStatus=failed ? "failed" : "restored"; }
+    if (isSnapshotTool && !failed && toolResult?.id) {
+      const snapshot = {id:String(toolResult.id), path:String(toolResult.path||""), createdAt:String(toolResult.createdAt||new Date().toISOString()), sha256:toolResult.sha256||null};
+      next.developerChangePlan.snapshotId=snapshot.id;
+      next.developerChangePlan.snapshotCreated=true;
+      next.developerChangePlan.snapshots=[...(next.developerChangePlan.snapshots||[]), snapshot].slice(-10);
+    }
+    if (isRestoreTool) {
+      next.developerChangePlan.rollbackAttempted=true;
+      next.developerChangePlan.rollbackStatus=failed ? "failed" : "restored";
+      next.developerChangePlan.status=failed ? "rollback_failed" : "rolled_back";
+    }
   }
   next.history.push({ tool, status, at: new Date().toISOString(), summary: textResult.slice(0, 500) });
   next.history = next.history.slice(-20);
