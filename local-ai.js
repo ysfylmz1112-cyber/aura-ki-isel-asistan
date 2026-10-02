@@ -1086,9 +1086,17 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   const codeLikeMode = isCodeMode(effectiveMode);
   const localEngine = await ensureLocalAI(effectiveMode,onProgress);
   const memoryItems = compactMemory(memory);
-  const memoryContext = memoryItems.length
+  let memoryContext = memoryItems.length
     ? "\nKALICI HAFIZA:\n" + JSON.stringify(memoryItems)
     : "\nKALICI HAFIZA: boş.";
+  if (desktopAvailable() && value.trim()) {
+    try {
+      const related = await desktopCall("desktop_relevant_context", { query: value, maxMemory: 5, maxConversations: 5 });
+      if (related && (related.memory?.length || related.conversations?.length)) {
+        memoryContext += "\nİLGİLİ GEÇMİŞ BAĞLAMI:\n" + JSON.stringify(related).slice(0, 7000);
+      }
+    } catch {}
+  }
 
   const generalToolIntent = /openclaw|güncel|guncel|araştır|arastir|internette|web|site|dosya|klasör|klasor|uygulama|oyun|bilgisayar|masaüstü|masaustu|sistem|kullanım|kullanim|hatırla|hatirla|unut|geçen hafta|gecen hafta|dün|dun|bugün|bugun|konuşma geçmişi|konusma gecmisi|pano|clipboard|ekran görüntüsü|ekran goruntusu|screenshot|bildirim|notification|unity|kamyon|nakliye|cpu|ram|gpu|disk|performans|donanım|donanim|hava|sıcaklık|sicaklik|derece|pil|batarya/.test(lowerValue);
 
