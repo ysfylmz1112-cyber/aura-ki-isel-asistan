@@ -59,6 +59,14 @@ const TOOLS = [
   {
     type: "function",
     function: {
+      name: "desktop_developer_self_test",
+      description: "Developer Agent altyapısının temel snapshot, dosya, PowerShell ve Unity araçlarının bağlı olup olmadığını kontrol eder. Dosya değiştirmez.",
+      parameters: {type:"object",properties:{},additionalProperties:false}
+    }
+  },
+  {
+    type: "function",
+    function: {
       name: "desktop_scan_environment",
       description: "Bilgisayarın izinli klasörlerini, masaüstü yapısını, Başlat menüsündeki uygulamaları, Steam oyunlarını ve Windows son öğelerini tarar; AURA bilgisayar profilini günceller.",
       parameters: { type:"object", properties:{}, additionalProperties:false }
