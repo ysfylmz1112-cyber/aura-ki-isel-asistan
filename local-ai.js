@@ -989,6 +989,16 @@ function selectAgentTools(plan, availableTools = []) {
     .map(item => item.name);
 }
 
+function buildAgentRecoveryInstruction(plan) {
+  if (!plan?.failedSteps?.length) return "";
+  const failed = plan.failedSteps.slice(-3).join(", ");
+  return "\nAGENT CORE HATA DÜZELTME:\n" +
+    "Son başarısız araç/adımlar: " + failed + ". " +
+    "Aynı çağrıyı körlemesine tekrarlama. Hatanın nedenini değerlendir, " +
+    "gerekirse daha uygun alternatif araç veya daha küçük bir adım seç, " +
+    "sonucu tekrar doğrula. Riskli/değiştirici işlemlerde onay gereksinimini koru.";
+}
+
 function updateAgentPlanFromToolResult(plan, toolName, toolResult) {
   const next = { ...plan };
   const textResult = typeof toolResult === "string" ? toolResult : JSON.stringify(toolResult ?? "");
@@ -1009,11 +1019,12 @@ function updateAgentPlanFromToolResult(plan, toolName, toolResult) {
 }
 
 function agentCorePrompt(plan) {
+  const recovery = buildAgentRecoveryInstruction(plan);
   return "\nAURA AGENT CORE PLANI:\n" + JSON.stringify(plan) +
     "\nPlanı körü körüne uygulama; araç sonucu planla uyuşmuyorsa planı güncelle. " +
     "Her araç sonucunu değerlendir. Planın verification kriterleri karşılanmadan görevi tamamlandı sayma. " +
     "Başarısız bir adım varsa aynı işlemi körlemesine tekrarlama; hataya göre düzeltme veya alternatif araç seç. " +
-    "Gereksiz araç çağrısı yapma.";
+    "Gereksiz araç çağrısı yapma." + recovery;
 }
 
 function extractJsonObject(text) {
