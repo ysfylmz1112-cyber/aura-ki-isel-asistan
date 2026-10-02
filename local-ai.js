@@ -324,6 +324,22 @@ const TOOLS = [
   {
     type: "function",
     function: {
+      name: "desktop_create_file_snapshot",
+      description: "İzinli bir kod/metin dosyasının mevcut halini AURA kullanıcı veri klasöründeki güvenli snapshot alanına kaydeder. Kod değişikliğinden önce geri alma noktası oluşturmak için kullanılır.",
+      parameters: {type:"object",properties:{path:{type:"string"}},required:["path"],additionalProperties:false}
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_restore_file_snapshot",
+      description: "Daha önce oluşturulmuş bir dosya snapshot'ını geri yükler. Mevcut dosyanın üzerine yazmadan önce kullanıcı onayı ister.",
+      parameters: {type:"object",properties:{id:{type:"string"}},required:["id"],additionalProperties:false}
+    }
+  },
+  {
+    type: "function",
+    function: {
       name: "desktop_write_text_file",
       description: "İzinli bir dosyayı oluşturur veya tamamen değiştirir. Kullanıcı onayı gösterilir.",
       parameters: {
@@ -997,7 +1013,7 @@ function buildAgentPlan(query, mode = "chat") {
 
   if (code) {
     steps.push("görevi ve mevcut proje/dosya durumunu belirle", "ilgili kaynak dosyalarını oku ve değişiklik kapsamını çıkar", "değişikliği kontrollü şekilde uygula", "test/build/sağlık kontrolü çalıştır", "sonucu gerçek dosya veya proje durumu ile doğrula");
-    toolHints.push("desktop_find_unity_projects", "desktop_unity_health_check", "desktop_unity_project_tree", "desktop_unity_read_file", "desktop_unity_write_file", "desktop_read_text_file", "desktop_write_text_file", "desktop_run_powershell");
+    toolHints.push("desktop_find_unity_projects", "desktop_unity_health_check", "desktop_unity_project_tree", "desktop_unity_read_file", "desktop_unity_write_file", "desktop_read_text_file", "desktop_create_file_snapshot", "desktop_write_text_file", "desktop_restore_file_snapshot", "desktop_run_powershell");
   } else if (processOps) {
     steps.push("hedef işlem veya süreç bilgisini belirle", "çalışan süreçleri güvenli şekilde incele", "istenen işlemi onay kurallarına göre uygula", "işlem/süreç durumunu doğrula");
     toolHints.push("desktop_get_background_tasks", "desktop_get_running_apps");
@@ -1138,7 +1154,8 @@ function selectAgentTools(plan, availableTools = []) {
 function buildDeveloperAgentInstruction(plan) {
   if (plan?.mode !== "code" && plan?.mode !== "background-code") return "";
   return "\nDEVELOPER AGENT KURALI:\n" +
-    "Kod değişikliğine başlamadan önce mevcut dosyayı/projeyi oku; varsayım yapma. " +
+    "Kod değişikliğinden önce mevcut dosya/proje durumunu oku ve değişecek dosyanın snapshot'ını oluştur. " +
+    "Değişiklik başarısız olursa mümkünse snapshot'tan geri dönmeden önce kullanıcı onayını koru. " +
     "Değişiklikten sonra uygun bir test, build, compile veya sağlık kontrolü çalıştır. " +
     "Test başarısızsa hatanın nedenini analiz et, küçük ve kontrollü bir düzeltme yap ve testi yeniden çalıştır. " +
     "Doğrulanmamış kodu başarılı ilan etme. Kullanıcı istemedikçe ilgisiz dosyaları değiştirme. " +
