@@ -1177,10 +1177,19 @@ function developerPlanCompletionState(plan) {
   const d = plan?.developerChangePlan;
   if (!d) return {ready:false,reason:"developer_plan_missing"};
   const failed = Array.isArray(plan?.failedSteps) && plan.failedSteps.length > 0;
+  const snapshots = Array.isArray(d.snapshots) ? d.snapshots : [];
+  const hasChange = d.status === "changed" || d.snapshotCreated || snapshots.length > 0;
+  const hasTest = Array.isArray(d.testStrategy) && d.testStrategy.length > 0;
+  const hasRead = Array.isArray(plan?.completedSteps) && plan.completedSteps.some(x => /read_file|project_tree|list_directory/i.test(String(x)));
+  const hasVerificationStep = Array.isArray(plan?.completedSteps) && plan.completedSteps.some(x => /health_check|unity_build|run_powershell/i.test(String(x)));
   if (failed && d.rollbackStatus === "failed") return {ready:false,reason:"rollback_failed"};
-  if (d.status !== "verified_or_failed" && d.status !== "rolled_back") return {ready:false,reason:"verification_not_executed"};
   if (d.status === "rolled_back") return {ready:false,reason:"change_was_rolled_back"};
+  if (hasChange && !snapshots.length) return {ready:false,reason:"snapshot_missing"};
+  if (hasChange && !hasRead) return {ready:false,reason:"source_not_read"};
+  if (hasChange && !hasTest) return {ready:false,reason:"test_not_recorded"};
+  if (hasChange && !hasVerificationStep) return {ready:false,reason:"verification_step_missing"};
   if (failed) return {ready:false,reason:"failed_step_present"};
+  if (d.status !== "verified_or_failed") return {ready:false,reason:"verification_not_confirmed"};
   return {ready:true,reason:"verified"};
 }
 
