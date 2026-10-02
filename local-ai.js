@@ -474,6 +474,45 @@ const TOOLS = [
   {
     type: "function",
     function: {
+      name: "desktop_mouse_click",
+      description: "Kullanıcı onayıyla Windows ekranında belirli koordinata sol veya sağ tıklama yapar. Koordinatlar kullanıcıdan veya güvenilir ekran bağlamından gelmelidir.",
+      parameters: {
+        type:"object",
+        properties:{x:{type:"number"},y:{type:"number"},button:{type:"string",enum:["left","right"]},clicks:{type:"number"}},
+        required:["x","y"],
+        additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_keyboard_type",
+      description: "Kullanıcı onayıyla aktif pencereye metin yazar. Parola, güvenlik kodu veya hassas kimlik bilgilerini otomatik olarak girmek için kullanılmaz.",
+      parameters: {
+        type:"object",
+        properties:{text:{type:"string"}},
+        required:["text"],
+        additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_keyboard_key",
+      description: "Kullanıcı onayıyla aktif pencereye sınırlı bir klavye tuşu gönderir.",
+      parameters: {
+        type:"object",
+        properties:{key:{type:"string"}},
+        required:["key"],
+        additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
       name: "desktop_clipboard_read",
       description: "Windows panosundaki metni okur. Şifreleri veya hassas verileri kendiliğinden isteme; kullanıcı açıkça pano içeriğini istediğinde kullan.",
       parameters: { type:"object", properties:{}, additionalProperties:false }
@@ -930,7 +969,8 @@ function buildAgentPlan(query, mode = "chat") {
   const fileOps = /dosya|klasör|klasor|metin dosyası|dosyası|dosyayi|dosyayı|oku|yaz|oluştur|olustur|sil|taşı|tasi|kopyala|kopya|dosya yolu|dosya yolu|klasör yolu/.test(q);
   const processOps = !fileOps && /işlem|islem|process|süreç|surec|çalışan süreç|calisan surec|çalışan program|calisan program|görev yöneticisi|gorev yoneticisi/.test(q);
   const systemOps = !processOps && /cpu|işlemci|ram|bellek|gpu|ekran kartı|ekran karti|disk|depolama|donanım|donanim|sistem bilgisi|performans|sıcaklık|sicaklik|batarya|pil|ağ|ag|network|internet hız|internet hiz/.test(q);
-  const mediaOps = !systemOps && /ekran görüntüsü|ekran goruntusu|screenshot|ekranı gör|ekrani gor|pano|clipboard|panoya|kopyala|yapıştır|yapistir/.test(q);
+  const inputOps = /tıkla|tikla|fare|mouse|klavye|tuş|tus|yaz|bas|enter|tab|ekrana yaz/.test(q);
+  const mediaOps = !systemOps && !inputOps && /ekran görüntüsü|ekran goruntusu|screenshot|ekranı gör|ekrani gor|pano|clipboard|panoya|kopyala|yapıştır|yapistir/.test(q);
   const terminalOps = !mediaOps && /powershell|terminal|komut satırı|komut satiri|shell|cmd|komut çalıştır|komut calistir|script çalıştır|script calistir/.test(q);
   const appOps = !terminalOps && !fileOps && !processOps && /uygulama|program|uygulamayı|uygulamayi|programı|programi|başlat|baslat|kapat|çalışan|calisan|uygulama aç|uygulama ac|program aç|program ac/.test(q);
   const pc = /bilgisayar|pc|uygulama|program|sistem|cpu|ram|gpu|disk|masaüstü|masaustu/.test(q);
@@ -955,6 +995,9 @@ function buildAgentPlan(query, mode = "chat") {
   } else if (systemOps) {
     steps.push("istenen sistem/donanım bilgisini belirle", "gerekli PC durum araçlarını seç", "ölçümleri al", "ölçüm sonucunu doğrula");
     toolHints.push("desktop_pc_agent_context", "desktop_get_system_info", "desktop_get_hardware_metrics", "desktop_get_battery_status");
+  } else if (inputOps) {
+    steps.push("istenen kullanıcı etkileşimini belirle", "hedef pencere ve işlem kapsamını kontrol et", "mouse/klavye işlemini kullanıcı onayına göre uygula", "etkileşimin sonucunu doğrula");
+    toolHints.push("desktop_capture_screen", "desktop_mouse_click", "desktop_keyboard_type", "desktop_keyboard_key");
   } else if (mediaOps) {
     steps.push("istenen ekran/pano bilgisini belirle", "gerekli erişimi ve işlem riskini kontrol et", "ekran görüntüsü veya pano işlemini uygula", "çıktıyı doğrula");
     toolHints.push("desktop_capture_screen", "desktop_clipboard_read", "desktop_clipboard_write");
@@ -990,8 +1033,10 @@ function buildAgentPlan(query, mode = "chat") {
   const uniqueHints = [...new Set(toolHints)];
   const verification = code
     ? ["hedef dosya/proje mevcut", "değişiklik uygulanmış", "ilgili test/build veya sağlık kontrolü başarılı"]
-    : processOps
-      ? ["istenen süreç/işlem bilgisi alındı", "işlem sonucu çalışan süreç durumu ile doğrulandı"]
+    : inputOps
+      ? ["istenen mouse/klavye işlemi uygulandı", "etkileşim sonucu mümkün olan PC durumu veya ekran bağlamı ile doğrulandı"]
+      : processOps
+        ? ["istenen süreç/işlem bilgisi alındı", "işlem sonucu çalışan süreç durumu ile doğrulandı"]
       : appOps
         ? ["hedef uygulama belirlendi", "uygulama beklenen açık/kapalı durumuna geldi ve çalışan uygulamalarla doğrulandı"]
         : fileOps
@@ -1013,7 +1058,7 @@ function buildAgentPlan(query, mode = "chat") {
     steps,
     toolHints: uniqueHints,
     verification,
-    requiresApproval: destructive,
+    requiresApproval: destructive || inputOps,
     executionStatus: "planned",
     currentStep: 0,
     lastTool: null,
@@ -1033,7 +1078,8 @@ function buildPcToolRouter(plan, availableTools = []) {
     apps: names.filter(name => /desktop_(get_running_apps|find_and_launch_app|launch_app)/i.test(name)),
     processes: names.filter(name => /desktop_(get_background_tasks|get_running_apps)/i.test(name)),
     system: names.filter(name => /desktop_(pc_agent_context|get_system_info|get_hardware_metrics|get_environment_profile|get_battery_status)/i.test(name)),
-    media: names.filter(name => /desktop_(capture_screen|clipboard_read|clipboard_write)/i.test(name))
+    media: names.filter(name => /desktop_(capture_screen|clipboard_read|clipboard_write)/i.test(name)),
+    input: names.filter(name => /desktop_(mouse_click|keyboard_type|keyboard_key)/i.test(name))
   };
   const goal = String(plan?.goal || "");
   const category = /powershell|terminal|komut|shell|cmd/i.test(goal) ? "terminal"
@@ -1041,6 +1087,7 @@ function buildPcToolRouter(plan, availableTools = []) {
     : /uygulama|program/i.test(goal) ? "apps"
     : /işlem|islem|process|süreç|surec/i.test(goal) ? "processes"
     : /cpu|ram|gpu|disk|donanım|donanim|sistem/i.test(goal) ? "system"
+    : /tıkla|tikla|fare|mouse|klavye|tuş|tus|ekrana yaz/i.test(goal) ? "input"
     : /ekran|screenshot|pano|clipboard/i.test(goal) ? "media"
     : null;
   return {
