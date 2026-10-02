@@ -1401,6 +1401,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   let agentRound = 0;
   let developerRepairRounds = 0;
   const maxDeveloperRepairRounds = 2;
+  const developerTestFailures = new Map();
   for(let round=0; round<5; round++){
     agentRound = round + 1;
     let response;
@@ -1488,10 +1489,15 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
           result={error:error && error.message ? error.message : "Araç hatası"};
         }
         agentPlan = updateAgentPlanFromToolResult(agentPlan, manual.name, result);
+        if (codeLikeMode && agentPlan.lastToolStatus === "failed" && /build|health_check|run_powershell/i.test(manual.name)) {
+          const key = String(manual.name);
+          developerTestFailures.set(key, (developerTestFailures.get(key) || 0) + 1);
+        }
+        const repeatedTestFailure = [...developerTestFailures.values()].some(count => count >= 2);
         const repairInstruction = agentPlan.lastToolStatus === "failed" && codeLikeMode
           ? (++developerRepairRounds <= maxDeveloperRepairRounds
             ? "\nDEVELOPER REPAIR: Araç başarısız oldu. Önce hatanın nedenini belirle, mevcut dosya/proje durumunu tekrar oku, yalnızca gerekli küçük düzeltmeyi uygula ve testi yeniden çalıştır. Bu onarım turu " + developerRepairRounds + "/" + maxDeveloperRepairRounds + "."
-            : "\nDEVELOPER REPAIR SINIRI: İki kontrollü onarım turu kullanıldı. Daha fazla kör değişiklik yapma; sonucu doğrulanmamış olarak bildir.")
+            : (repeatedTestFailure ? "\nDEVELOPER TEST FAILURE GUARD: Aynı test iki kez başarısız oldu. Yeni kör kod değişikliği yapma; mevcut snapshot ile onaylı rollback başlat, dosyayı yeniden oku ve sonucu doğrula." : "\nDEVELOPER REPAIR SINIRI: İki kontrollü onarım turu kullanıldı. Daha fazla kör değişiklik yapma; sonucu doğrulanmamış olarak bildir.")
           : "";
         messages.push({
           role:"user",
