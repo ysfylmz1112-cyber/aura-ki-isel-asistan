@@ -1637,9 +1637,11 @@ async function writeTextFile(filePath, content) {
   if (text.length > 2 * 1024 * 1024) throw new Error('Metin 2 MB sınırını aşıyor.');
   const ok = await confirmAction('AURA — Dosya yazma izni', 'AURA şu dosyayı oluşturacak/değiştirecek:\n\n'+filePath+'\n\nDevam edilsin mi?');
   if (!ok) throw new Error('Kullanıcı işlemi iptal etti.');
+  let snapshot = null;
+  if (fs.existsSync(filePath)) snapshot = await createFileSnapshot(filePath);
   await fsp.mkdir(path.dirname(filePath),{recursive:true});
   await fsp.writeFile(filePath,text,'utf8');
-  return {ok:true,path:filePath};
+  return {ok:true,path:filePath,snapshotId:snapshot?.id||null,snapshotCreated:Boolean(snapshot)};
 }
 async function makeDirectory(dirPath) {
   if (!isAllowedPath(dirPath)) throw new Error('Bu klasöre yazma izni yok.');
@@ -2282,9 +2284,11 @@ async function unityWriteProjectFile(projectPath,relativePath,content){
   if(value.length>5*1024*1024)throw new Error('Unity dosyası 5 MB sınırını aşıyor.');
   const ok=await confirmAction('AURA — Unity dosyası değiştirme izni','AURA şu Unity dosyasını oluşturacak/değiştirecek:\n\n'+relative+'\n\nProje: '+root+'\n\nDevam edilsin mi?');
   if(!ok)throw new Error('Kullanıcı işlemi iptal etti.');
+  let snapshot = null;
+  if (fs.existsSync(target)) snapshot = await createFileSnapshot(target);
   await fsp.mkdir(path.dirname(target),{recursive:true});
   await fsp.writeFile(target,value,'utf8');
-  return {ok:true,path:target,relativePath:relative,bytes:Buffer.byteLength(value,'utf8'),message:'Unity dosyası güncellendi.'};
+  return {ok:true,path:target,relativePath:relative,bytes:Buffer.byteLength(value,'utf8'),snapshotId:snapshot?.id||null,snapshotCreated:Boolean(snapshot),message:'Unity dosyası güncellendi.'};
 }
 async function unityCreateDirectory(projectPath,relativePath){
   const {root,target,relative}=validateUnityRelative(projectPath,relativePath);
