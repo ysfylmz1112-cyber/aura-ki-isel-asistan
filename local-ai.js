@@ -996,8 +996,8 @@ function buildAgentPlan(query, mode = "chat") {
   const destructive = /sil|kapat|kaldır|kaldir|taşı|tasi|değiştir|degistir|yaz|oluştur|olustur|çalıştır|calistir/.test(q);
 
   if (code) {
-    steps.push("görevi ve mevcut proje durumunu belirle", "gerekli dosya/proje araçlarını seç", "değişikliği uygula", "sonucu doğrula");
-    toolHints.push("desktop_find_unity_projects", "desktop_unity_health_check", "desktop_unity_project_tree", "desktop_unity_read_file", "desktop_unity_write_file");
+    steps.push("görevi ve mevcut proje/dosya durumunu belirle", "ilgili kaynak dosyalarını oku ve değişiklik kapsamını çıkar", "değişikliği kontrollü şekilde uygula", "test/build/sağlık kontrolü çalıştır", "sonucu gerçek dosya veya proje durumu ile doğrula");
+    toolHints.push("desktop_find_unity_projects", "desktop_unity_health_check", "desktop_unity_project_tree", "desktop_unity_read_file", "desktop_unity_write_file", "desktop_read_text_file", "desktop_write_text_file", "desktop_run_powershell");
   } else if (processOps) {
     steps.push("hedef işlem veya süreç bilgisini belirle", "çalışan süreçleri güvenli şekilde incele", "istenen işlemi onay kurallarına göre uygula", "işlem/süreç durumunu doğrula");
     toolHints.push("desktop_get_background_tasks", "desktop_get_running_apps");
@@ -1049,7 +1049,7 @@ function buildAgentPlan(query, mode = "chat") {
 
   const uniqueHints = [...new Set(toolHints)];
   const verification = code
-    ? ["hedef dosya/proje mevcut", "değişiklik uygulanmış", "ilgili test/build veya sağlık kontrolü başarılı"]
+    ? ["hedef dosya/proje mevcut", "değişiklik uygulanmış", "ilgili test/build veya sağlık kontrolü çalıştırılmış", "test/build/sağlık sonucu başarılı veya hata açıkça tespit edilip düzeltilmiş", "son dosya/proje durumu tekrar doğrulanmış"]
     : inputOps
       ? ["istenen mouse/klavye işlemi uygulandı", "etkileşim sonucu mümkün olan PC durumu veya ekran bağlamı ile doğrulandı"]
       : processOps
@@ -1133,6 +1133,16 @@ function selectAgentTools(plan, availableTools = []) {
     .filter(item => item.score > 0)
     .sort((a, b) => b.score - a.score)
     .map(item => item.name);
+}
+
+function buildDeveloperAgentInstruction(plan) {
+  if (plan?.mode !== "code" && plan?.mode !== "background-code") return "";
+  return "\nDEVELOPER AGENT KURALI:\n" +
+    "Kod değişikliğine başlamadan önce mevcut dosyayı/projeyi oku; varsayım yapma. " +
+    "Değişiklikten sonra uygun bir test, build, compile veya sağlık kontrolü çalıştır. " +
+    "Test başarısızsa hatanın nedenini analiz et, küçük ve kontrollü bir düzeltme yap ve testi yeniden çalıştır. " +
+    "Doğrulanmamış kodu başarılı ilan etme. Kullanıcı istemedikçe ilgisiz dosyaları değiştirme. " +
+    "Silme veya geniş kapsamlı değişikliklerde mevcut onay kurallarını koru.";
 }
 
 function buildAgentVerificationInstruction(plan) {
@@ -1305,6 +1315,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
       content: SYSTEM_PROMPT + modePrompt + memoryContext + pcContext +
         (desktopAvailable() ? "\nMasaüstü ajanı BAĞLI." : "\nMasaüstü ajanı BAĞLI DEĞİL.") +
         agentCorePrompt(agentPlan) +
+        buildDeveloperAgentInstruction(agentPlan) +
         toolProtocol
     },
     ...cleanMessages(codeLikeMode ? history.slice(-2) : history),
