@@ -1014,6 +1014,11 @@ function buildAgentPlan(query, mode = "chat") {
     toolHints: uniqueHints,
     verification,
     requiresApproval: destructive,
+    executionStatus: "planned",
+    currentStep: 0,
+    lastTool: null,
+    lastToolStatus: null,
+    history: [],
     policy: "Önce planla → uygun aracı seç → sonucu değerlendir → gerekiyorsa düzelt → doğrulama kriterlerini kontrol et → sonra tamamla.",
     maxExecutionRounds: 5
   };
@@ -1105,12 +1110,19 @@ function updateAgentPlanFromToolResult(plan, toolName, toolResult) {
   next.completedSteps = Array.isArray(next.completedSteps) ? [...next.completedSteps] : [];
   next.failedSteps = Array.isArray(next.failedSteps) ? [...next.failedSteps] : [];
   next.history = Array.isArray(next.history) ? [...next.history] : [];
-  next.history.push({ tool: String(toolName || "unknown_tool"), status: failed ? "failed" : "completed", summary: textResult.slice(0, 500) });
+  const tool = String(toolName || "unknown_tool");
+  const status = failed ? "failed" : "completed";
+  next.history.push({ tool, status, at: new Date().toISOString(), summary: textResult.slice(0, 500) });
+  next.history = next.history.slice(-20);
+  next.lastTool = tool;
+  next.lastToolStatus = status;
+  next.currentStep = Math.min(Array.isArray(next.steps) ? next.steps.length : 0, (Number(next.currentStep) || 0) + (failed ? 0 : 1));
+  next.executionStatus = failed ? "recovery" : "running";
   if (failed) {
-    next.failedSteps.push(String(toolName || "unknown_tool"));
+    next.failedSteps.push(tool);
     next.nextAction = "Hatanın nedenini analiz et ve uygun düzeltme veya alternatif araç seç.";
   } else {
-    next.completedSteps.push(String(toolName || "unknown_tool"));
+    next.completedSteps.push(tool);
     next.nextAction = "Sonucu değerlendir; doğrulama kriterleri tamamlanmadıysa sıradaki adıma geç.";
   }
   return next;
