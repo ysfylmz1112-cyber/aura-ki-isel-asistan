@@ -1706,27 +1706,109 @@ document.querySelectorAll(".chip").forEach((button) => {
   button.addEventListener("click", () => run(button.dataset.q || ""));
 });
 
-micBtn.addEventListener("click", () => {  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!Recognition) {
+let voiceRecognition = null;
+let voiceListening = false;
+let voiceRequestId = 0;
+
+function stopVoiceInput(){
+  voiceRequestId++;
+  const recognition = voiceRecognition;
+  voiceRecognition = null;
+  voiceListening = false;
+  if(recognition){
+    try{ recognition.onend = null; recognition.stop(); }catch{}
+  }
+  if(!busy){
+    status.textContent = "● HAZIR";
+    setCoreState("ready");
+  }
+  micBtn.classList.remove("active");
+  micBtn.title = "Sesli giriş";
+}
+
+async function startVoiceInput(){
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!Recognition){
     subEl.textContent = "Bu sistemde sesli giriş desteklenmiyor.";
     return;
   }
+  if(busy) return;
 
+  stopVoiceInput();
+  const requestId = ++voiceRequestId;
   const recognition = new Recognition();
+  voiceRecognition = recognition;
+  voiceListening = true;
+
   recognition.lang = "tr-TR";
+  recognition.interimResults = false;
+  recognition.continuous = false;
+  recognition.maxAlternatives = 1;
+
+  // Chromium'un desteklediği sürümlerde mümkünse tanımayı cihaz üzerinde yap.
+  // Destek yoksa tarayıcının varsayılan SpeechRecognition servisi kullanılır.
+  try{
+    if("processLocally" in recognition) recognition.processLocally = true;
+  }catch{}
+
   recognition.onstart = () => {
+    if(requestId !== voiceRequestId) return;
     status.textContent = "● DİNLİYOR";
+    subEl.textContent = "Seni dinliyorum · konuşabilirsin";
     setCoreState("listening");
+    micBtn.classList.add("active");
+    micBtn.title = "Dinlemeyi durdur";
   };
-  recognition.onresult = (event) => { voiceInput = true; run(event.results[0][0].transcript); };
-  recognition.onerror = () => {
-    status.textContent = "● HAZIR";
-    setCoreState("ready");
+
+  recognition.onresult = (event) => {
+    if(requestId !== voiceRequestId) return;
+    const transcript = String(event?.results?.[0]?.[0]?.transcript || "").trim();
+    if(!transcript) return;
+    voiceInput = true;
+    input.value = transcript;
+    stopVoiceInput();
+    run(transcript);
   };
+
+  recognition.onerror = (event) => {
+    if(requestId !== voiceRequestId) return;
+    const code = String(event?.error || "");
+    const messages = {
+      "not-allowed":"Mikrofon izni verilmedi.",
+      "service-not-allowed":"Sesli giriş servisine izin verilmedi.",
+      "audio-capture":"Mikrofon bulunamadı veya kullanılamıyor.",
+      "no-speech":"Ses algılanmadı.",
+      "network":"Ses tanıma bağlantısı başarısız oldu."
+    };
+    subEl.textContent = messages[code] || "Sesli giriş başlatılamadı.";
+    stopVoiceInput();
+  };
+
   recognition.onend = () => {
-    if (!busy) setCoreState("ready");
+    if(requestId !== voiceRequestId) return;
+    voiceRecognition = null;
+    voiceListening = false;
+    micBtn.classList.remove("active");
+    micBtn.title = "Sesli giriş";
+    if(!busy){
+      status.textContent = "● HAZIR";
+      setCoreState("ready");
+    }
   };
-  recognition.start();
+
+  try{
+    recognition.start();
+  }catch(error){
+    if(requestId === voiceRequestId){
+      subEl.textContent = "Mikrofon başlatılamadı: " + String(error?.message || error);
+      stopVoiceInput();
+    }
+  }
+}
+
+micBtn.addEventListener("click", () => {
+  if(voiceListening) stopVoiceInput();
+  else startVoiceInput();
 });
 
 document.addEventListener("keydown", (event) => {
@@ -1736,6 +1818,7 @@ document.addEventListener("keydown", (event) => {
   }
   if (event.key === "Escape") {
     if(qrModal?.classList.contains("open")) closeRemoteQr();
+    stopVoiceInput();
     runGeneration++;
     if(hasDesktopAgent()) callDesktop("desktop_cancel_scan",{}).catch(()=>{});
     stopScanPoll();
