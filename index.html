@@ -1706,172 +1706,331 @@ document.querySelectorAll(".chip").forEach((button) => {
   button.addEventListener("click", () => run(button.dataset.q || ""));
 });
 
-let voiceRecognition = null;
-let voiceListening = false;
-let voiceRequestId = 0;
-let voiceRestartTimer = null;
+let localWhisperPipeline = null;
+let localWhisperPromise = null;
+let voiceStream = null;
+let voiceAudioContext = null;
+let voiceProcessor = null;
+let voiceSource = null;
+let voiceChunks = [];
+let voiceSampleRate = 16000;
+let voiceSpeechStarted = false;
+let voiceLastSpeechAt = 0;
+let voiceAutoStopTimer = null;
+let voiceSessionId = 0;
 
 function stopVoiceInput(){
-  voiceRequestId++;
-  voiceListening = false;
-  if(voiceRestartTimer){ clearTimeout(voiceRestartTimer); voiceRestartTimer=null; }
-  const recognition = voiceRecognition;
-  voiceRecognition = null;
-  if(recognition){
-    try{ recognition.onend = null; recognition.onerror = null; recognition.stop(); }catch{}
+  voiceSessionId++;
+  if(voiceAutoStopTimer){ clearTimeout(voiceAutoStopTimer); voiceAutoStopTimer=null; }
+
+  if(voiceProcessor){
+    try{ voiceProcessor.disconnect(); }catch{}
+    voiceProcessor.onaudioprocess = null;
+    voiceProcessor = null;
   }
+  if(voiceSource){
+    try{ voiceSource.disconnect(); }catch{}
+    voiceSource = null;
+  }
+  if(voiceStream){
+    try{ voiceStream.getTracks().forEach(track=>track.stop()); }catch{}
+    voiceStream = null;
+  }
+  if(voiceAudioContext){
+    try{ voiceAudioContext.close(); }catch{}
+    voiceAudioContext = null;
+  }
+
+  voiceChunks = [];
+  voiceSpeechStarted = false;
+  voiceLastSpeechAt = 0;
+  micBtn.classList.remove("active");
+  micBtn.title = "Sesli giriş";
+
   if(!busy){
     status.textContent = "● HAZIR";
     setCoreState("ready");
   }
-  micBtn.classList.remove("active");
-  micBtn.title = "Sesli giriş";
 }
 
-function startRecognitionSession(recognition, requestId, state){
-  if(requestId !== voiceRequestId || !voiceListening) return;
-  try{
-    recognition.start();
-  }catch(error){
-    const message=String(error?.message||error);
-    if(/already started|start/i.test(message) && state.started) return;
-    voiceRestartTimer=setTimeout(()=>{
-      voiceRestartTimer=null;
-      startRecognitionSession(recognition,requestId,state);
-    },300);
+async function ensureLocalWhisper(){
+  if(localWhisperPipeline) return localWhisperPipeline;
+  if(localWhisperPromise) return localWhisperPromise;
+
+  localWhisperPromise = (async()=>{
+    subEl.textContent = "Yerel Whisper hazırlanıyor · ilk kullanımda model indiriliyor...";
+    status.textContent = "● MODEL";
+    setCoreState("thinking");
+
+    const { pipeline } = await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0");
+
+    const progress_callback = (progress) => {
+      if(!progress) return;
+      const file = String(progress.file || "model");
+      const loaded = Number(progress.loaded);
+      const total = Number(progress.total);
+      if(Number.isFinite(loaded) && Number.isFinite(total) && total>0){
+        const pct=Math.max(0,Math.min(100,Math.round((loaded/total)*100)));
+        subEl.textContent = "Yerel Whisper modeli yükleniyor · "+pct+"%";
+      }else{
+        subEl.textContent = "Yerel Whisper modeli hazırlanıyor · "+file;
+      }
+    };
+
+    // Multilingual Whisper kullanıyoruz: Türkçe konuşma için language=turkish
+    // verilecek. Encoder tam hassasiyet, decoder 4-bit: indirme/RAM dengesi.
+    const pipe = await pipeline(
+      "automatic-speech-recognition",
+      "onnx-community/whisper-tiny",
+      {
+        device: "webgpu",
+        dtype: {
+          encoder_model: "fp32",
+          decoder_model_merged: "q4"
+        },
+        progress_callback
+      }
+    );
+
+    localWhisperPipeline = pipe;
+    subEl.textContent = "Yerel Whisper hazır · mikrofonu kullanabilirsin";
+    status.textContent = "● HAZIR";
+    setCoreState("ready");
+    return pipe;
+  })().catch(error=>{
+    localWhisperPromise=null;
+    throw error;
+  });
+
+  return localWhisperPromise;
+}
+
+function downsampleAudio(input, inputRate, outputRate=16000){
+  if(inputRate===outputRate) return new Float32Array(input);
+  const ratio=inputRate/outputRate;
+  const outputLength=Math.max(1,Math.round(input.length/ratio));
+  const output=new Float32Array(outputLength);
+  let offset=0;
+  for(let i=0;i<outputLength;i++){
+    const next=Math.min(input.length,Math.round((i+1)*ratio));
+    let sum=0;
+    let count=0;
+    while(offset<next){
+      sum += input[offset++];
+      count++;
+    }
+    output[i]=count ? sum/count : 0;
   }
+  return output;
+}
+
+function mergeVoiceChunks(){
+  let total=0;
+  for(const chunk of voiceChunks) total += chunk.length;
+  const merged=new Float32Array(total);
+  let offset=0;
+  for(const chunk of voiceChunks){
+    merged.set(chunk,offset);
+    offset += chunk.length;
+  }
+  return merged;
+}
+
+async function transcribeVoice(audio){
+  const pipeline=await ensureLocalWhisper();
+  const clean=audio.length > voiceSampleRate*0.15
+    ? audio
+    : null;
+  if(!clean) return "";
+
+  subEl.textContent = "Ses işleniyor · AURA yerel olarak yazıya çeviriyor...";
+  status.textContent = "● ÇÖZÜMLÜYOR";
+  setCoreState("thinking");
+
+  const result=await pipeline(clean,{
+    language:"turkish",
+    task:"transcribe",
+    chunk_length_s:30,
+    stride_length_s:5
+  });
+  return String(result?.text||"").replace(/\s+/g," ").trim();
+}
+
+async function finishVoiceInput(sessionId){
+  if(sessionId!==voiceSessionId) return;
+
+  const chunks=voiceChunks.slice();
+  const stream=voiceStream;
+  const processor=voiceProcessor;
+  const source=voiceSource;
+  const context=voiceAudioContext;
+
+  voiceAutoStopTimer=null;
+  voiceChunks=[];
+  voiceProcessor=null;
+  voiceSource=null;
+  voiceAudioContext=null;
+  voiceStream=null;
+
+  if(processor){
+    try{ processor.disconnect(); }catch{}
+    processor.onaudioprocess=null;
+  }
+  if(source){ try{ source.disconnect(); }catch{} }
+  if(stream){ try{ stream.getTracks().forEach(track=>track.stop()); }catch{} }
+  if(context){ try{ await context.close(); }catch{} }
+
+  voiceSpeechStarted=false;
+  voiceLastSpeechAt=0;
+  micBtn.classList.remove("active");
+  micBtn.title="Sesli giriş";
+
+  if(sessionId!==voiceSessionId) return;
+
+  try{
+    const raw=mergeVoiceChunksFrom(chunks);
+    const transcript=await transcribeVoice(raw);
+    if(sessionId!==voiceSessionId) return;
+
+    if(!transcript){
+      subEl.textContent="Konuşma çözülemedi · tekrar deneyebilirsin.";
+      status.textContent="● HAZIR";
+      setCoreState("ready");
+      return;
+    }
+
+    voiceInput=true;
+    input.value=transcript;
+    run(transcript);
+  }catch(error){
+    console.error("[AURA voice] local Whisper error:",error);
+    subEl.textContent="Yerel ses tanıma hatası: "+String(error?.message||error).slice(0,150);
+    status.textContent="● HAZIR";
+    setCoreState("ready");
+  }
+}
+
+function mergeVoiceChunksFrom(chunks){
+  let total=0;
+  for(const chunk of chunks) total += chunk.length;
+  const merged=new Float32Array(total);
+  let offset=0;
+  for(const chunk of chunks){
+    merged.set(chunk,offset);
+    offset += chunk.length;
+  }
+  return merged;
 }
 
 async function startVoiceInput(){
-  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if(!Recognition){
-    subEl.textContent = "Bu sistemde sesli giriş desteklenmiyor.";
-    return;
-  }
   if(busy) return;
 
+  if(!navigator.mediaDevices?.getUserMedia){
+    subEl.textContent="Bu sistem mikrofon erişimini desteklemiyor.";
+    return;
+  }
+
   stopVoiceInput();
+  const sessionId=++voiceSessionId;
 
-  const requestId = ++voiceRequestId;
-  const recognition = new Recognition();
-  const state = { started:false, restarts:0, lastError:"" };
-  voiceRecognition = recognition;
-  voiceListening = true;
-
-  // Electron/Web Speech'te mikrofonu önce getUserMedia ile açıp hemen
-  // kapatmak bazı sistemlerde tanıma servisine boş ses oturumu bırakabiliyor.
-  // SpeechRecognition kendi mikrofon erişimini yönetsin.
-  recognition.lang = "tr-TR";
-  recognition.interimResults = true;
-  recognition.continuous = false;
-  recognition.maxAlternatives = 1;
-
-  recognition.onstart = () => {
-    if(requestId !== voiceRequestId) return;
-    state.started=true;
-    status.textContent = "● DİNLİYOR";
-    subEl.textContent = "Türkçe ses · konuşabilirsin";
+  try{
+    status.textContent="● MİKROFON";
+    subEl.textContent="Mikrofon açılıyor · konuşmanı bekliyorum...";
     setCoreState("listening");
     micBtn.classList.add("active");
-    micBtn.title = "Dinlemeyi durdur";
-  };
+    micBtn.title="Dinlemeyi durdur";
 
-  recognition.onaudiostart = () => {
-    if(requestId === voiceRequestId) subEl.textContent = "Ses kanalı aktif · konuş";
-  };
+    // SpeechRecognition yerine doğrudan mikrofon akışını alıyoruz.
+    // Böylece Electron'un Web Speech sunucusuna bağımlı kalmıyoruz.
+    voiceStream=await navigator.mediaDevices.getUserMedia({
+      audio:{
+        channelCount:1,
+        echoCancellation:true,
+        noiseSuppression:true,
+        autoGainControl:true
+      },
+      video:false
+    });
 
-  recognition.onsoundstart = () => {
-    if(requestId === voiceRequestId) subEl.textContent = "Ses algılandı · konuşmaya devam et";
-  };
-
-  recognition.onspeechstart = () => {
-    if(requestId === voiceRequestId) subEl.textContent = "Konuşmanı algıladım · dinliyorum";
-  };
-
-  recognition.onresult = (event) => {
-    if(requestId !== voiceRequestId) return;
-    let transcript="";
-    for(let i=event?.resultIndex||0;i<(event?.results?.length||0);i++){
-      const result=event.results[i];
-      if(result?.[0]?.transcript) transcript += " "+String(result[0].transcript);
+    if(sessionId!==voiceSessionId){
+      voiceStream.getTracks().forEach(track=>track.stop());
+      return;
     }
-    transcript=transcript.trim();
-    if(!transcript) return;
-    voiceInput=true;
-    input.value=transcript;
-    stopVoiceInput();
-    run(transcript);
-  };
 
-  recognition.onnomatch = () => {
-    if(requestId===voiceRequestId){
-      subEl.textContent="Ses geldi ama kelime eşleşmesi bulunamadı. Tekrar söyle.";
-      status.textContent="● DİNLİYOR";
-    }
-  };
+    voiceAudioContext=new (window.AudioContext||window.webkitAudioContext)();
+    await voiceAudioContext.resume();
+    voiceSampleRate=voiceAudioContext.sampleRate;
 
-  recognition.onerror = (event) => {
-    if(requestId !== voiceRequestId) return;
-    const code=String(event?.error||"unknown");
-    state.lastError=code;
-    console.warn("[AURA voice] SpeechRecognition error:",code,event);
-    const messages={
-      "not-allowed":"Ses tanıma için mikrofon izni verilmedi.",
-      "service-not-allowed":"Ses tanıma servisine izin verilmedi.",
-      "audio-capture":"Mikrofon ses tanıma tarafından alınamıyor.",
-      "network":"Ses tanıma servisine bağlantı kurulamadı.",
-      "language-not-supported":"Türkçe ses tanıma desteklenmiyor.",
-      "no-speech":"Ses algılanmadı."
+    voiceSource=voiceAudioContext.createMediaStreamSource(voiceStream);
+    // ScriptProcessor Electron/Chromium içinde hâlâ destekleniyor ve
+    // ekstra native addon gerektirmeden PCM örneklerini doğrudan verir.
+    voiceProcessor=voiceAudioContext.createScriptProcessor(4096,1,1);
+
+    voiceProcessor.onaudioprocess=(event)=>{
+      if(sessionId!==voiceSessionId) return;
+      const inputData=event.inputBuffer.getChannelData(0);
+      const copy=new Float32Array(inputData.length);
+      copy.set(inputData);
+      voiceChunks.push(copy);
+
+      let sum=0;
+      for(let i=0;i<inputData.length;i++){
+        const v=inputData[i];
+        sum += v*v;
+      }
+      const rms=Math.sqrt(sum/inputData.length);
+      const now=performance.now();
+
+      if(rms>0.012){
+        voiceSpeechStarted=true;
+        voiceLastSpeechAt=now;
+        subEl.textContent="Ses algılandı · konuşmaya devam et";
+      }else if(voiceSpeechStarted && now-voiceLastSpeechAt>900){
+        finishVoiceInput(sessionId);
+      }
     };
-    if(code==="no-speech" && state.restarts<8){
-      state.restarts++;
-      subEl.textContent="Ses algılanmadı · tekrar dinliyorum...";
-      voiceRestartTimer=setTimeout(()=>{
-        voiceRestartTimer=null;
-        startRecognitionSession(recognition,requestId,state);
-      },250);
-      return;
-    }
-    if(code==="aborted" && state.restarts<8){
-      state.restarts++;
-      subEl.textContent="Ses oturumu yenileniyor...";
-      voiceRestartTimer=setTimeout(()=>{
-        voiceRestartTimer=null;
-        startRecognitionSession(recognition,requestId,state);
-      },250);
-      return;
-    }
-    subEl.textContent=messages[code]||("Sesli giriş hatası: "+code);
-    if(code==="network"){
-      subEl.textContent="Ses tanıma servisi AURA/Electron içinde yanıt vermedi. Mikrofon izni açık ama tanıma servisi çalışmıyor.";
-    }
+
+    voiceSource.connect(voiceProcessor);
+    // ScriptProcessor'un callback'inin çalışması için destination'a bağlanır.
+    // Kazancı 0 olduğundan mikrofondan hoparlöre ses göndermez.
+    const silentGain=voiceAudioContext.createGain();
+    silentGain.gain.value=0;
+    voiceProcessor.connect(silentGain);
+    silentGain.connect(voiceAudioContext.destination);
+
+    status.textContent="● DİNLİYOR";
+    subEl.textContent="Türkçe · konuşabilirsin";
+    setCoreState("listening");
+
+    // Konuşma başlamazsa mikrofonu sonsuza kadar açık bırakma.
+    voiceAutoStopTimer=setTimeout(()=>{
+      if(sessionId!==voiceSessionId) return;
+      if(!voiceSpeechStarted){
+        subEl.textContent="Ses algılanmadı · tekrar deneyebilirsin.";
+        stopVoiceInput();
+      }
+    },12000);
+
+    // Whisper modelini arka planda hazırlamaya başla; mikrofon açılışı
+    // model indirme yüzünden gecikmesin.
+    ensureLocalWhisper().catch(error=>{
+      console.warn("[AURA voice] Whisper preload:",error);
+    });
+  }catch(error){
+    console.error("[AURA voice] microphone error:",error);
+    const name=String(error?.name||"");
+    const message=name==="NotAllowedError"
+      ? "Mikrofon izni verilmedi. Windows/Electron mikrofon iznini kontrol et."
+      : name==="NotFoundError"
+        ? "Kullanılabilir mikrofon bulunamadı."
+        : "Mikrofon açılamadı: "+String(error?.message||error).slice(0,120);
+    subEl.textContent=message;
     stopVoiceInput();
-  };
-
-  recognition.onend = () => {
-    if(requestId !== voiceRequestId) return;
-    if(voiceListening && !state.lastError && state.restarts<8){
-      state.restarts++;
-      subEl.textContent="Dinleme oturumu yenileniyor...";
-      voiceRestartTimer=setTimeout(()=>{
-        voiceRestartTimer=null;
-        startRecognitionSession(recognition,requestId,state);
-      },180);
-      return;
-    }
-    if(!busy){
-      status.textContent="● HAZIR";
-      setCoreState("ready");
-    }
-    micBtn.classList.remove("active");
-    micBtn.title="Sesli giriş";
-  };
-
-  startRecognitionSession(recognition,requestId,state);
+  }
 }
 
-micBtn.addEventListener("click", () => {
-  if(voiceListening) stopVoiceInput();
+micBtn.addEventListener("click",()=>{
+  if(voiceStream || voiceProcessor) finishVoiceInput(voiceSessionId);
   else startVoiceInput();
 });
 
