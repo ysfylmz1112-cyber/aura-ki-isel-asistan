@@ -966,10 +966,11 @@ function buildAgentPlan(query, mode = "chat") {
   const toolHints = [];
 
   const code = mode === "code" || /kod|script|proje|unity|oyun geliştir|oyun gelistir|dosya oluştur|dosya olustur/.test(q);
-  const fileOps = /dosya|klasör|klasor|metin dosyası|dosyası|dosyayi|dosyayı|oku|yaz|oluştur|olustur|sil|taşı|tasi|kopyala|kopya|dosya yolu|dosya yolu|klasör yolu/.test(q);
-  const processOps = !fileOps && /işlem|islem|process|süreç|surec|çalışan süreç|calisan surec|çalışan program|calisan program|görev yöneticisi|gorev yoneticisi/.test(q);
+  const inputOps = /tıkla|tikla|fare|mouse|klavye|tuş|tus|bas|enter|tab|ekrana yaz/.test(q);
+  const fileOps = !inputOps && /dosya|klasör|klasor|metin dosyası|dosyası|dosyayi|dosyayı|oku|yaz|oluştur|olustur|sil|taşı|tasi|kopyala|kopya|dosya yolu|dosya yolu|klasör yolu/.test(q);
+  const processOps = !fileOps && !inputOps && /işlem|islem|process|süreç|surec|çalışan süreç|calisan surec|çalışan program|calisan program|görev yöneticisi|gorev yoneticisi/.test(q);
   const systemOps = !processOps && /cpu|işlemci|ram|bellek|gpu|ekran kartı|ekran karti|disk|depolama|donanım|donanim|sistem bilgisi|performans|sıcaklık|sicaklik|batarya|pil|ağ|ag|network|internet hız|internet hiz/.test(q);
-  const inputOps = /tıkla|tikla|fare|mouse|klavye|tuş|tus|yaz|bas|enter|tab|ekrana yaz/.test(q);
+
   const mediaOps = !systemOps && !inputOps && /ekran görüntüsü|ekran goruntusu|screenshot|ekranı gör|ekrani gor|pano|clipboard|panoya|kopyala|yapıştır|yapistir/.test(q);
   const terminalOps = !mediaOps && /powershell|terminal|komut satırı|komut satiri|shell|cmd|komut çalıştır|komut calistir|script çalıştır|script calistir/.test(q);
   const appOps = !terminalOps && !fileOps && !processOps && /uygulama|program|uygulamayı|uygulamayi|programı|programi|başlat|baslat|kapat|çalışan|calisan|uygulama aç|uygulama ac|program aç|program ac/.test(q);
@@ -1265,7 +1266,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     ? "\nARAÇ PROTOKOLÜ: Gerektiğinde yalnızca tek JSON nesnesi üret: " + JSON.stringify({tool:"desktop_tool_name",args:{}}) + ". JSON dışında metin yazma. Araç sonucu gelince göreve devam et.\nKULLANILABİLEN ARAÇLAR:\n" + toolDirectoryPrompt(lowerValue,effectiveMode)
     : "";
 
-  const agentPlan = buildAgentPlan(value, effectiveMode);
+  let agentPlan = buildAgentPlan(value, effectiveMode);
     const availableToolNames = Array.isArray(toolDirectory)
       ? toolDirectory.map(tool => typeof tool === "string" ? tool : tool?.name).filter(Boolean)
       : [];
