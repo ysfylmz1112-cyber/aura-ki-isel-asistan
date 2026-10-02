@@ -1595,6 +1595,42 @@ async function listDirectory(dirPath) {
   const entries = await fsp.readdir(dirPath,{withFileTypes:true});
   return entries.slice(0,300).map(e => ({name:e.name,type:e.isDirectory()?'directory':'file'}));
 }
+async function createFileSnapshot(filePath) {
+  if (!isAllowedPath(filePath)) throw new Error('Bu dosyaya snapshot alma izni yok.');
+  const normalized = normalizePath(filePath);
+  const stat = await fsp.stat(normalized);
+  if (!stat.isFile()) throw new Error('Snapshot yalnızca dosyalar için kullanılabilir.');
+  if (stat.size > 2 * 1024 * 1024) throw new Error('Dosya 2 MB sınırını aşıyor.');
+  const snapshotRoot = path.join(app.getPath('userData'), 'snapshots');
+  await fsp.mkdir(snapshotRoot, {recursive:true});
+  const id = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8);
+  const snapshotPath = path.join(snapshotRoot, id + '.snapshot');
+  const metaPath = path.join(snapshotRoot, id + '.json');
+  await fsp.copyFile(normalized, snapshotPath);
+  const meta = {id, originalPath:normalized, createdAt:new Date().toISOString(), size:stat.size};
+  await fsp.writeFile(metaPath, JSON.stringify(meta,null,2), 'utf8');
+  return {ok:true,id,path:normalized,createdAt:meta.createdAt,size:stat.size};
+}
+async function restoreFileSnapshot(id) {
+  const safeId = String(id || '').replace(/[^a-zA-Z0-9_-]/g,'');
+  if (!safeId) throw new Error('Geçersiz snapshot kimliği.');
+  const snapshotRoot = path.join(app.getPath('userData'), 'snapshots');
+  const metaPath = path.join(snapshotRoot, safeId + '.json');
+  const snapshotPath = path.join(snapshotRoot, safeId + '.snapshot');
+  const meta = JSON.parse(await fsp.readFile(metaPath,'utf8'));
+  if (!meta?.originalPath || !isAllowedPath(meta.originalPath)) throw new Error('Snapshot hedef yolu artık izinli değil.');
+  const exists = await fsp.access(meta.originalPath).then(()=>true).catch(()=>false);
+  if (exists) {
+    const ok = await confirmAction('AURA — Snapshot geri alma onayı','AURA şu dosyayı snapshot\'tan geri yükleyecek:\n\n'+meta.originalPath+'\n\nMevcut dosyanın üzerine yazılacak.');
+    if (!ok) throw new Error('Kullanıcı işlemi iptal etti.');
+  } else {
+    const ok = await confirmAction('AURA — Snapshot geri alma onayı','AURA snapshot\'ı şu konuma geri yükleyecek:\n\n'+meta.originalPath);
+    if (!ok) throw new Error('Kullanıcı işlemi iptal etti.');
+  }
+  await fsp.copyFile(snapshotPath, meta.originalPath);
+  return {ok:true,id:safeId,path:meta.originalPath,restoredAt:new Date().toISOString()};
+}
+
 async function writeTextFile(filePath, content) {
   if (!isAllowedPath(filePath)) throw new Error('Bu klasöre yazma izni yok.');
   const text = String(content ?? '');
@@ -2453,6 +2489,8 @@ async function handleTool(tool,args) {
     case 'desktop_list_directory': return listDirectory(normalizePath(args.path));
     case 'desktop_read_text_file': return {path:normalizePath(args.path),content:await readTextFile(normalizePath(args.path))};
     case 'desktop_write_text_file': return writeTextFile(normalizePath(args.path),args.content);
+    case 'desktop_create_file_snapshot': return createFileSnapshot(normalizePath(args.path));
+    case 'desktop_restore_file_snapshot': return restoreFileSnapshot(args.id);
     case 'desktop_create_directory': return makeDirectory(normalizePath(args.path));
     case 'desktop_delete_path': return deletePath(normalizePath(args.path));
     case 'desktop_open_path': return openPath(normalizePath(args.path));
