@@ -921,6 +921,50 @@ function toolDirectoryPrompt(query = "", mode = "chat") {
   return compact.join("\n");
 }
 
+function buildAgentPlan(query, mode = "chat") {
+  const q = String(query || "").toLocaleLowerCase("tr-TR");
+  const steps = [];
+  const toolHints = [];
+
+  const code = mode === "code" || /kod|script|proje|unity|oyun geliştir|oyun gelistir|dosya oluştur|dosya olustur/.test(q);
+  const pc = /bilgisayar|pc|uygulama|program|sistem|cpu|ram|gpu|disk|dosya|klasör|klasor|masaüstü|masaustu/.test(q);
+  const memory = /hafıza|hafiza|hatırla|hatirla|unut|geçmiş|gecmis|dün|dun|bugün|bugun|geçen hafta|gecen hafta/.test(q);
+  const web = /güncel|guncel|araştır|arastir|internette|web|kaynak|site|haber/.test(q);
+  const destructive = /sil|kapat|kaldır|kaldir|taşı|tasi|değiştir|degistir|yaz|oluştur|olustur|çalıştır|calistir/.test(q);
+
+  if (code) {
+    steps.push("görevi ve mevcut proje durumunu belirle", "gerekli dosya/proje araçlarını seç", "değişikliği uygula", "sonucu doğrula");
+    toolHints.push("desktop_find_unity_projects", "desktop_unity_health_check", "desktop_unity_project_tree", "desktop_unity_read_file", "desktop_unity_write_file");
+  } else if (pc) {
+    steps.push("PC bağlamını belirle", "gerekli PC aracını seç", "işlemi uygula", "sonucu doğrula");
+    toolHints.push("desktop_get_system_info", "desktop_get_hardware_metrics", "desktop_get_environment_profile");
+  } else if (memory) {
+    steps.push("ilgili geçmiş/hafıza kaydını belirle", "hafıza aracını seç", "sonucu doğrula");
+    toolHints.push("desktop_memory_search", "desktop_conversation_search");
+  } else if (web) {
+    steps.push("araştırma hedefini belirle", "kaynakları seç", "bilgiyi karşılaştır", "sonucu kaynaklarla doğrula");
+    toolHints.push("desktop_web_search", "desktop_fetch_web_page");
+  } else {
+    steps.push("kullanıcı amacını belirle", "gerekli araç olup olmadığını değerlendir", "cevabı oluştur", "sonucu kontrol et");
+  }
+
+  return {
+    version: "agent-core-1",
+    goal: String(query || "").trim().slice(0, 1200),
+    mode: String(mode || "chat"),
+    steps,
+    toolHints: [...new Set(toolHints)],
+    requiresApproval: destructive,
+    policy: "Önce planla → uygun aracı seç → sonucu değerlendir → gerekiyorsa düzelt → finalden önce doğrula."
+  };
+}
+
+function agentCorePrompt(plan) {
+  return "\nAURA AGENT CORE PLANI:\n" + JSON.stringify(plan) +
+    "\nPlanı körü körüne uygulama; araç sonucu planla uyuşmuyorsa planı güncelle. " +
+    "Araçtan sonra sonucu değerlendir ve görevin tamamlandığını doğrulamadan başarı iddiasında bulunma.";
+}
+
 function extractJsonObject(text) {
   const raw = String(text || "").trim();
   const candidates = [raw];
@@ -992,11 +1036,13 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     ? "\nARAÇ PROTOKOLÜ: Gerektiğinde yalnızca tek JSON nesnesi üret: " + JSON.stringify({tool:"desktop_tool_name",args:{}}) + ". JSON dışında metin yazma. Araç sonucu gelince göreve devam et.\nKULLANILABİLEN ARAÇLAR:\n" + toolDirectoryPrompt(lowerValue,effectiveMode)
     : "";
 
+  const agentPlan = buildAgentPlan(value, effectiveMode);
   const messages = [
     {
       role:"system",
       content: SYSTEM_PROMPT + modePrompt + memoryContext + pcContext +
         (desktopAvailable() ? "\nMasaüstü ajanı BAĞLI." : "\nMasaüstü ajanı BAĞLI DEĞİL.") +
+        agentCorePrompt(agentPlan) +
         toolProtocol
     },
     ...cleanMessages(codeLikeMode ? history.slice(-2) : history),
@@ -1004,7 +1050,9 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   ];
 
   const seenToolCalls = new Set();
-  for(let round=0; round<3; round++){
+  let agentRound = 0;
+  for(let round=0; round<5; round++){
+    agentRound = round + 1;
     let response;
     try {
       const responsePromise = localEngine.chat.completions.create({
@@ -1091,7 +1139,8 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         }
         messages.push({
           role:"user",
-          content:assistantToolResultMessage(manual,result)
+          content:assistantToolResultMessage(manual,result) +
+            "\n\nAGENT CORE DEĞERLENDİRMESİ: Bu araç sonucu görevin hangi adımını tamamladı? Eksik kaldıysa bir sonraki uygun adımı seç. Görev tamamlandıysa doğrulama yap ve sonra final cevap ver."
         });
         continue;
       }
@@ -1106,7 +1155,11 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         try { result=await desktopCall(manualAfterAnswer.name,manualAfterAnswer.args); }
         catch(error){ result={error:error?.message||"Araç hatası"}; }
         messages.push({role:"assistant",content:answer});
-        messages.push({role:"user",content:assistantToolResultMessage(manualAfterAnswer,result)});
+        messages.push({
+          role:"user",
+          content:assistantToolResultMessage(manualAfterAnswer,result) +
+            "\n\nAGENT CORE DEĞERLENDİRMESİ: İşlemi doğrula. Sonuç başarısızsa güvenli şekilde düzelt; başarılıysa görevin tamamlandığını açıkça kontrol et."
+        });
         continue;
       }
     }
