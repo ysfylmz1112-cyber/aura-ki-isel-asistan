@@ -1172,6 +1172,18 @@ function buildDeveloperAgentInstruction(plan) {
     "Silme veya geniş kapsamlı değişikliklerde mevcut onay kurallarını koru.";
 }
 
+function developerPlanCompletionState(plan) {
+  if (plan?.mode !== "code" && plan?.mode !== "background-code") return {ready:true,reason:"not_developer_task"};
+  const d = plan?.developerChangePlan;
+  if (!d) return {ready:false,reason:"developer_plan_missing"};
+  const failed = Array.isArray(plan?.failedSteps) && plan.failedSteps.length > 0;
+  if (failed && d.rollbackStatus === "failed") return {ready:false,reason:"rollback_failed"};
+  if (d.status !== "verified_or_failed" && d.status !== "rolled_back") return {ready:false,reason:"verification_not_executed"};
+  if (d.status === "rolled_back") return {ready:false,reason:"change_was_rolled_back"};
+  if (failed) return {ready:false,reason:"failed_step_present"};
+  return {ready:true,reason:"verified"};
+}
+
 function buildAgentVerificationInstruction(plan) {
   const criteria = Array.isArray(plan?.verification) ? plan.verification : [];
   const completed = Array.isArray(plan?.completedSteps) ? plan.completedSteps : [];
@@ -1508,6 +1520,18 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
             buildDeveloperAgentInstruction(agentPlan) +
             repairInstruction +
             "\n\nAGENT CORE DEĞERLENDİRMESİ: İşlemi doğrula. Sonuç başarısızsa güvenli şekilde düzelt; başarılıysa görevin tamamlandığını açıkça kontrol et."
+        });
+        continue;
+      }
+    }
+    if (wantsTools && codeLikeMode && developmentIntent) {
+      const completion = developerPlanCompletionState(agentPlan);
+      if (!completion.ready && round < 4) {
+        messages.push({
+          role:"user",
+          content: "\nDEVELOPER COMPLETION GATE: Görevi henüz başarılı olarak kapatma. Durum: " + completion.reason +
+            ". Önce eksik doğrulama/test adımını tamamla; gerekiyorsa mevcut snapshot ile güvenli rollback yap. " +
+            "Gerçek sonuç doğrulanmadan başarı iddiasında bulunma."
         });
         continue;
       }
