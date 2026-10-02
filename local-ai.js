@@ -26,7 +26,7 @@ const CODE_LARGE_MODEL_ID = "Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC";
 const CODE_FALLBACK_MODEL_ID = CODE_MODEL_ID;
 const WEB_MODEL_ID = CHAT_MODEL_ID;
 const DESKTOP_MODEL_ID = CHAT_MODEL_ID;
-const AURA_CORE_VERSION = '6.1.0';
+const AURA_CORE_VERSION = '6.2.0';
 
 function desktopAvailable() {
   return !!globalThis.auraDesktop?.isDesktop;
