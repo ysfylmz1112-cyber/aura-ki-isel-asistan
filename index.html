@@ -603,7 +603,7 @@ function getLocalAIModel() {
 async function loadLocalAI() {
   if (localAIModule) return localAIModule;
   if (!localAIPromise) {
-    localAIPromise = import("./local-ai.js?v=6.1.1").then((mod) => {
+    localAIPromise = import("./local-ai.js?v=6.2.0").then((mod) => {
       localAIModule = mod;
       return mod;
     });
@@ -1739,30 +1739,58 @@ async function startVoiceInput(){
   const recognition = new Recognition();
   voiceRecognition = recognition;
   voiceListening = true;
+  let localRecognition = false;
+  let fallbackTried = false;
 
   recognition.lang = "tr-TR";
   recognition.interimResults = false;
   recognition.continuous = false;
   recognition.maxAlternatives = 1;
 
-  // Chromium'un desteklediği sürümlerde mümkünse tanımayı cihaz üzerinde yap.
-  // Destek yoksa tarayıcının varsayılan SpeechRecognition servisi kullanılır.
+  // Önce cihaz üstü Türkçe tanımayı kullanmayı deneriz. Dil paketi yoksa
+  // recognition.start()ı bozacak şekilde processLocally=true zorlamıyoruz.
   try{
-    if("processLocally" in recognition) recognition.processLocally = true;
-  }catch{}
+    if(typeof Recognition.available === "function" && "processLocally" in recognition){
+      const availability = await Recognition.available({
+        langs:["tr-TR"],
+        processLocally:true
+      });
+      if(requestId !== voiceRequestId) return;
+      localRecognition = availability === "available";
+      recognition.processLocally = localRecognition;
+    }
+  }catch{
+    localRecognition = false;
+    try{ if("processLocally" in recognition) recognition.processLocally = false; }catch{}
+  }
 
   recognition.onstart = () => {
     if(requestId !== voiceRequestId) return;
     status.textContent = "● DİNLİYOR";
-    subEl.textContent = "Seni dinliyorum · konuşabilirsin";
+    subEl.textContent = localRecognition
+      ? "Türkçe ses · cihaz üzerinde dinliyorum"
+      : "Türkçe ses · dinliyorum";
     setCoreState("listening");
     micBtn.classList.add("active");
     micBtn.title = "Dinlemeyi durdur";
   };
 
+  recognition.onaudiostart = () => {
+    if(requestId === voiceRequestId) subEl.textContent = "Mikrofon aktif · konuşabilirsin";
+  };
+
+  recognition.onspeechstart = () => {
+    if(requestId === voiceRequestId) subEl.textContent = "Seni duyuyorum · konuşmaya devam edebilirsin";
+  };
+
   recognition.onresult = (event) => {
     if(requestId !== voiceRequestId) return;
-    const transcript = String(event?.results?.[0]?.[0]?.transcript || "").trim();
+    let transcript = "";
+    for(let i=event?.resultIndex||0; i<(event?.results?.length||0); i++){
+      const result=event.results[i];
+      if(result?.isFinal) transcript += " " + String(result?.[0]?.transcript||"");
+    }
+    transcript = transcript.trim() || String(event?.results?.[0]?.[0]?.transcript||"").trim();
     if(!transcript) return;
     voiceInput = true;
     input.value = transcript;
@@ -1770,17 +1798,39 @@ async function startVoiceInput(){
     run(transcript);
   };
 
+  recognition.onnomatch = () => {
+    if(requestId === voiceRequestId) subEl.textContent = "Söylediğini anlayamadım. Tekrar dene.";
+  };
+
   recognition.onerror = (event) => {
     if(requestId !== voiceRequestId) return;
     const code = String(event?.error || "");
+    // Bazı Chromium sürümlerinde yerel Türkçe dil paketi bulunmadığında
+    // language-not-supported gelir. Aynı oturumda normal tanımaya düş.
+    if(code === "language-not-supported" && !fallbackTried){
+      fallbackTried = true;
+      localRecognition = false;
+      try{ recognition.processLocally = false; }catch{}
+      subEl.textContent = "Yerel Türkçe paket bulunamadı · normal ses tanımaya geçiyorum...";
+      setTimeout(()=>{
+        if(requestId !== voiceRequestId) return;
+        try{ recognition.start(); }
+        catch(error){
+          subEl.textContent = "Ses tanıma başlatılamadı: " + String(error?.message||error);
+          stopVoiceInput();
+        }
+      },120);
+      return;
+    }
     const messages = {
       "not-allowed":"Mikrofon izni verilmedi.",
       "service-not-allowed":"Sesli giriş servisine izin verilmedi.",
       "audio-capture":"Mikrofon bulunamadı veya kullanılamıyor.",
-      "no-speech":"Ses algılanmadı.",
-      "network":"Ses tanıma bağlantısı başarısız oldu."
+      "no-speech":"Ses algılanmadı. Mikrofona konuşup tekrar dene.",
+      "network":"Ses tanıma bağlantısı başarısız oldu.",
+      "language-not-supported":"Türkçe ses tanıma bu sistemde kullanılamıyor."
     };
-    subEl.textContent = messages[code] || "Sesli giriş başlatılamadı.";
+    subEl.textContent = messages[code] || "Sesli giriş hatası: " + code;
     stopVoiceInput();
   };
 
