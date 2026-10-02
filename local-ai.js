@@ -927,7 +927,8 @@ function buildAgentPlan(query, mode = "chat") {
   const toolHints = [];
 
   const code = mode === "code" || /kod|script|proje|unity|oyun geliştir|oyun gelistir|dosya oluştur|dosya olustur/.test(q);
-  const mediaOps = /ekran görüntüsü|ekran goruntusu|screenshot|ekranı gör|ekrani gor|pano|clipboard|panoya|kopyala|yapıştır|yapistir/.test(q);
+  const systemOps = /cpu|işlemci|ram|bellek|gpu|ekran kartı|ekran karti|disk|depolama|donanım|donanim|sistem bilgisi|performans|sıcaklık|sicaklik|batarya|pil|ağ|ag|network|internet hız|internet hiz/.test(q);
+  const mediaOps = !systemOps && /ekran görüntüsü|ekran goruntusu|screenshot|ekranı gör|ekrani gor|pano|clipboard|panoya|kopyala|yapıştır|yapistir/.test(q);
   const terminalOps = !mediaOps && /powershell|terminal|komut satırı|komut satiri|shell|cmd|komut çalıştır|komut calistir|script çalıştır|script calistir/.test(q);
   const appOps = !terminalOps && /uygulama|program|uygulamayı|uygulamayi|programı|programi|aç|ac|başlat|baslat|kapat|çalışan|calisan/.test(q);
   const fileOps = !appOps && /dosya|klasör|klasor|metin dosyası|dosyası|dosyayi|dosyayı|oku|yaz|oluştur|olustur|sil|taşı|tasi|kopyala|kopya|aç|ac/.test(q);
@@ -939,6 +940,9 @@ function buildAgentPlan(query, mode = "chat") {
   if (code) {
     steps.push("görevi ve mevcut proje durumunu belirle", "gerekli dosya/proje araçlarını seç", "değişikliği uygula", "sonucu doğrula");
     toolHints.push("desktop_find_unity_projects", "desktop_unity_health_check", "desktop_unity_project_tree", "desktop_unity_read_file", "desktop_unity_write_file");
+  } else if (systemOps) {
+    steps.push("istenen sistem/donanım bilgisini belirle", "gerekli PC durum araçlarını seç", "ölçümleri al", "ölçüm sonucunu doğrula");
+    toolHints.push("desktop_pc_agent_context", "desktop_get_system_info", "desktop_get_hardware_metrics", "desktop_get_battery_status");
   } else if (mediaOps) {
     steps.push("istenen ekran/pano bilgisini belirle", "gerekli erişimi ve işlem riskini kontrol et", "ekran görüntüsü veya pano işlemini uygula", "çıktıyı doğrula");
     toolHints.push("desktop_capture_screen", "desktop_clipboard_read", "desktop_clipboard_write");
@@ -974,9 +978,11 @@ function buildAgentPlan(query, mode = "chat") {
   const uniqueHints = [...new Set(toolHints)];
   const verification = code
     ? ["hedef dosya/proje mevcut", "değişiklik uygulanmış", "ilgili test/build veya sağlık kontrolü başarılı"]
-    : fileOps
-      ? ["hedef yol bulundu veya oluşturuldu", "işlem sonucu gerçek dosya sistemi durumuyla doğrulandı"]
-      : pc
+    : systemOps
+      ? ["istenen sistem/donanım ölçümü alındı", "ölçüm sonucu gerçek PC durumuyla uyumlu"]
+      : fileOps
+        ? ["hedef yol bulundu veya oluşturuldu", "işlem sonucu gerçek dosya sistemi durumuyla doğrulandı"]
+        : pc
         ? ["hedef durum bulundu", "işlem sonucu beklenen duruma geldi"]
         : memory
         ? ["ilgili kayıt bulundu", "hafıza işlemi sonucu doğrulandı"]
