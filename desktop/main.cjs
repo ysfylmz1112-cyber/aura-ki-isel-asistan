@@ -703,7 +703,7 @@ async function updateMemory(query, patch={}) {
   return {ok:true,updated:1,item:target};
 }
 
-async function forgetMemory(query){
+async function forgetMemory(query, options={}) {
   const q=String(query||'').trim();
   if(!q) throw new Error('Silinecek hafıza belirtilmedi.');
   const normalized=normalizedSearchText(q);
@@ -712,10 +712,15 @@ async function forgetMemory(query){
   if(exact.length){
     memoryState.items=memoryState.items.filter(x=>normalizedSearchText(x.text)!==normalized);
   }else{
-    const matches=searchMemory(q,20).items;
+    const matches=searchMemory(q,5).items;
     if(!matches.length) return {ok:true,removed:0,message:'Eşleşen hafıza bulunamadı.'};
-    const ids=new Set(matches.slice(0,10).map(x=>x.id));
-    memoryState.items=memoryState.items.filter(x=>!ids.has(x.id));
+    const strong=matches.filter(x=>Number(x.score||0)>=220);
+    if(strong.length===1){
+      memoryState.items=memoryState.items.filter(x=>x.id!==strong[0].id);
+    }else{
+      const candidates=matches.slice(0,5).map(x=>({id:x.id,text:x.text,score:x.score,importance:x.importance}));
+      return {ok:false,requiresConfirmation:true,removed:0,message:'Birden fazla hafıza eşleşti. Silinecek kaydı netleştirmek gerekiyor.',candidates};
+    }
   }
   await saveMemoryState();
   return {ok:true,removed:before-memoryState.items.length,remaining:memoryState.items.length};
@@ -2406,7 +2411,7 @@ async function handleTool(tool,args) {
     case 'desktop_memory_search': return searchMemory(args.query,args.maxResults||12);
     case 'desktop_memory_list': return listMemory();
     case 'desktop_memory_health': return getMemoryHealth();
-    case 'desktop_memory_forget': return forgetMemory(args.query);
+    case 'desktop_memory_forget': return forgetMemory(args.query,args.options||{});
     case 'desktop_memory_update': return updateMemory(args.query,args.patch||{});
     case 'desktop_memory_clear': return clearMemory();
     case 'desktop_open_external_url': return openExternalUrl(args.url);
