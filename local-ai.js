@@ -927,7 +927,8 @@ function buildAgentPlan(query, mode = "chat") {
   const toolHints = [];
 
   const code = mode === "code" || /kod|script|proje|unity|oyun geliştir|oyun gelistir|dosya oluştur|dosya olustur/.test(q);
-  const pc = /bilgisayar|pc|uygulama|program|sistem|cpu|ram|gpu|disk|dosya|klasör|klasor|masaüstü|masaustu/.test(q);
+  const fileOps = /dosya|klasör|klasor|metin dosyası|dosyası|dosyayi|dosyayı|oku|yaz|oluştur|olustur|sil|taşı|tasi|kopyala|kopya|aç|ac/.test(q);
+  const pc = /bilgisayar|pc|uygulama|program|sistem|cpu|ram|gpu|disk|masaüstü|masaustu/.test(q);
   const memory = /hafıza|hafiza|hatırla|hatirla|unut|geçmiş|gecmis|dün|dun|bugün|bugun|geçen hafta|gecen hafta/.test(q);
   const web = /güncel|guncel|araştır|arastir|internette|web|kaynak|site|haber/.test(q);
   const destructive = /sil|kapat|kaldır|kaldir|taşı|tasi|değiştir|degistir|yaz|oluştur|olustur|çalıştır|calistir/.test(q);
@@ -935,9 +936,15 @@ function buildAgentPlan(query, mode = "chat") {
   if (code) {
     steps.push("görevi ve mevcut proje durumunu belirle", "gerekli dosya/proje araçlarını seç", "değişikliği uygula", "sonucu doğrula");
     toolHints.push("desktop_find_unity_projects", "desktop_unity_health_check", "desktop_unity_project_tree", "desktop_unity_read_file", "desktop_unity_write_file");
+  } else if (fileOps) {
+    steps.push("hedef dosya/klasörü belirle", "işlemin güvenli ve izinli olduğunu kontrol et", "dosya/klasör işlemini uygula", "sonucu doğrula");
+    toolHints.push("desktop_list_directory", "desktop_read_text_file", "desktop_write_text_file", "desktop_create_directory", "desktop_search_files", "desktop_open_path");
+    if (/sil/.test(q)) toolHints.push("desktop_delete_path");
+    if (/taşı|tasi/.test(q)) toolHints.push("desktop_move_path");
+    if (/kopyala|kopya/.test(q)) toolHints.push("desktop_copy_path");
   } else if (pc) {
     steps.push("PC bağlamını belirle", "gerekli PC aracını seç", "işlemi uygula", "sonucu doğrula");
-    toolHints.push("desktop_get_system_info", "desktop_get_hardware_metrics", "desktop_get_environment_profile");
+    toolHints.push("desktop_pc_agent_context", "desktop_get_system_info", "desktop_get_hardware_metrics", "desktop_get_environment_profile");
   } else if (memory) {
     steps.push("ilgili geçmiş/hafıza kaydını belirle", "hafıza aracını seç", "sonucu doğrula");
     toolHints.push("desktop_memory_search", "desktop_conversation_search");
@@ -951,9 +958,11 @@ function buildAgentPlan(query, mode = "chat") {
   const uniqueHints = [...new Set(toolHints)];
   const verification = code
     ? ["hedef dosya/proje mevcut", "değişiklik uygulanmış", "ilgili test/build veya sağlık kontrolü başarılı"]
-    : pc
-      ? ["hedef durum bulundu", "işlem sonucu beklenen duruma geldi"]
-      : memory
+    : fileOps
+      ? ["hedef yol bulundu veya oluşturuldu", "işlem sonucu gerçek dosya sistemi durumuyla doğrulandı"]
+      : pc
+        ? ["hedef durum bulundu", "işlem sonucu beklenen duruma geldi"]
+        : memory
         ? ["ilgili kayıt bulundu", "hafıza işlemi sonucu doğrulandı"]
         : web
           ? ["kaynaklar bulundu", "bilgiler karşılaştırıldı", "kaynak temeli korunuyor"]
