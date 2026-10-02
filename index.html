@@ -1768,37 +1768,18 @@ async function startVoiceInput(){
   const recognition = new Recognition();
   voiceRecognition = recognition;
   voiceListening = true;
-  let localRecognition = false;
+  let restartCount = 0;
   let fallbackTried = false;
 
   recognition.lang = "tr-TR";
-  recognition.interimResults = false;
-  recognition.continuous = false;
+  recognition.interimResults = true;
+  recognition.continuous = true;
   recognition.maxAlternatives = 1;
-
-  // Önce cihaz üstü Türkçe tanımayı kullanmayı deneriz. Dil paketi yoksa
-  // recognition.start()ı bozacak şekilde processLocally=true zorlamıyoruz.
-  try{
-    if(typeof Recognition.available === "function" && "processLocally" in recognition){
-      const availability = await Recognition.available({
-        langs:["tr-TR"],
-        processLocally:true
-      });
-      if(requestId !== voiceRequestId) return;
-      localRecognition = availability === "available";
-      recognition.processLocally = localRecognition;
-    }
-  }catch{
-    localRecognition = false;
-    try{ if("processLocally" in recognition) recognition.processLocally = false; }catch{}
-  }
 
   recognition.onstart = () => {
     if(requestId !== voiceRequestId) return;
     status.textContent = "● DİNLİYOR";
-    subEl.textContent = localRecognition
-      ? "Türkçe ses · cihaz üzerinde dinliyorum"
-      : "Türkçe ses · dinliyorum";
+    subEl.textContent = "Türkçe ses · dinliyorum";
     setCoreState("listening");
     micBtn.classList.add("active");
     micBtn.title = "Dinlemeyi durdur";
@@ -1834,19 +1815,21 @@ async function startVoiceInput(){
   recognition.onerror = (event) => {
     if(requestId !== voiceRequestId) return;
     const code = String(event?.error || "");
-    // Bazı Chromium sürümlerinde yerel Türkçe dil paketi bulunmadığında
-    // language-not-supported gelir. Aynı oturumda normal tanımaya düş.
-    if(code === "language-not-supported" && !fallbackTried){
-      fallbackTried = true;
-      localRecognition = false;
-      try{ recognition.processLocally = false; }catch{}
-      subEl.textContent = "Yerel Türkçe paket bulunamadı · normal ses tanımaya geçiyorum...";
+    // Tanıma servisi kısa oturumları sonlandırabiliyor. Kullanıcı
+    // mikrofonu kapatana kadar oturumu yeniden başlat.
+    if((code === "no-speech" || code === "aborted") && restartCount < 20){
+      restartCount++;
+      subEl.textContent = code === "no-speech"
+        ? "Ses algılanmadı · dinlemeye devam ediyorum..."
+        : "Ses oturumu yenileniyor...";
       setTimeout(()=>{
-        if(requestId !== voiceRequestId) return;
+        if(requestId !== voiceRequestId || !voiceListening) return;
         try{ recognition.start(); }
-        catch(error){
-          subEl.textContent = "Ses tanıma başlatılamadı: " + String(error?.message||error);
-          stopVoiceInput();
+        catch{
+          setTimeout(()=>{
+            if(requestId !== voiceRequestId || !voiceListening) return;
+            try{ recognition.start(); }catch{}
+          },250);
         }
       },120);
       return;
@@ -1865,6 +1848,25 @@ async function startVoiceInput(){
 
   recognition.onend = () => {
     if(requestId !== voiceRequestId) return;
+
+    // continuous=true olsa bile Chromium/Electron tanıma oturumunu
+    // kendisi kapatabilir. Kullanıcı hâlâ dinlemedeyse yeni oturum aç.
+    if(voiceListening && restartCount < 20){
+      restartCount++;
+      subEl.textContent = "Ses oturumu yenileniyor...";
+      setTimeout(()=>{
+        if(requestId !== voiceRequestId || !voiceListening) return;
+        try{ recognition.start(); }
+        catch{
+          setTimeout(()=>{
+            if(requestId !== voiceRequestId || !voiceListening) return;
+            try{ recognition.start(); }catch{}
+          },250);
+        }
+      },120);
+      return;
+    }
+
     voiceRecognition = null;
     voiceListening = false;
     micBtn.classList.remove("active");
