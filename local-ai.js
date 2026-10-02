@@ -927,12 +927,12 @@ function buildAgentPlan(query, mode = "chat") {
   const toolHints = [];
 
   const code = mode === "code" || /kod|script|proje|unity|oyun geliştir|oyun gelistir|dosya oluştur|dosya olustur/.test(q);
-  const processOps = /işlem|islem|process|süreç|surec|çalışan süreç|calisan surec|çalışan program|calisan program|görev yöneticisi|gorev yoneticisi/.test(q);
+  const fileOps = /dosya|klasör|klasor|metin dosyası|dosyası|dosyayi|dosyayı|oku|yaz|oluştur|olustur|sil|taşı|tasi|kopyala|kopya|dosya yolu|dosya yolu|klasör yolu/.test(q);
+  const processOps = !fileOps && /işlem|islem|process|süreç|surec|çalışan süreç|calisan surec|çalışan program|calisan program|görev yöneticisi|gorev yoneticisi/.test(q);
   const systemOps = !processOps && /cpu|işlemci|ram|bellek|gpu|ekran kartı|ekran karti|disk|depolama|donanım|donanim|sistem bilgisi|performans|sıcaklık|sicaklik|batarya|pil|ağ|ag|network|internet hız|internet hiz/.test(q);
   const mediaOps = !systemOps && /ekran görüntüsü|ekran goruntusu|screenshot|ekranı gör|ekrani gor|pano|clipboard|panoya|kopyala|yapıştır|yapistir/.test(q);
   const terminalOps = !mediaOps && /powershell|terminal|komut satırı|komut satiri|shell|cmd|komut çalıştır|komut calistir|script çalıştır|script calistir/.test(q);
   const appOps = !terminalOps && /uygulama|program|uygulamayı|uygulamayi|programı|programi|aç|ac|başlat|baslat|kapat|çalışan|calisan/.test(q);
-  const fileOps = !appOps && /dosya|klasör|klasor|metin dosyası|dosyası|dosyayi|dosyayı|oku|yaz|oluştur|olustur|sil|taşı|tasi|kopyala|kopya|aç|ac/.test(q);
   const pc = /bilgisayar|pc|uygulama|program|sistem|cpu|ram|gpu|disk|masaüstü|masaustu/.test(q);
   const memory = /hafıza|hafiza|hatırla|hatirla|unut|geçmiş|gecmis|dün|dun|bugün|bugun|geçen hafta|gecen hafta/.test(q);
   const web = /güncel|guncel|araştır|arastir|internette|web|kaynak|site|haber/.test(q);
@@ -945,6 +945,13 @@ function buildAgentPlan(query, mode = "chat") {
     steps.push("hedef işlem veya süreç bilgisini belirle", "çalışan süreçleri güvenli şekilde incele", "istenen işlemi onay kurallarına göre uygula", "işlem/süreç durumunu doğrula");
     toolHints.push("desktop_get_background_tasks", "desktop_get_running_apps");
     if (/kapat|sonlandır|durdur|öldür|oldur/.test(q)) toolHints.push("desktop_run_powershell");
+  } else if (fileOps) {
+    steps.push("hedef dosya/klasörü belirle", "yol ve erişim kapsamını güvenli şekilde kontrol et", "dosya işlemini onay kurallarına göre uygula", "sonucu gerçek dosya sistemi durumu ile doğrula");
+    toolHints.push("desktop_list_directory", "desktop_read_text_file", "desktop_search_files", "desktop_open_path");
+    if (/yaz|oluştur|olustur/.test(q)) toolHints.push("desktop_write_text_file", "desktop_create_directory");
+    if (/sil/.test(q)) toolHints.push("desktop_delete_path");
+    if (/taşı|tasi/.test(q)) toolHints.push("desktop_move_path");
+    if (/kopyala|kopya/.test(q)) toolHints.push("desktop_copy_path");
   } else if (systemOps) {
     steps.push("istenen sistem/donanım bilgisini belirle", "gerekli PC durum araçlarını seç", "ölçümleri al", "ölçüm sonucunu doğrula");
     toolHints.push("desktop_pc_agent_context", "desktop_get_system_info", "desktop_get_hardware_metrics", "desktop_get_battery_status");
@@ -985,9 +992,11 @@ function buildAgentPlan(query, mode = "chat") {
     ? ["hedef dosya/proje mevcut", "değişiklik uygulanmış", "ilgili test/build veya sağlık kontrolü başarılı"]
     : processOps
       ? ["istenen süreç/işlem bilgisi alındı", "işlem sonucu çalışan süreç durumu ile doğrulandı"]
-      : systemOps
-        ? ["istenen sistem/donanım ölçümü alındı", "ölçüm sonucu gerçek PC durumuyla uyumlu"]
-        : fileOps
+      : fileOps
+        ? ["hedef yol bulundu veya oluşturuldu", "dosya işlemi gerçek dosya sistemi durumu ile doğrulandı"]
+        : systemOps
+          ? ["istenen sistem/donanım ölçümü alındı", "ölçüm sonucu gerçek PC durumuyla uyumlu"]
+          :
         ? ["hedef yol bulundu veya oluşturuldu", "işlem sonucu gerçek dosya sistemi durumuyla doğrulandı"]
         : pc
         ? ["hedef durum bulundu", "işlem sonucu beklenen duruma geldi"]
