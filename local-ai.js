@@ -1085,7 +1085,7 @@ function buildAgentPlan(query, mode = "chat") {
                   : ["cevap/işlem kullanıcı isteğiyle uyumlu"];
 
   return {
-    version: "agent-core-2",
+    version: "agent-core-3-developer",
     goal: String(query || "").trim().slice(0, 1200),
     mode: String(mode || "chat"),
     steps,
@@ -1098,7 +1098,11 @@ function buildAgentPlan(query, mode = "chat") {
     lastToolStatus: null,
     history: [],
     policy: "Önce planla → uygun aracı seç → sonucu değerlendir → gerekiyorsa düzelt → doğrulama kriterlerini kontrol et → sonra tamamla.",
-    maxExecutionRounds: 5
+    maxExecutionRounds: 5,
+    developerChangePlan: code ? {
+      status: "needs_inspection", targetProject: null, candidateFiles: [], changeActions: [], testStrategy: [],
+      snapshotId: null, snapshotCreated: false, rollbackAttempted: false, rollbackStatus: "not_attempted"
+    } : null
   };
 }
 
@@ -1112,7 +1116,8 @@ function buildPcToolRouter(plan, availableTools = []) {
     processes: names.filter(name => /desktop_(get_background_tasks|get_running_apps)/i.test(name)),
     system: names.filter(name => /desktop_(pc_agent_context|get_system_info|get_hardware_metrics|get_environment_profile|get_battery_status)/i.test(name)),
     media: names.filter(name => /desktop_(capture_screen|clipboard_read|clipboard_write)/i.test(name)),
-    input: names.filter(name => /desktop_(mouse_click|keyboard_type|keyboard_key)/i.test(name))
+    input: names.filter(name => /desktop_(mouse_click|keyboard_type|keyboard_key)/i.test(name)),
+    developer: names.filter(name => /desktop_(create_file_snapshot|restore_file_snapshot|read_text_file|write_text_file|run_powershell|unity_read_file|unity_write_file|unity_project_tree|unity_health_check)/i.test(name))
   };
   const goal = String(plan?.goal || "");
   const category = /powershell|terminal|komut|shell|cmd/i.test(goal) ? "terminal"
@@ -1154,6 +1159,9 @@ function selectAgentTools(plan, availableTools = []) {
 function buildDeveloperAgentInstruction(plan) {
   if (plan?.mode !== "code" && plan?.mode !== "background-code") return "";
   return "\nDEVELOPER AGENT KURALI:\n" +
+    "Önce yapılandırılmış bir DEVELOPER CHANGE PLAN çıkar: hedef proje, aday dosyalar, değişiklikler, test stratejisi ve geri alma noktası. " +
+    "Aday dosyaları varsayma; proje ağacını ve ilgili dosyaları okuyarak kapsamı daralt. " +
+    "Değişecek her mevcut dosyada değişiklikten önce desktop_create_file_snapshot kullan ve snapshotId'yi plan durumuna kaydet. " +
     "Kod değişikliğinden önce mevcut dosya/proje durumunu oku ve değişecek dosyanın snapshot'ını oluştur. " +
     "Değişiklik başarısız olursa mümkünse snapshot'tan geri dönmeden önce kullanıcı onayını koru. " +
     "Değişiklikten sonra uygun bir test, build, compile veya sağlık kontrolü çalıştır. " +
@@ -1205,6 +1213,12 @@ function updateAgentPlanFromToolResult(plan, toolName, toolResult) {
   const status = failed ? "failed" : "completed";
   const isInputTool = /desktop_(mouse_click|keyboard_type|keyboard_key)/i.test(tool);
   const isContextTool = /desktop_(get_screen_context|get_foreground_window)/i.test(tool);
+  const isSnapshotTool = /desktop_create_file_snapshot/i.test(tool);
+  const isRestoreTool = /desktop_restore_file_snapshot/i.test(tool);
+  if (next.developerChangePlan) {
+    if (isSnapshotTool && !failed && toolResult?.id) { next.developerChangePlan.snapshotId=String(toolResult.id); next.developerChangePlan.snapshotCreated=true; }
+    if (isRestoreTool) { next.developerChangePlan.rollbackAttempted=true; next.developerChangePlan.rollbackStatus=failed ? "failed" : "restored"; }
+  }
   next.history.push({ tool, status, at: new Date().toISOString(), summary: textResult.slice(0, 500) });
   next.history = next.history.slice(-20);
   next.lastTool = tool;
