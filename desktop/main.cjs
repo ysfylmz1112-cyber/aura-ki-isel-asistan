@@ -11,7 +11,6 @@ const QRCode = require('qrcode');
 const openclaw = require('./openclaw.cjs');
 
 // Chromium'un Electron içindeki Web Speech servisinin etkinleştirilmesini destekle.
-app.commandLine.appendSwitch('enable-features','WebSpeechAPI');
 const PROD_URL = 'https://aura-ki-isel-asistan.vercel.app/';
 const ALLOWED_REMOTE_ORIGIN = 'https://aura-ki-isel-asistan.vercel.app';
 const DEV_INDEX = path.join(__dirname,'..','index.html');
