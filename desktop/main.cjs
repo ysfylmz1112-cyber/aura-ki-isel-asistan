@@ -1607,9 +1607,17 @@ async function createFileSnapshot(filePath) {
   const snapshotPath = path.join(snapshotRoot, id + '.snapshot');
   const metaPath = path.join(snapshotRoot, id + '.json');
   await fsp.copyFile(normalized, snapshotPath);
-  const meta = {id, originalPath:normalized, createdAt:new Date().toISOString(), size:stat.size};
+  const hash = crypto.createHash('sha256').update(await fsp.readFile(normalized)).digest('hex');
+  const meta = {id, originalPath:normalized, createdAt:new Date().toISOString(), size:stat.size, sha256:hash, kind:'developer-change'};
   await fsp.writeFile(metaPath, JSON.stringify(meta,null,2), 'utf8');
-  return {ok:true,id,path:normalized,createdAt:meta.createdAt,size:stat.size};
+  const entries = (await fsp.readdir(snapshotRoot)).filter(name => name.endsWith('.json'));
+  const records = [];
+  for (const name of entries) { try { const m=JSON.parse(await fsp.readFile(path.join(snapshotRoot,name),'utf8')); if(m?.id&&m?.createdAt) records.push(m); } catch {} }
+  records.sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));
+  for (const stale of records.slice(10)) {
+    await Promise.allSettled([fsp.unlink(path.join(snapshotRoot,stale.id+'.json')),fsp.unlink(path.join(snapshotRoot,stale.id+'.snapshot'))]);
+  }
+  return {ok:true,id,path:normalized,createdAt:meta.createdAt,size:stat.size,sha256:hash,retainedSnapshots:Math.min(records.length,10)};
 }
 async function restoreFileSnapshot(id) {
   const safeId = String(id || '').replace(/[^a-zA-Z0-9_-]/g,'');
