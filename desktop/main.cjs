@@ -1515,6 +1515,39 @@ async function searchFiles(root, query, maxResults=80) {
   return {root,query:q,results};
 }
 
+async function desktopMouseClick(x, y, button='left', clicks=1) {
+  const px=Math.round(Number(x)), py=Math.round(Number(y)), count=Math.max(1,Math.min(2,Math.round(Number(clicks)||1)));
+  const btn=String(button||'left').toLowerCase();
+  if(!Number.isFinite(px)||!Number.isFinite(py)||px<0||py<0||px>10000||py>10000) throw new Error('Geçersiz ekran koordinatı.');
+  if(!['left','right'].includes(btn)) throw new Error('Sadece sol veya sağ tıklama destekleniyor.');
+  const ok=await confirmAction('AURA — Fare tıklama izni','AURA ekranda ('+px+', '+py+') konumuna '+(btn==='left'?'sol':'sağ')+' tıklayacak. Devam edilsin mi?');
+  if(!ok) throw new Error('Kullanıcı işlemi iptal etti.');
+  const down=btn==='left'?'0x0002':'0x0008', up=btn==='left'?'0x0004':'0x0010';
+  const script=`Add-Type @'\nusing System;\nusing System.Runtime.InteropServices;\npublic static class AuraMouse { [DllImport("user32.dll")] public static extern bool SetCursorPos(int X,int Y); [DllImport("user32.dll")] public static extern void mouse_event(uint flags,uint dx,uint dy,uint data,UIntPtr extra); }\n'@\n[AuraMouse]::SetCursorPos(${px},${py}) | Out-Null\nfor($i=0;$i -lt ${count};$i++){ [AuraMouse]::mouse_event(${down},0,0,0,[UIntPtr]::Zero); [AuraMouse]::mouse_event(${up},0,0,0,[UIntPtr]::Zero); Start-Sleep -Milliseconds 70 }`;
+  return new Promise((resolve,reject)=>{ execFile('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-Command',script],{windowsHide:true,maxBuffer:200000},(error,stdout,stderr)=>resolve({ok:!error,x:px,y:py,button:btn,clicks:count,stdout:String(stdout||'').slice(0,2000),stderr:String(stderr||'').slice(0,4000)})); });
+}
+
+async function desktopKeyboardType(text) {
+  const value=String(text??'');
+  if(!value.trim()) throw new Error('Yazılacak metin boş.');
+  if(value.length>2000) throw new Error('Metin 2000 karakter sınırını aşıyor.');
+  const ok=await confirmAction('AURA — Klavye yazma izni','AURA aktif pencereye şu metni yazacak:\n\n'+value+'\n\nDevam edilsin mi?');
+  if(!ok) throw new Error('Kullanıcı işlemi iptal etti.');
+  const escaped=value.replace(/\\/g,'\\\\').replace(/\{/g,'{\{}').replace(/\}/g,'{\}}').replace(/\+/g,'{+}').replace(/\^/g,'{^}').replace(/%/g,'{%}').replace(/~/g,'{~}').replace(/\(/g,'{(}').replace(/\)/g,'{)}').replace(/\r?\n/g,'{ENTER}');
+  const script="Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('"+escaped.replace(/'/g,"''")+"')";
+  return new Promise((resolve,reject)=>{ execFile('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-Command',script],{windowsHide:true,maxBuffer:200000},(error,stdout,stderr)=>resolve({ok:!error,chars:value.length,stdout:String(stdout||'').slice(0,2000),stderr:String(stderr||'').slice(0,4000)})); });
+}
+
+async function desktopKeyboardKey(key) {
+  const value=String(key||'').trim().toUpperCase();
+  const allowed=['ENTER','TAB','ESC','BACKSPACE','SPACE','UP','DOWN','LEFT','RIGHT','HOME','END','DELETE','INSERT','F1','F2','F3','F4','F5','F6','F7','F8','F9','F10','F11','F12'];
+  if(!allowed.includes(value)) throw new Error('Desteklenmeyen klavye tuşu.');
+  const map={ENTER:'{ENTER}',TAB:'{TAB}',ESC:'{ESC}',BACKSPACE:'{BACKSPACE}',SPACE:' ',UP:'{UP}',DOWN:'{DOWN}',LEFT:'{LEFT}',RIGHT:'{RIGHT}',HOME:'{HOME}',END:'{END}',DELETE:'{DELETE}',INSERT:'{INSERT}',F1:'{F1}',F2:'{F2}',F3:'{F3}',F4:'{F4}',F5:'{F5}',F6:'{F6}',F7:'{F7}',F8:'{F8}',F9:'{F9}',F10:'{F10}',F11:'{F11}',F12:'{F12}'};
+  const ok=await confirmAction('AURA — Klavye tuşu izni','AURA aktif pencereye '+value+' tuşunu gönderecek. Devam edilsin mi?');
+  if(!ok) throw new Error('Kullanıcı işlemi iptal etti.');
+  const script="Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('"+map[value]+"')";
+  return new Promise((resolve,reject)=>{ execFile('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-Command',script],{windowsHide:true,maxBuffer:200000},(error,stdout,stderr)=>resolve({ok:!error,key:value,stdout:String(stdout||'').slice(0,2000),stderr:String(stderr||'').slice(0,4000)})); });
+}
 async function runPowerShell(command) {
   const cmd=String(command||'').trim();
   if(!cmd) throw new Error('PowerShell komutu boş.');
@@ -2380,6 +2413,9 @@ async function handleTool(tool,args) {
     case 'desktop_routine_list': return listRoutines();
     case 'desktop_routine_cancel': return cancelRoutine(args?.query);
     case 'desktop_daily_briefing': return dailyBriefing();
+    case 'desktop_mouse_click': return desktopMouseClick(args.x,args.y,args.button,args.clicks);
+    case 'desktop_keyboard_type': return desktopKeyboardType(args.text);
+    case 'desktop_keyboard_key': return desktopKeyboardKey(args.key);
     case 'desktop_clipboard_read': return readClipboardText();
     case 'desktop_clipboard_write': return writeClipboardText(args.text);
     case 'desktop_capture_screen': return captureAuraScreen(args.name||'aura');
