@@ -2573,8 +2573,34 @@ function createWindow(){
     console.error('[AURA] renderer load failed:',errorCode,errorDescription);
   });
 
-  session.defaultSession.setPermissionRequestHandler((_wc,permission,callback)=>{
-    callback(permission==='media');
+  const isTrustedRenderer = (webContents) => {
+    try {
+      const raw = webContents?.getURL?.() || '';
+      const u = new URL(raw);
+      return u.protocol === 'file:' ||
+        (u.protocol === 'http:' && u.hostname === '127.0.0.1') ||
+        u.origin === ALLOWED_REMOTE_ORIGIN;
+    } catch {
+      return false;
+    }
+  };
+
+  session.defaultSession.setPermissionCheckHandler((webContents, permission, requestingOrigin) => {
+    if (permission !== 'media') return false;
+    try {
+      const u = new URL(String(requestingOrigin || webContents?.getURL?.() || ''));
+      const trustedOrigin = u.protocol === 'file:' ||
+        (u.protocol === 'http:' && u.hostname === '127.0.0.1') ||
+        u.origin === ALLOWED_REMOTE_ORIGIN;
+      return trustedOrigin && isTrustedRenderer(webContents);
+    } catch {
+      return false;
+    }
+  });
+
+  session.defaultSession.setPermissionRequestHandler((webContents,permission,callback)=>{
+    if(permission !== 'media') return callback(false);
+    callback(isTrustedRenderer(webContents));
   });
 
   win.on('closed',()=>{
