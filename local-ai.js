@@ -989,6 +989,16 @@ function selectAgentTools(plan, availableTools = []) {
     .map(item => item.name);
 }
 
+function buildAgentVerificationInstruction(plan) {
+  const criteria = Array.isArray(plan?.verification) ? plan.verification : [];
+  const completed = Array.isArray(plan?.completedSteps) ? plan.completedSteps : [];
+  return "\nAGENT CORE SON DOĞRULAMA:\n" +
+    "Görevi tamamlandı olarak bildirmeden önce gerçek sonucu kontrol et. " +
+    "Doğrulama kriterleri: " + JSON.stringify(criteria) + ". " +
+    "Tamamlanan araç/adımlar: " + JSON.stringify(completed.slice(-8)) + ". " +
+    "Kriterler karşılanmıyorsa başarı iddiasında bulunma; eksik adımı tamamla veya açıkça belirt.";
+}
+
 function buildAgentRecoveryInstruction(plan) {
   if (!plan?.failedSteps?.length) return "";
   const failed = plan.failedSteps.slice(-3).join(", ");
@@ -1020,11 +1030,12 @@ function updateAgentPlanFromToolResult(plan, toolName, toolResult) {
 
 function agentCorePrompt(plan) {
   const recovery = buildAgentRecoveryInstruction(plan);
+  const verification = buildAgentVerificationInstruction(plan);
   return "\nAURA AGENT CORE PLANI:\n" + JSON.stringify(plan) +
     "\nPlanı körü körüne uygulama; araç sonucu planla uyuşmuyorsa planı güncelle. " +
     "Her araç sonucunu değerlendir. Planın verification kriterleri karşılanmadan görevi tamamlandı sayma. " +
     "Başarısız bir adım varsa aynı işlemi körlemesine tekrarlama; hataya göre düzeltme veya alternatif araç seç. " +
-    "Gereksiz araç çağrısı yapma." + recovery;
+    "Gereksiz araç çağrısı yapma." + recovery + verification;
 }
 
 function extractJsonObject(text) {
