@@ -1515,6 +1515,13 @@ async function searchFiles(root, query, maxResults=80) {
   return {root,query:q,results};
 }
 
+
+function desktopGetForegroundWindow() {
+  if (process.platform !== 'win32') return {ok:false, error:'Yalnızca Windows destekleniyor.'};
+  const script = "Add-Type @'\nusing System;\nusing System.Text;\nusing System.Runtime.InteropServices;\npublic static class AuraWindow { [DllImport(\"user32.dll\")] public static extern IntPtr GetForegroundWindow(); [DllImport(\"user32.dll\", CharSet=CharSet.Unicode)] public static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int count); [DllImport(\"user32.dll\")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId); }\n'@\n$h=[AuraWindow]::GetForegroundWindow(); $pid=0; [AuraWindow]::GetWindowThreadProcessId($h,[ref]$pid) | Out-Null; $sb=New-Object System.Text.StringBuilder 512; [AuraWindow]::GetWindowText($h,$sb,$sb.Capacity) | Out-Null; [pscustomobject]@{handle=$h.ToInt64();pid=$pid;title=$sb.ToString()} | ConvertTo-Json -Compress";
+  return new Promise((resolve)=>{ execFile('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-Command',script],{windowsHide:true,maxBuffer:200000},(error,stdout,stderr)=>{ if(error){resolve({ok:false,error:String(stderr||error.message||error)});return;} try { const value=JSON.parse(String(stdout||'{}')); resolve({ok:true,...value}); } catch { resolve({ok:false,error:'Aktif pencere bilgisi okunamadı.',stderr:String(stderr||'')}); } }); });
+}
+
 async function desktopMouseClick(x, y, button='left', clicks=1) {
   const px=Math.round(Number(x)), py=Math.round(Number(y)), count=Math.max(1,Math.min(2,Math.round(Number(clicks)||1)));
   const btn=String(button||'left').toLowerCase();
@@ -2413,6 +2420,7 @@ async function handleTool(tool,args) {
     case 'desktop_routine_list': return listRoutines();
     case 'desktop_routine_cancel': return cancelRoutine(args?.query);
     case 'desktop_daily_briefing': return dailyBriefing();
+    case 'desktop_get_foreground_window': return desktopGetForegroundWindow();
     case 'desktop_mouse_click': return desktopMouseClick(args.x,args.y,args.button,args.clicks);
     case 'desktop_keyboard_type': return desktopKeyboardType(args.text);
     case 'desktop_keyboard_key': return desktopKeyboardKey(args.key);
