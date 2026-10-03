@@ -1602,10 +1602,10 @@ async function developerSelfTest() {
     ['file_read', typeof readTextFile === 'function'],
     ['file_write', typeof writeTextFile === 'function'],
     ['powershell', typeof runPowerShell === 'function'],
-    ['unity_read', typeof unityReadFile === 'function'],
-    ['unity_write', typeof unityWriteFile === 'function'],
+    ['unity_read', typeof unityReadProjectFile === 'function'],
+    ['unity_write', typeof unityWriteProjectFile === 'function'],
     ['unity_health', typeof unityHealthCheck === 'function'],
-    ['unity_build', typeof unityBuild === 'function']
+    ['unity_build', typeof buildUnityProject === 'function']
   ];
   const failed = checks.filter(([, ok]) => !ok).map(([name]) => name);
   return {
