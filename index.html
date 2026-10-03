@@ -1518,6 +1518,33 @@ async function run(q) {
   setCoreState("thinking");
 
   try {
+    // Developer Agent self-test: yerel LLM/CacheStorage katmanına hiç girme.
+    // Bu komut yalnızca gerçek Electron IPC aracını çalıştırmalıdır.
+    const developerSelfTestRequest = /developer agent self[- ]test|developer agent.*self test|desktop_developer_self_test|geliştirici ajan.*self[- ]test|gelistirici ajan.*self[- ]test/i.test(String(q || "").toLocaleLowerCase("tr-TR"));
+    if (developerSelfTestRequest) {
+      try {
+        if (!hasDesktopAgent()) {
+          if (myGeneration===runGeneration) finish(q, "Aracın ham sonucu: " + JSON.stringify({
+            ok: false,
+            error: "Masaüstü ajanı bu AURA oturumunda bağlı değil.",
+            diagnostic: {
+              auraDesktopPresent: !!globalThis.auraDesktop,
+              isDesktop: !!globalThis.auraDesktop?.isDesktop,
+              pageOrigin: globalThis.location?.origin || null
+            }
+          }), false);
+          return;
+        }
+        const result = await callDesktop("desktop_developer_self_test", {});
+        if (myGeneration===runGeneration) finish(q, "Aracın ham sonucu: " + JSON.stringify(result), false);
+      } catch (error) {
+        if (myGeneration===runGeneration) finish(q, "Aracın ham sonucu: " + JSON.stringify({
+          ok: false,
+          error: String(error?.message || error)
+        }), false);
+      }
+      return;
+    }
     const diagnosticsDirect=isDiagnosticsRequest(q);
     const quick = quickLocalAnswer(q);
     if (diagnosticsDirect) {
