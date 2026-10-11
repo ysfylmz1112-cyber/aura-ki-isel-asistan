@@ -18,9 +18,9 @@ function isDriveListRequest(q) {
 globalThis.isDriveListRequest = isDriveListRequest;
 import { CreateMLCEngine } from "https://esm.run/@mlc-ai/web-llm@0.2.85";
 
-const CHAT_MODEL_ID = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
-// 1.5B Coder varsayılan: Windows/WebGPU üzerinde UI donmasını önler.
-// Büyük model yalnızca ileride açıkça opt-in yapılırsa kullanılabilir.
+const CHAT_MODEL_ID = "Qwen2.5-3B-Instruct-q4f16_1-MLC";
+// 3B genel sohbet modeli, Türkçe bilgi yanıtlarında daha yüksek kalite için kullanılır.
+// Kod görevleri ayrı ve daha hafif Coder modeliyle devam eder.
 const CODE_MODEL_ID = "Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC";
 const CODE_LARGE_MODEL_ID = "Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC";
 const CODE_FALLBACK_MODEL_ID = CODE_MODEL_ID;
