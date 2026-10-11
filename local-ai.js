@@ -1525,7 +1525,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
             },
             {
               role: "user",
-              content: "KULLANICI SORUSU:\\n" + value + "\\n\\nDENETLENECEK TASLAK:\\n" + draftText + "\\n\\nTaslak yanlış veya konu dışıysa cevabı baştan doğru biçimde yaz. Doğruysa kısa ve net biçimde koru."
+              content: "KULLANICI SORUSU:\n" + value + "\n\nDENETLENECEK TASLAK:\n" + draftText + "\n\nTaslak yanlış veya konu dışıysa cevabı baştan doğru biçimde yaz. Doğruysa kısa ve net biçimde koru."
             }
           ],
           temperature: 0.1,
@@ -1533,7 +1533,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
           max_tokens: 320,
           stream: false
         });
-        const reviewedText = String(reviewResponse?.choices?.[0]?.message?.content || "").trim();
+        const reviewedText = readAssistantText(reviewResponse?.choices?.[0]?.message);
         if (reviewedText && reviewedText.length <= 3000) {
           assistantMessage = { ...assistantMessage, content: reviewedText };
         }
