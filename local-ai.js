@@ -1510,6 +1510,38 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     if(!assistantMessage || !readAssistantText(assistantMessage)) {
       throw new Error("Yerel AI boş cevap verdi. Modeli yeniden başlatıp tekrar dene.");
     }
+    // General factual questions get a second, isolated review pass. Small local
+    // models can produce fluent but irrelevant examples; ask the same model to
+    // correct factual mismatches before the answer reaches the user.
+    const factualQuestion = /\b(nedir|ne demek|kimdir|neresidir|neden|niçin|nasıl çalışır|nasıl oluşur|açıkla|örnek ver|örnekleri|hangi yıl|kim buldu)\b/i.test(lowerValue);
+    if (!wantsTools && !codeLikeMode && factualQuestion && round === 0) {
+      try {
+        const draftText = readAssistantText(assistantMessage);
+        const reviewResponse = await localEngine.chat.completions.create({
+          messages: [
+            {
+              role: "system",
+              content: "Sen AURA'nın Türkçe cevap denetleyicisisin. Taslak cevabın kullanıcı sorusunu gerçekten yanıtlayıp yanıtlamadığını ve olgusal doğruluğunu kontrol et. Konu dışı örnekleri, uydurma kişi/nesne adlarını ve anlamsız cümleleri düzelt. Emin olmadığın ayrıntıları uydurma. Doğru ve sade cevap ver; değerlendirme sürecini anlatma, yalnızca kullanıcıya verilecek nihai cevabı yaz."
+            },
+            {
+              role: "user",
+              content: "KULLANICI SORUSU:\\n" + value + "\\n\\nDENETLENECEK TASLAK:\\n" + draftText + "\\n\\nTaslak yanlış veya konu dışıysa cevabı baştan doğru biçimde yaz. Doğruysa kısa ve net biçimde koru."
+            }
+          ],
+          temperature: 0.1,
+          top_p: 0.7,
+          max_tokens: 320,
+          stream: false
+        });
+        const reviewedText = String(reviewResponse?.choices?.[0]?.message?.content || "").trim();
+        if (reviewedText && reviewedText.length <= 3000) {
+          assistantMessage = { ...assistantMessage, content: reviewedText };
+        }
+      } catch (reviewError) {
+        // The first answer is retained if the optional review pass fails.
+      }
+    }
+
     messages.push(assistantMessage);
 
     if(wantsTools){
