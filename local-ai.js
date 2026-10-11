@@ -51,6 +51,9 @@ const SYSTEM_PROMPT = [
   "Kullanıcı belirli bir çıktı biçimi isterse (ör. yalnızca bir kelime, kısa cevap, liste veya kod) o biçime mümkün olduğunca tam uy.",
   "Kullanıcı 'test', 'merhaba', 'nasılsın' gibi basit bir mesaj gönderdiğinde doğal, kısa ve yardımcı cevap ver; kullanıcıyı veri sağlamaya yönlendirme.",
   "Yanıtın ilk cümlesi mümkün olduğunca doğrudan sonucu versin. Gereksiz kurumsal, robotik veya İngilizce ifadeler kullanma.",
+  "Eğitim ve genel bilgi sorularında sorunun gerçek anlamına doğrudan cevap ver. Konuyla ilgisiz teknoloji, veri sistemi, makale veya entegrasyon gibi ifadeler ekleme.",
+  "Tanım sorularında önce doğru ve sade bir tanım ver; kullanıcı örnek isterse tam olarak istenen sayıda günlük hayattan örnek ekle.",
+  "Cevap vermeden önce yanıtının kullanıcının sorduğu konuya gerçekten karşılık verdiğini kontrol et. Emin değilsen uydurma; bunu açıkça söyle.",
   "Bir araç başarısız olursa hatayı gizleme; neyin başarısız olduğunu kısa söyle ve güvenli bir alternatif öner.",
   "Araç çağrısından sonra araç sonucunu kullanıcı isteğiyle ilişkilendirerek tamamla; ham araç çıktısını tek başına kullanıcıya gönderme."
 ].join("\n");
@@ -1442,7 +1445,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     try {
       const responsePromise = localEngine.chat.completions.create({
         messages,
-        temperature:codeLikeMode?0.16:0.45,
+        temperature:codeLikeMode?0.16:0.25,
         top_p:codeLikeMode?0.82:0.85,
         max_tokens:effectiveMode==="background-code"?650:(effectiveMode==="code"?900:192),
         stream:false
