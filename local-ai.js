@@ -1426,8 +1426,9 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
       role:"system",
       content: SYSTEM_PROMPT + modePrompt + memoryContext + pcContext +
         (desktopAvailable() ? "\nMasaüstü ajanı BAĞLI." : "\nMasaüstü ajanı BAĞLI DEĞİL.") +
-        agentCorePrompt(agentPlan) +
-        buildDeveloperAgentInstruction(agentPlan) +
+        (wantsTools
+          ? agentCorePrompt(agentPlan) + buildDeveloperAgentInstruction(agentPlan)
+          : "\nGENEL SOHBET KURALI: Bu istek bir bilgisayar/araç görevi değilse araç planı üretme. Sorulan bilgiye doğrudan, doğru ve sade Türkçe cevap ver; kullanıcının istediği örnek sayısına uy. Konuyla ilgisiz teknoloji, veri kümesi, entegrasyon veya kurumsal ifadeler uydurma.") +
         toolProtocol
     },
     ...cleanMessages(codeLikeMode ? history.slice(-2) : history),
@@ -1447,7 +1448,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         messages,
         temperature:codeLikeMode?0.16:0.25,
         top_p:codeLikeMode?0.82:0.85,
-        max_tokens:effectiveMode==="background-code"?650:(effectiveMode==="code"?900:192),
+        max_tokens:effectiveMode==="background-code"?650:(effectiveMode==="code"?900:320),
         stream:false
       });
       response = await Promise.race([
