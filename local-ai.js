@@ -1410,8 +1410,8 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     : "";
 
   let agentPlan = buildAgentPlan(value, effectiveMode);
-    const availableToolNames = Array.isArray(toolDirectory)
-      ? toolDirectory.map(tool => typeof tool === "string" ? tool : tool?.name).filter(Boolean)
+    const availableToolNames = Array.isArray(TOOLS)
+      ? TOOLS.map(tool => typeof tool === "string" ? tool : (tool?.function?.name || tool?.name)).filter(Boolean)
       : [];
     const preferredAgentTools = selectAgentTools(agentPlan, availableToolNames);
     if (preferredAgentTools.length) {
