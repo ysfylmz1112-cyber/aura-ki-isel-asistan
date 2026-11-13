@@ -623,12 +623,24 @@ async function warmLocalModel(){
     idle(()=>mod.warmLocalAI((p)=>{
       if(!busy && p?.percent!=null){
         aiEl.textContent=p.percent+"%";
-        subEl.textContent=p.text||"Yerel AI arka planda hazırlanıyor...";
+        subEl.textContent=p.text||"Yerel yapay zekâ arka planda hazırlanıyor...";
       }
     }).then(()=>{
-      if(!busy){ aiEl.textContent="YEREL"; subEl.textContent="Yerel AI hazır."; }
+      if(!busy){ aiEl.textContent="YEREL"; subEl.textContent="Yerel yapay zekâ hazır."; }
+    }).catch(error=>{
+      console.warn("[AURA] Yerel model hazırlanamadı:",error);
+      if(!busy){
+        aiEl.textContent="HAZIR DEĞİL";
+        const message=String(error?.message||error);
+        subEl.textContent=/CacheStorage|cache api|indexeddb/i.test(message)
+          ? "Model önbelleği açılamadı · PC ve dosya komutları kullanılabilir."
+          : "Yerel yapay zekâ başlatılamadı · PC komutları kullanılabilir.";
+      }
     }));
-  }catch{}
+  }catch(error){
+    console.warn("[AURA] Yerel AI modülü yüklenemedi:",error);
+    if(!busy){ aiEl.textContent="HAZIR DEĞİL"; subEl.textContent="Yerel yapay zekâ modülü yüklenemedi."; }
+  }
 }
 
 async function loadAuraMemory(){
