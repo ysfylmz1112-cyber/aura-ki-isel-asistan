@@ -57,7 +57,8 @@ const SYSTEM_PROMPT = [
   "Cevap vermeden önce yanıtının kullanıcının sorduğu konuya gerçekten karşılık verdiğini kontrol et. Emin değilsen uydurma; bunu açıkça söyle.",
   "Bir araç başarısız olursa hatayı gizleme; neyin başarısız olduğunu kısa söyle ve güvenli bir alternatif öner.",
   "Araç çağrısından sonra araç sonucunu kullanıcı isteğiyle ilişkilendirerek tamamla; ham araç çıktısını tek başına kullanıcıya gönderme.",
-  "KAZANÇ MODU: Kullanıcı gelir amaçlı web sitesi işi istediğinde sıfır bütçeli, gerçek teslim edilebilir bir web sitesi paketi üret. Eksik işletme adı, adres, telefon, fiyat veya hizmet bilgisini uydurma; yer tutucu kullan ve kullanıcıdan doğrulamasını iste. Çıktıları Desktop\\AURA-Gelir altındaki bir proje klasöründe düzenli tut. HTML/CSS/JS dosyalarını yazdıktan sonra yerel kontroller yap ve müşteriye özel teklif taslağı hazırla. Gelir veya müşteri garantisi verme. Kullanıcı/veli onayı olmadan kimseye mesaj gönderme, site yayınlama, hesap açma, sözleşme kabul etme veya ödeme işlemi yapma. Spam, sahte yorum, yanıltıcı vaat, ücretli API/abonelik veya başlangıç harcaması kullanma."
+  "KAZANÇ MODU: Kullanıcı gelir amaçlı web sitesi işi istediğinde sıfır bütçeli, gerçek teslim edilebilir bir web sitesi paketi üret. Eksik işletme adı, adres, telefon, fiyat veya hizmet bilgisini uydurma; yer tutucu kullan ve kullanıcıdan doğrulamasını iste. Çıktıları Desktop\\AURA-Gelir altındaki bir proje klasöründe düzenli tut. HTML/CSS/JS dosyalarını yazdıktan sonra yerel kontroller yap ve müşteriye özel teklif taslağı hazırla. Gelir veya müşteri garantisi verme. Kullanıcı/veli onayı olmadan kimseye mesaj gönderme, site yayınlama, hesap açma, sözleşme kabul etme veya ödeme işlemi yapma. Spam, sahte yorum, yanıltıcı vaat, ücretli API/abonelik veya başlangıç harcaması kullanma.",
+  "AURA STUDIO: Reklam isteğinde desktop_marketing_create_kit aracını kullan. Başlık, açıklama, çağrı metni ve seslendirme taslağını isteğin bağlamına göre özgün yaz; gerçek olmayan indirim, fiyat, yorum, müşteri sonucu veya iletişim bilgisi uydurma. Araç Instagram gönderisi ve hikâyesi için SVG, paylaşım metni, seslendirme metni, Reels akış planı ve animasyonlu dikey WebM video oluşturur. İlk video yerel grafik/metin animasyonudur; gerçek çekim, yapay zekâ ile üretilmiş foto-gerçekçi sahne veya ses içermez. Bunu asla varmış gibi tanıtma. Dosyalar paylaşılmaz/yayınlanmaz; yayınlama ve müşteri iletişimi için ayrıca kullanıcı/veli onayı gerekir. Ücretli API veya abonelik önerme."
 ].join("\n");
 
 const TOOLS = [
@@ -303,6 +304,29 @@ const TOOLS = [
       }
     }
   },
+  {
+    type: "function",
+    function: {
+      name: "desktop_marketing_create_kit",
+      description: "AURA Studio reklam/tanıtım paketi oluşturur: Instagram gönderisi ve hikâyesi SVG tasarımları, paylaşım metni, seslendirme metni, Reels akış planı ve animasyonlu dikey WebM video. Dosyaları yerel klasöre yazar; sosyal medyada paylaşmaz.",
+      parameters: {
+        type: "object",
+        properties: {
+          businessName: { type: "string", description: "Tanıtımı yapılan işletme veya marka adı." },
+          businessType: { type: "string", description: "İşletmenin sektörü." },
+          campaignGoal: { type: "string", description: "Reklamın amacı." },
+          audience: { type: "string", description: "Hedef kitle." },
+          headline: { type: "string", description: "Kısa, dikkat çekici ve gerçeğe uygun reklam başlığı." },
+          supportingText: { type: "string", description: "Başlığı açıklayan kısa metin." },
+          callToAction: { type: "string", description: "Kısa eylem çağrısı." },
+          voiceover: { type: "string", description: "Videoda daha sonra seslendirilebilecek kısa Türkçe metin; video dosyasına ses eklenmez." },
+          durationSeconds: { type: "integer", minimum: 6, maximum: 20, description: "Video süresi: 6–20 saniye." }
+        },
+        required: ["businessName", "businessType", "campaignGoal", "headline", "supportingText", "callToAction", "voiceover"],
+        additionalProperties: false
+      }
+    }
+,
   {
     type: "function",
     function: {
@@ -964,8 +988,9 @@ function toolDirectoryPrompt(query = "", mode = "chat") {
   const add=(names)=>names.forEach(name=>selected.add(name));
 
   const income=/kazanç modu|kazanc modu|aura üzerinden para kazan|aura uzerinden para kazan|aura ile para kazan|gelir amaçlı site|gelir amacli site|müşteri sitesi|musteri sitesi|işletme sitesi|isletme sitesi|restoran sitesi/.test(q);
+  const marketing=/reklam|tanıtım|tanitim|kampanya|instagram|reels|shorts|video|afiş|sosyal medya|gönderi|gonderi|hikaye|story|pazarlama/.test(q);
   const unity=/unity|kamyon|nakliye|oyun geliştir|oyun gelistir|oyun yap|oyun projesi|game dev/.test(q) || (isCodeMode(mode) && !income);
-  const files=income || /dosya|klasör|klasor|kod|script|proje|oku|yaz|oluştur|olustur|düzenle|duzenle|sil|taşı|tasi|kopya|kopyala|build|derle|web sitesi|website|landing page/.test(q);
+  const files=income || marketing || /dosya|klasör|klasor|kod|script|proje|oku|yaz|oluştur|olustur|düzenle|duzenle|sil|taşı|tasi|kopya|kopyala|build|derle|web sitesi|website|landing page/.test(q);
   const pc=/bilgisayar|pc|sistem|cpu|ram|gpu|disk|donanım|donanim|performans|çalışan|calisan|uygulama|program|oyun|masaüstü|masaustu/.test(q);
   // Unity/oyun geliştirme görevlerinde "hava durumu", "trafik", "yağmur" gibi
   // kelimeler oyun mekaniği olabilir; bunları gerçek dünya hava aracına yönlendirme.
@@ -978,6 +1003,7 @@ function toolDirectoryPrompt(query = "", mode = "chat") {
     "desktop_unity_autopilot","desktop_unity_create_script","desktop_unity_open_project",
     "desktop_unity_build","desktop_unity_run_editor"
   ]);
+  if(marketing) add(["desktop_marketing_create_kit"]);
   if(files) add([
     "desktop_search_files","desktop_list_directory","desktop_read_text_file","desktop_write_text_file","desktop_create_file_snapshot","desktop_restore_file_snapshot",
     "desktop_create_directory","desktop_copy_path","desktop_move_path","desktop_delete_path",
@@ -1027,7 +1053,8 @@ function buildAgentPlan(query, mode = "chat") {
   const toolHints = [];
 
   const income = /kazanç modu|kazanc modu|aura üzerinden para kazan|aura uzerinden para kazan|aura ile para kazan|gelir amaçlı site|gelir amacli site|müşteri sitesi|musteri sitesi|işletme sitesi|isletme sitesi|restoran sitesi/.test(q);
-  const code = mode === "code" || income || /kod|script|proje|unity|oyun geliştir|oyun gelistir|dosya oluştur|dosya olustur/.test(q);
+  const marketing = /reklam|tanıtım|tanitim|kampanya|instagram|reels|shorts|video|afiş|sosyal medya|gönderi|gonderi|hikaye|story|pazarlama/.test(q);
+  const code = mode === "code" || income || marketing || /kod|script|proje|unity|oyun geliştir|oyun gelistir|dosya oluştur|dosya olustur/.test(q);
   const inputOps = /tıkla|tikla|fare|mouse|klavye|tuş|tus|bas|enter|tab|ekrana yaz/.test(q);
   const fileOps = !inputOps && /dosya|klasör|klasor|metin dosyası|dosyası|dosyayi|dosyayı|oku|yaz|oluştur|olustur|sil|taşı|tasi|kopyala|kopya|dosya yolu|dosya yolu|klasör yolu/.test(q);
   const processOps = !fileOps && !inputOps && /işlem|islem|process|süreç|surec|çalışan süreç|calisan surec|çalışan program|calisan program|görev yöneticisi|gorev yoneticisi/.test(q);
@@ -1041,7 +1068,10 @@ function buildAgentPlan(query, mode = "chat") {
   const web = /güncel|guncel|araştır|arastir|internette|web|kaynak|site|haber/.test(q);
   const destructive = /sil|kapat|kaldır|kaldir|taşı|tasi|değiştir|degistir|yaz|oluştur|olustur|çalıştır|calistir/.test(q);
 
-  if (income) {
+  if (marketing) {
+    steps.push("reklam briefini ve gerçek işletme bilgilerini belirle", "özgün başlık, açıklama, çağrı ve seslendirme metni hazırla", "Instagram gönderisi ve hikâyesi SVG tasarımları üret", "animasyonlu dikey WebM tanıtım videosu oluştur", "dosyaları ve video çıktısını doğrula; yayınlama veya mesaj gönderme yapma");
+    toolHints.push("desktop_marketing_create_kit", "desktop_create_directory", "desktop_write_text_file", "desktop_open_path");
+  } else if (income) {
     steps.push("AURA-Gelir çalışma klasörünü ve mevcut şablonları kontrol et", "küçük işletme için özgün ve mobil uyumlu web sitesi taslağı üret", "HTML/CSS/JavaScript dosyalarını kaydet", "yerel dosya ve sözdizimi kontrollerini çalıştır", "demo ve kişiselleştirilmiş teklif metnini hazırla; yayınlama veya iletişim için kullanıcı onayı bekle");
     toolHints.push("desktop_list_directory", "desktop_create_directory", "desktop_write_text_file", "desktop_read_text_file", "desktop_run_powershell", "desktop_open_path", "desktop_income_create_site");
   } else if (code) {
@@ -1373,8 +1403,9 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   const lowerValue = value.toLocaleLowerCase("tr-TR");
   const workspaceAccessIntent = /tüm\s+(pc|bilgisayar)|bilgisayarın\s+tamamı|tüm\s+bilgisayar|pc.*erişim|bilgisayar.*erişim|aura.*erişim.*alanı|erişim alanı|çalışma\s+alanı.*(?:erişim|izin)|klasör\s+seçme|klasör.*erişim\s+izni|proje\s+klasörüne.*erişim\s+izni|çalışma alanı ekle|klasör erişim izni/.test(lowerValue);
   const incomeModeIntent = /kazanç modu|kazanc modu|aura üzerinden para kazan|aura uzerinden para kazan|aura ile para kazan|gelir amaçlı site|gelir amacli site|müşteri sitesi|musteri sitesi|işletme sitesi|isletme sitesi|restoran sitesi/.test(lowerValue);
+  const marketingModeIntent = /reklam|tanıtım|tanitim|kampanya|instagram|reels|shorts|video|afiş|sosyal medya|gönderi|gonderi|hikaye|story|pazarlama/.test(lowerValue);
   const gameDevelopmentIntent = /unity|kamyon|nakliye|taşıma oyunu|tasima oyunu|oyun yap|oyun yapalım|oyun yapalim|oyun geliştir|oyun gelistir|oyun oluştur|oyun olustur|oyun yapmaya|game dev|game development|oyun projesi|oyun projesi oluştur|oyun projesi olustur/.test(lowerValue);
-  const developmentIntent = mode === "code" || gameDevelopmentIntent || incomeModeIntent || /proje oluştur|proje olustur|dosya oluştur|dosya olustur|dosya yaz|kod yaz|kodu düzelt|kodu duzelt|hata düzelt|hata duzelt|build al|derle|compile|script oluştur|script olustur|sahne oluştur|sahne olustur|component oluştur|component olustur|prefab oluştur|prefab olustur/.test(lowerValue);
+  const developmentIntent = mode === "code" || gameDevelopmentIntent || incomeModeIntent || marketingModeIntent || /proje oluştur|proje olustur|dosya oluştur|dosya olustur|dosya yaz|kod yaz|kodu düzelt|kodu duzelt|hata düzelt|hata duzelt|build al|derle|compile|script oluştur|script olustur|sahne oluştur|sahne olustur|component oluştur|component olustur|prefab oluştur|prefab olustur/.test(lowerValue);
   const effectiveMode = gameDevelopmentIntent ? "background-code" : (developmentIntent ? "code" : mode);
   const codeLikeMode = isCodeMode(effectiveMode);
 
@@ -1451,9 +1482,11 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     } catch {}
   }
 
-  const generalToolIntent = incomeModeIntent || /openclaw|güncel|guncel|araştır|arastir|internette|web|site|dosya|klasör|klasor|uygulama|oyun|bilgisayar|masaüstü|masaustu|sistem|kullanım|kullanim|hatırla|hatirla|unut|geçen hafta|gecen hafta|dün|dun|bugün|bugun|konuşma geçmişi|konusma gecmisi|pano|clipboard|ekran görüntüsü|ekran goruntusu|screenshot|bildirim|notification|unity|kamyon|nakliye|cpu|ram|gpu|disk|performans|donanım|donanim|hava|sıcaklık|sicaklik|derece|pil|batarya/.test(lowerValue);
+  const generalToolIntent = incomeModeIntent || marketingModeIntent || /openclaw|güncel|guncel|araştır|arastir|internette|web|site|dosya|klasör|klasor|uygulama|oyun|bilgisayar|masaüstü|masaustu|sistem|kullanım|kullanim|hatırla|hatirla|unut|geçen hafta|gecen hafta|dün|dun|bugün|bugun|konuşma geçmişi|konusma gecmisi|pano|clipboard|ekran görüntüsü|ekran goruntusu|screenshot|bildirim|notification|unity|kamyon|nakliye|cpu|ram|gpu|disk|performans|donanım|donanim|hava|sıcaklık|sicaklik|derece|pil|batarya/.test(lowerValue);
 
-  const modePrompt = incomeModeIntent
+  const modePrompt = marketingModeIntent
+    ? "\nAURA STUDIO REKLAM MODU: Önce işletme/marka, sektör, kampanya amacı ve hedef kitleyi mevcut istekteki bilgilerden çıkar. Gerçek olmayan fiyat, indirim, yorum, iletişim bilgisi veya sonuç iddiası uydurma. Kısa bir başlık, açıklama, çağrı ve Türkçe seslendirme taslağı hazırla. desktop_marketing_create_kit aracını çağırarak Instagram gönderisi/hikâyesi, paylaşım metni, seslendirme metni, Reels akış planı ve animasyonlu dikey WebM videosu üret. Video grafik ve metin animasyonudur; gerçek görüntü veya ses içermez. Çıktıyı Desktop\\AURA-Gelir\\AURA-Studio altında tut. Hiçbir içeriği otomatik paylaşma, yayınlama veya kimseye gönderme."
+    : incomeModeIntent
     ? "\nAURA KAZANÇ MODU: İlk hedef küçük işletmelere satılabilir, mobil uyumlu tek sayfalık web sitesi demoları hazırlamak. Önce Desktop\\AURA-Gelir klasörünü kullan; yoksa oluştur. İşletme bilgileri verilmediyse örnek/demo olduğunu açıkça belirt ve sahte iletişim bilgisi yazma. index.html, styles.css, script.js ve kısa README/teslim notu üret. Dosyaları yerel olarak doğrula. Sonunda müşteri için kişiselleştirilebilir teklif metni hazırla; hiçbir şeyi otomatik gönderme veya yayınlama. Gerçek gelir oluştuğunu iddia etme."
     : effectiveMode === "background-code"
       ? "\nOYUN GELİŞTİRME ARKA PLAN MODU: Bu görev kaynak tüketimini düşük tutan Coder modeliyle yürütülüyor. Gerçek dosyaları oluştur/değiştir ve Unity işlemlerini arka planda çalıştır. Kullanıcı bilgisayarını normal şekilde kullanmaya devam edebilmeli."
