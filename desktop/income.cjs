@@ -215,7 +215,7 @@ module.exports = async function createIncomeWebsiteDemo(options = {}) {
       cssLinked: html.includes('href="styles.css"') && css.length > 1000,
       jsLinked: html.includes('src="script.js"') && js.length > 100,
       javascriptSyntax: true,
-      demoWarningsIncluded: html.includes("PORTFÖY DEMOSU") && html.includes("rezervasyon gönderilmedi")
+      demoWarningsIncluded: html.includes("PORTFÖY DEMOSU") && html.includes("Bu demo formu rezervasyon göndermez") && js.includes("rezervasyon gönderilmedi")
     },
     message: "LAVİN web sitesi demo dosyaları oluşturuldu. Site yayınlanmadı ve hiçbir müşteriye mesaj gönderilmedi."
   };
