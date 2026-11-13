@@ -34,7 +34,8 @@
       "prepare-renderer.cjs",
       "renderer/**/*",
       "package.json",
-      "openclaw.cjs"
+      "openclaw.cjs",
+      "income.cjs"
     ],
     "win": {
       "target": [
