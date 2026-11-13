@@ -799,6 +799,25 @@ async function createEngine(modelId, config, onProgress) {
   return result;
 }
 
+// WebLLM inference can take longer on first use or with large prompts.
+// Keep a generous timeout and always clear its timer when generation completes.
+async function runChatCompletionWithTimeout(localEngine, options, timeoutMs, phase = "yanıt üretimi") {
+  let timeoutId;
+  const inference = localEngine.chat.completions.create(options);
+  try {
+    return await Promise.race([
+      inference,
+      new Promise((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error("Yerel AI " + phase + " için " + Math.round(timeoutMs / 1000) + " saniyede yanıt veremedi. Model çalışmaya devam ediyor olabilir; aynı anda yeni istek göndermeden önce biraz bekle."));
+        }, timeoutMs);
+      })
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
 function isCodeMode(mode){
   return mode === "code" || mode === "background-code";
 }
@@ -1403,7 +1422,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   const lowerValue = value.toLocaleLowerCase("tr-TR");
   const workspaceAccessIntent = /tüm\s+(pc|bilgisayar)|bilgisayarın\s+tamamı|tüm\s+bilgisayar|pc.*erişim|bilgisayar.*erişim|aura.*erişim.*alanı|erişim alanı|çalışma\s+alanı.*(?:erişim|izin)|klasör\s+seçme|klasör.*erişim\s+izni|proje\s+klasörüne.*erişim\s+izni|çalışma alanı ekle|klasör erişim izni/.test(lowerValue);
   const incomeModeIntent = /kazanç modu|kazanc modu|aura üzerinden para kazan|aura uzerinden para kazan|aura ile para kazan|gelir amaçlı site|gelir amacli site|müşteri sitesi|musteri sitesi|işletme sitesi|isletme sitesi|restoran sitesi/.test(lowerValue);
-  const marketingModeIntent = /reklam|tanıtım|tanitim|kampanya|instagram|reels|shorts|video|afiş|sosyal medya|gönderi|gonderi|hikaye|story|pazarlama/.test(lowerValue);
+  const marketingModeIntent = /reklam|tanıtım|tanitim|kampanya|instagram|reels|shorts|video reklamı|video reklami|reklam videosu|afiş|sosyal medya|gönderi|gonderi|hikaye|story|pazarlama/.test(lowerValue);
   const gameDevelopmentIntent = /unity|kamyon|nakliye|taşıma oyunu|tasima oyunu|oyun yap|oyun yapalım|oyun yapalim|oyun geliştir|oyun gelistir|oyun oluştur|oyun olustur|oyun yapmaya|game dev|game development|oyun projesi|oyun projesi oluştur|oyun projesi olustur/.test(lowerValue);
   const developmentIntent = mode === "code" || gameDevelopmentIntent || incomeModeIntent || marketingModeIntent || /proje oluştur|proje olustur|dosya oluştur|dosya olustur|dosya yaz|kod yaz|kodu düzelt|kodu duzelt|hata düzelt|hata duzelt|build al|derle|compile|script oluştur|script olustur|sahne oluştur|sahne olustur|component oluştur|component olustur|prefab oluştur|prefab olustur/.test(lowerValue);
   const effectiveMode = gameDevelopmentIntent ? "background-code" : (developmentIntent ? "code" : mode);
@@ -1537,17 +1556,14 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     agentRound = round + 1;
     let response;
     try {
-      const responsePromise = localEngine.chat.completions.create({
+      const inferenceTimeout = effectiveMode === "background-code" ? 480000 : (codeLikeMode ? 360000 : 300000);
+      response = await runChatCompletionWithTimeout(localEngine, {
         messages,
         temperature:codeLikeMode?0.16:0.25,
         top_p:codeLikeMode?0.82:0.85,
         max_tokens:effectiveMode==="background-code"?650:(effectiveMode==="code"?900:320),
         stream:false
-      });
-      response = await Promise.race([
-        responsePromise,
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Yerel AI yanıtı zaman aşımına uğradı. Model henüz hazır olmayabilir; tekrar dene.")), effectiveMode==="background-code" ? 180000 : (codeLikeMode ? 120000 : 90000)))
-      ]);
+      }, inferenceTimeout, "yanıt üretimi");
     } catch (error) {
       const msg=String(error?.message||error);
       if (/context window|prompt tokens exceed|maximum context|context length|too many tokens/i.test(msg)) {
@@ -1558,13 +1574,13 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
           {role:"system",content:SYSTEM_PROMPT+modePrompt+"\nÇok uzun kullanıcı isteği acil sıkıştırma modunda işlendi. Eksik ayrıntı uydurma; mevcut ana gereksinimlere göre iler."},
           {role:"user",content:emergencyPrompt}
         ];
-        response=await localEngine.chat.completions.create({
+        response=await runChatCompletionWithTimeout(localEngine, {
           messages:emergencyMessages,
           temperature:codeLikeMode?0.14:0.4,
           top_p:0.82,
           max_tokens:codeLikeMode?500:160,
           stream:false
-        });
+        }, 180000, "kısa yanıt kurtarma");
       } else {
         throw error;
       }
@@ -1587,7 +1603,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     // kullanıcıyı sessiz bırakmak yerine tek seferlik küçük bir kurtarma isteği yap.
     if (!assistantMessage || !readAssistantText(assistantMessage)) {
       const recoveryPrompt = String(value || "").slice(0, 2200);
-      const recoveryResponse = await localEngine.chat.completions.create({
+      const recoveryResponse = await runChatCompletionWithTimeout(localEngine, {
         messages: [
           { role:"system", content: SYSTEM_PROMPT + "\nKISA YANIT KURTARMA MODU: Kullanıcının isteğine Türkçe ve doğrudan cevap ver. Araç çağrısı yapma; gerekiyorsa eksikliği açıkça belirt." },
           { role:"user", content: recoveryPrompt }
@@ -1596,7 +1612,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         top_p:0.85,
         max_tokens:220,
         stream:false
-      });
+      }, 180000, "boş yanıt kurtarma");
       assistantMessage = recoveryResponse?.choices?.[0]?.message || null;
     }
 
@@ -1610,7 +1626,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     if (!wantsTools && !codeLikeMode && factualQuestion && round === 0) {
       try {
         const draftText = readAssistantText(assistantMessage);
-        const reviewResponse = await localEngine.chat.completions.create({
+        const reviewResponse = await runChatCompletionWithTimeout(localEngine, {
           messages: [
             {
               role: "system",
@@ -1625,7 +1641,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
           top_p: 0.7,
           max_tokens: 320,
           stream: false
-        });
+        }, 120000, "yanıt denetimi");
         const reviewedText = readAssistantText(reviewResponse?.choices?.[0]?.message);
         if (reviewedText && reviewedText.length <= 3000) {
           assistantMessage = { ...assistantMessage, content: reviewedText };
