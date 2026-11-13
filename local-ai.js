@@ -1624,7 +1624,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         const repairInstruction = agentPlan.lastToolStatus === "failed" && codeLikeMode
           ? (++developerRepairRounds <= maxDeveloperRepairRounds
             ? "\nDEVELOPER REPAIR: Araç başarısız oldu. Önce hatanın nedenini belirle, mevcut dosya/proje durumunu tekrar oku, yalnızca gerekli küçük düzeltmeyi uygula ve testi yeniden çalıştır. Bu onarım turu " + developerRepairRounds + "/" + maxDeveloperRepairRounds + "."
-            : (repeatedTestFailure ? "\nDEVELOPER TEST FAILURE GUARD: Aynı test iki kez başarısız oldu. Yeni kör kod değişikliği yapma; mevcut snapshot ile onaylı rollback başlat, dosyayı yeniden oku ve sonucu doğrula." : "\nDEVELOPER REPAIR SINIRI: İki kontrollü onarım turu kullanıldı. Daha fazla kör değişiklik yapma; sonucu doğrulanmamış olarak bildir.")
+            : (repeatedTestFailure ? "\nDEVELOPER TEST FAILURE GUARD: Aynı test iki kez başarısız oldu. Yeni kör kod değişikliği yapma; mevcut snapshot ile onaylı rollback başlat, dosyayı yeniden oku ve sonucu doğrula." : "\nDEVELOPER REPAIR SINIRI: İki kontrollü onarım turu kullanıldı. Daha fazla kör değişiklik yapma; sonucu doğrulanmamış olarak bildir."))
           : "";
         messages.push({
           role:"user",
