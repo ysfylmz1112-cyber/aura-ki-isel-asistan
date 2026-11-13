@@ -55,7 +55,8 @@ const SYSTEM_PROMPT = [
   "Tanım sorularında önce doğru ve sade bir tanım ver; kullanıcı örnek isterse tam olarak istenen sayıda günlük hayattan örnek ekle.",
   "Cevap vermeden önce yanıtının kullanıcının sorduğu konuya gerçekten karşılık verdiğini kontrol et. Emin değilsen uydurma; bunu açıkça söyle.",
   "Bir araç başarısız olursa hatayı gizleme; neyin başarısız olduğunu kısa söyle ve güvenli bir alternatif öner.",
-  "Araç çağrısından sonra araç sonucunu kullanıcı isteğiyle ilişkilendirerek tamamla; ham araç çıktısını tek başına kullanıcıya gönderme."
+  "Araç çağrısından sonra araç sonucunu kullanıcı isteğiyle ilişkilendirerek tamamla; ham araç çıktısını tek başına kullanıcıya gönderme.",
+  "KAZANÇ MODU: Kullanıcı gelir amaçlı web sitesi işi istediğinde sıfır bütçeli, gerçek teslim edilebilir bir web sitesi paketi üret. Eksik işletme adı, adres, telefon, fiyat veya hizmet bilgisini uydurma; yer tutucu kullan ve kullanıcıdan doğrulamasını iste. Çıktıları Desktop\\AURA-Gelir altındaki bir proje klasöründe düzenli tut. HTML/CSS/JS dosyalarını yazdıktan sonra yerel kontroller yap ve müşteriye özel teklif taslağı hazırla. Gelir veya müşteri garantisi verme. Kullanıcı/veli onayı olmadan kimseye mesaj gönderme, site yayınlama, hesap açma, sözleşme kabul etme veya ödeme işlemi yapma. Spam, sahte yorum, yanıltıcı vaat, ücretli API/abonelik veya başlangıç harcaması kullanma."
 ].join("\n");
 
 const TOOLS = [
@@ -946,8 +947,9 @@ function toolDirectoryPrompt(query = "", mode = "chat") {
   const selected=new Set();
   const add=(names)=>names.forEach(name=>selected.add(name));
 
-  const unity=/unity|kamyon|nakliye|oyun geliştir|oyun gelistir|oyun yap|oyun projesi|game dev/.test(q) || isCodeMode(mode);
-  const files=/dosya|klasör|klasor|kod|script|proje|oku|yaz|oluştur|olustur|düzenle|duzenle|sil|taşı|tasi|kopya|kopyala|build|derle/.test(q);
+  const income=/kazanç modu|kazanc modu|aura üzerinden para kazan|aura uzerinden para kazan|aura ile para kazan|gelir amaçlı site|gelir amacli site|müşteri sitesi|musteri sitesi|işletme sitesi|isletme sitesi|restoran sitesi/.test(q);
+  const unity=/unity|kamyon|nakliye|oyun geliştir|oyun gelistir|oyun yap|oyun projesi|game dev/.test(q) || (isCodeMode(mode) && !income);
+  const files=income || /dosya|klasör|klasor|kod|script|proje|oku|yaz|oluştur|olustur|düzenle|duzenle|sil|taşı|tasi|kopya|kopyala|build|derle|web sitesi|website|landing page/.test(q);
   const pc=/bilgisayar|pc|sistem|cpu|ram|gpu|disk|donanım|donanim|performans|çalışan|calisan|uygulama|program|oyun|masaüstü|masaustu/.test(q);
   // Unity/oyun geliştirme görevlerinde "hava durumu", "trafik", "yağmur" gibi
   // kelimeler oyun mekaniği olabilir; bunları gerçek dünya hava aracına yönlendirme.
@@ -1008,7 +1010,8 @@ function buildAgentPlan(query, mode = "chat") {
   const steps = [];
   const toolHints = [];
 
-  const code = mode === "code" || /kod|script|proje|unity|oyun geliştir|oyun gelistir|dosya oluştur|dosya olustur/.test(q);
+  const income = /kazanç modu|kazanc modu|aura üzerinden para kazan|aura uzerinden para kazan|aura ile para kazan|gelir amaçlı site|gelir amacli site|müşteri sitesi|musteri sitesi|işletme sitesi|isletme sitesi|restoran sitesi/.test(q);
+  const code = mode === "code" || income || /kod|script|proje|unity|oyun geliştir|oyun gelistir|dosya oluştur|dosya olustur/.test(q);
   const inputOps = /tıkla|tikla|fare|mouse|klavye|tuş|tus|bas|enter|tab|ekrana yaz/.test(q);
   const fileOps = !inputOps && /dosya|klasör|klasor|metin dosyası|dosyası|dosyayi|dosyayı|oku|yaz|oluştur|olustur|sil|taşı|tasi|kopyala|kopya|dosya yolu|dosya yolu|klasör yolu/.test(q);
   const processOps = !fileOps && !inputOps && /işlem|islem|process|süreç|surec|çalışan süreç|calisan surec|çalışan program|calisan program|görev yöneticisi|gorev yoneticisi/.test(q);
@@ -1022,7 +1025,10 @@ function buildAgentPlan(query, mode = "chat") {
   const web = /güncel|guncel|araştır|arastir|internette|web|kaynak|site|haber/.test(q);
   const destructive = /sil|kapat|kaldır|kaldir|taşı|tasi|değiştir|degistir|yaz|oluştur|olustur|çalıştır|calistir/.test(q);
 
-  if (code) {
+  if (income) {
+    steps.push("AURA-Gelir çalışma klasörünü ve mevcut şablonları kontrol et", "küçük işletme için özgün ve mobil uyumlu web sitesi taslağı üret", "HTML/CSS/JavaScript dosyalarını kaydet", "yerel dosya ve sözdizimi kontrollerini çalıştır", "demo ve kişiselleştirilmiş teklif metnini hazırla; yayınlama veya iletişim için kullanıcı onayı bekle");
+    toolHints.push("desktop_list_directory", "desktop_create_directory", "desktop_write_text_file", "desktop_read_text_file", "desktop_run_powershell", "desktop_open_path");
+  } else if (code) {
     steps.push("görevi ve mevcut proje/dosya durumunu belirle", "ilgili kaynak dosyalarını oku ve değişiklik kapsamını çıkar", "değişikliği kontrollü şekilde uygula", "test/build/sağlık kontrolü çalıştır", "sonucu gerçek dosya veya proje durumu ile doğrula");
     toolHints.push("desktop_find_unity_projects", "desktop_unity_health_check", "desktop_unity_project_tree", "desktop_unity_read_file", "desktop_unity_write_file", "desktop_read_text_file", "desktop_create_file_snapshot", "desktop_write_text_file", "desktop_restore_file_snapshot", "desktop_run_powershell");
   } else if (processOps) {
@@ -1349,8 +1355,9 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   if (!value) throw new Error("Mesaj boş.");
 
   const lowerValue = value.toLocaleLowerCase("tr-TR");
+  const incomeModeIntent = /kazanç modu|kazanc modu|aura üzerinden para kazan|aura uzerinden para kazan|aura ile para kazan|gelir amaçlı site|gelir amacli site|müşteri sitesi|musteri sitesi|işletme sitesi|isletme sitesi|restoran sitesi/.test(lowerValue);
   const gameDevelopmentIntent = /unity|kamyon|nakliye|taşıma oyunu|tasima oyunu|oyun yap|oyun yapalım|oyun yapalim|oyun geliştir|oyun gelistir|oyun oluştur|oyun olustur|oyun yapmaya|game dev|game development|oyun projesi|oyun projesi oluştur|oyun projesi olustur/.test(lowerValue);
-  const developmentIntent = mode === "code" || gameDevelopmentIntent || /proje oluştur|proje olustur|dosya oluştur|dosya olustur|dosya yaz|kod yaz|kodu düzelt|kodu duzelt|hata düzelt|hata duzelt|build al|derle|compile|script oluştur|script olustur|sahne oluştur|sahne olustur|component oluştur|component olustur|prefab oluştur|prefab olustur/.test(lowerValue);
+  const developmentIntent = mode === "code" || gameDevelopmentIntent || incomeModeIntent || /proje oluştur|proje olustur|dosya oluştur|dosya olustur|dosya yaz|kod yaz|kodu düzelt|kodu duzelt|hata düzelt|hata duzelt|build al|derle|compile|script oluştur|script olustur|sahne oluştur|sahne olustur|component oluştur|component olustur|prefab oluştur|prefab olustur/.test(lowerValue);
   const effectiveMode = gameDevelopmentIntent ? "background-code" : (developmentIntent ? "code" : mode);
   const codeLikeMode = isCodeMode(effectiveMode);
 
@@ -1393,13 +1400,15 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     } catch {}
   }
 
-  const generalToolIntent = /openclaw|güncel|guncel|araştır|arastir|internette|web|site|dosya|klasör|klasor|uygulama|oyun|bilgisayar|masaüstü|masaustu|sistem|kullanım|kullanim|hatırla|hatirla|unut|geçen hafta|gecen hafta|dün|dun|bugün|bugun|konuşma geçmişi|konusma gecmisi|pano|clipboard|ekran görüntüsü|ekran goruntusu|screenshot|bildirim|notification|unity|kamyon|nakliye|cpu|ram|gpu|disk|performans|donanım|donanim|hava|sıcaklık|sicaklik|derece|pil|batarya/.test(lowerValue);
+  const generalToolIntent = incomeModeIntent || /openclaw|güncel|guncel|araştır|arastir|internette|web|site|dosya|klasör|klasor|uygulama|oyun|bilgisayar|masaüstü|masaustu|sistem|kullanım|kullanim|hatırla|hatirla|unut|geçen hafta|gecen hafta|dün|dun|bugün|bugun|konuşma geçmişi|konusma gecmisi|pano|clipboard|ekran görüntüsü|ekran goruntusu|screenshot|bildirim|notification|unity|kamyon|nakliye|cpu|ram|gpu|disk|performans|donanım|donanim|hava|sıcaklık|sicaklik|derece|pil|batarya/.test(lowerValue);
 
-  const modePrompt = effectiveMode === "background-code"
-    ? "\nOYUN GELİŞTİRME ARKA PLAN MODU: Bu görev kaynak tüketimini düşük tutan Coder modeliyle yürütülüyor. Gerçek dosyaları oluştur/değiştir ve Unity işlemlerini arka planda çalıştır. Kullanıcı bilgisayarını normal şekilde kullanmaya devam edebilmeli."
-    : effectiveMode === "code"
-      ? "\nKOD MODU AKTİF: Doğrudan çalışan kod üret. İstenen dili kullan. Gerekli importları ve dosya yapısını unutma."
-      : "\nSOHBET MODU AKTİF: Net, mantıklı ve doğal cevap ver.";
+  const modePrompt = incomeModeIntent
+    ? "\\nAURA KAZANÇ MODU: İlk hedef küçük işletmelere satılabilir, mobil uyumlu tek sayfalık web sitesi demoları hazırlamak. Önce Desktop\\\\AURA-Gelir klasörünü kullan; yoksa oluştur. İşletme bilgileri verilmediyse örnek/demo olduğunu açıkça belirt ve sahte iletişim bilgisi yazma. index.html, styles.css, script.js ve kısa README/teslim notu üret. Dosyaları yerel olarak doğrula. Sonunda müşteri için kişiselleştirilebilir teklif metni hazırla; hiçbir şeyi otomatik gönderme veya yayınlama. Gerçek gelir oluştuğunu iddia etme."
+    : effectiveMode === "background-code"
+      ? "\\nOYUN GELİŞTİRME ARKA PLAN MODU: Bu görev kaynak tüketimini düşük tutan Coder modeliyle yürütülüyor. Gerçek dosyaları oluştur/değiştir ve Unity işlemlerini arka planda çalıştır. Kullanıcı bilgisayarını normal şekilde kullanmaya devam edebilmeli."
+      : effectiveMode === "code"
+        ? "\\nKOD MODU AKTİF: Doğrudan çalışan kod üret. İstenen dili kullan. Gerekli importları ve dosya yapısını unutma."
+        : "\\nSOHBET MODU AKTİF: Net, mantıklı ve doğal cevap ver.";
 
   const pcContext = desktopAvailable() && environment
     ? "\nPC BAĞLAM ÖZETİ:\n" + compactEnvironment(environment)
