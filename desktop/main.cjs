@@ -868,6 +868,15 @@ function candidateScore(query, candidate) {
   return score - Math.max(0, c.length - q.length);
 }
 
+function isPlausibleAppName(value) {
+  const name=String(value||"").trim();
+  if(!name) return false;
+  // Windows shortcut artifacts such as "1817190 (1)" are not useful app names.
+  if(/^\d{5,}(?:\s*\(\d+\))?$/.test(name)) return false;
+  if(/^\{[0-9a-f-]{20,}\}$/i.test(name)) return false;
+  return true;
+}
+
 async function discoverShortcutApps(options = {}) {
   const deep = options.deep !== false;
   const dirs = [
@@ -1415,7 +1424,7 @@ async function performEnvironmentScan({mode='quick'}={}) {
   profile.documents=documents;
   profile.downloads=downloads;
   const combinedApps=[...shortcutApps,...registryApps];
-  const userApps=combinedApps.filter(x=>!isSystemUtility(x.name));
+  const userApps=combinedApps.filter(x=>!isSystemUtility(x.name) && isPlausibleAppName(x.name));
   const systemApps=combinedApps.filter(x=>isSystemUtility(x.name));
   const appMap=new Map();
   for(const item of userApps){
