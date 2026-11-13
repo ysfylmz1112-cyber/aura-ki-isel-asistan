@@ -202,7 +202,7 @@ input,.composer,.composerArea,.topbar,.sidebar{pointer-events:auto;position:rela
   <button class="commandTag" data-cmd="PC taramasını durdur">⏹ Durdur</button>
 </div>
 <div class="chat" id="chat">
-        <div class="welcome"><h1>Nasıl yardımcı olabilirim?</h1><p>Hafıza · Kod · PC · Web · Yerel AI</p></div>
+        <div class="welcome"><h1>Nasıl yardımcı olabilirim?</h1><p>Hafıza · Kod · PC · Web · Yerel yapay zekâ</p></div>
       </div></div>
       <div class="composerArea">
         <div class="composer">
@@ -295,8 +295,9 @@ let mode = localStorage.getItem("aura_mode") === "code" ? "code" : "chat";
 
 function setCoreState(state){
   const next=state||"ready";
+  const labels={ready:"HAZIR",thinking:"DÜŞÜNÜYOR",speaking:"KONUŞUYOR",listening:"DİNLİYOR"};
   core.dataset.state=next;
-  if($("coreLabelLive")) $("coreLabelLive").textContent=next.toUpperCase();
+  if($("coreLabelLive")) $("coreLabelLive").textContent=labels[next]||"HAZIR";
   core.classList.toggle("active",state==="thinking"||state==="speaking"||state==="listening");
 }
 function percentText(value, suffix="%"){
@@ -510,7 +511,7 @@ async function refreshHardwareHUD(){
   try{
     const data=await callDesktop("desktop_get_hardware_metrics",{});
     updateHardwareHUD(data);
-    if(!busy) $("pcState").textContent="PC ONLINE";
+    if(!busy) $("pcState").textContent="PC ÇEVRİMİÇİ";
   }catch{
     if($("pcState")) $("pcState").textContent="PC CORE BEKLEMEDE";
   }
@@ -1661,7 +1662,7 @@ async function run(q) {
       (p) => {
         status.textContent = p?.percent != null ? "● MODEL " + p.percent + "%" : "● MODEL";
         aiEl.textContent = p?.percent != null ? p.percent + "%" : "YÜKLENİYOR";
-        subEl.textContent = p?.text || "Yerel AI hazırlanıyor...";
+        subEl.textContent = p?.text || "Yerel yapay zekâ hazırlanıyor...";
       },
       environmentProfile,
       (mode==="code" || looksLikeCodeRequest(q)) ? "code" : "chat",
@@ -2181,11 +2182,11 @@ setTimeout(()=>warmLocalModel(),3500);
 
 setTimeout(async () => {
   if (!hasDesktopAgent()) {
-    aiEl.textContent = "YEREL AI";
-    subEl.textContent = "API key yok · Yerel AI hazır.";
+    aiEl.textContent = "YEREL YZ";
+    subEl.textContent = "API anahtarı gerekmiyor · Yerel yapay zekâ hazır.";
     return;
   }
-  aiEl.textContent = "PC + YEREL AI";
+  aiEl.textContent = "PC + YEREL YZ";
   subEl.textContent = "Desktop bağlı · PC araçları hazır.";
   try {
     const info = await window.auraDesktop.getInfo();
