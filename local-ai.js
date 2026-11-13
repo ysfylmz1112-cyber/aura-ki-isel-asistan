@@ -1407,8 +1407,8 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
       const access = await desktopCall("desktop_choose_folder", { purpose: "AURA çalışma alanı — kullanıcının seçtiği dosya ve proje klasörleri" });
       const roots = Array.isArray(access?.roots) ? access.roots : [];
       return "AURA çalışma alanı izni güncellendi.\nSeçilen klasör: " + String(access?.path || "bilinmiyor") +
-        "\\nErişilebilir çalışma alanları: " + roots.join(" | ") +
-        "\\n\\nAURA bu klasörlerin içindeki dosyalarda çalışabilir. Tüm sürücülere, Windows sistem klasörlerine, AppData'ya veya kimlik bilgilerine sınırsız erişim verilmedi. Dosya değişiklikleri ve PowerShell komutları için ayrıca onay gerekir.";
+        "\nErişilebilir çalışma alanları: " + roots.join(" | ") +
+        "\n\nAURA bu klasörlerin içindeki dosyalarda çalışabilir. Tüm sürücülere, Windows sistem klasörlerine, AppData'ya veya kimlik bilgilerine sınırsız erişim verilmedi. Dosya değişiklikleri ve PowerShell komutları için ayrıca onay gerekir.";
     } catch (error) {
       return "Klasör erişim izni eklenemedi: " + String(error?.message || error);
     }
