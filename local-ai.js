@@ -1368,7 +1368,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   if (!value) throw new Error("Mesaj boş.");
 
   const lowerValue = value.toLocaleLowerCase("tr-TR");
-  const workspaceAccessIntent = /tüm\\s+(pc|bilgisayar)|bilgisayarın\\s+tamamı|tüm\\s+bilgisayar|pc.*erişim|bilgisayar.*erişim|aura.*erişim.*alanı|erişim alanı|çalışma alanı ekle|klasör erişim izni/.test(lowerValue);
+  const workspaceAccessIntent = /tüm\s+(pc|bilgisayar)|bilgisayarın\s+tamamı|tüm\s+bilgisayar|pc.*erişim|bilgisayar.*erişim|aura.*erişim.*alanı|erişim alanı|çalışma alanı ekle|klasör erişim izni/.test(lowerValue);
   const incomeModeIntent = /kazanç modu|kazanc modu|aura üzerinden para kazan|aura uzerinden para kazan|aura ile para kazan|gelir amaçlı site|gelir amacli site|müşteri sitesi|musteri sitesi|işletme sitesi|isletme sitesi|restoran sitesi/.test(lowerValue);
   const gameDevelopmentIntent = /unity|kamyon|nakliye|taşıma oyunu|tasima oyunu|oyun yap|oyun yapalım|oyun yapalim|oyun geliştir|oyun gelistir|oyun oluştur|oyun olustur|oyun yapmaya|game dev|game development|oyun projesi|oyun projesi oluştur|oyun projesi olustur/.test(lowerValue);
   const developmentIntent = mode === "code" || gameDevelopmentIntent || incomeModeIntent || /proje oluştur|proje olustur|dosya oluştur|dosya olustur|dosya yaz|kod yaz|kodu düzelt|kodu duzelt|hata düzelt|hata duzelt|build al|derle|compile|script oluştur|script olustur|sahne oluştur|sahne olustur|component oluştur|component olustur|prefab oluştur|prefab olustur/.test(lowerValue);
@@ -1406,7 +1406,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     try {
       const access = await desktopCall("desktop_choose_folder", { purpose: "AURA çalışma alanı — kullanıcının seçtiği dosya ve proje klasörleri" });
       const roots = Array.isArray(access?.roots) ? access.roots : [];
-      return "AURA çalışma alanı izni güncellendi.\\nSeçilen klasör: " + String(access?.path || "bilinmiyor") +
+      return "AURA çalışma alanı izni güncellendi.\nSeçilen klasör: " + String(access?.path || "bilinmiyor") +
         "\\nErişilebilir çalışma alanları: " + roots.join(" | ") +
         "\\n\\nAURA bu klasörlerin içindeki dosyalarda çalışabilir. Tüm sürücülere, Windows sistem klasörlerine, AppData'ya veya kimlik bilgilerine sınırsız erişim verilmedi. Dosya değişiklikleri ve PowerShell komutları için ayrıca onay gerekir.";
     } catch (error) {
@@ -1423,11 +1423,11 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
       const result = await desktopCall("desktop_income_create_site", { folderName: "LAVIN-Demo" });
       const checks = result?.checks || {};
       const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
-      return "AURA KAZANÇ MODU — LAVİN DEMO\\n" +
-        "Klasör: " + String(result?.folder || "bilinmiyor") + "\\n" +
-        "Dosyalar: " + (Array.isArray(result?.files) ? result.files.map(file => file.name).join(", ") : "kontrol edilemedi") + "\\n" +
-        "Kontroller: " + (failed.length ? "Eksik: " + failed.join(", ") : "HTML/CSS/JavaScript dosyaları ve bağlantıları kontrol edildi.") + "\\n" +
-        "Durum: " + String(result?.message || "Demo oluşturma tamamlandı.") + "\\n\\n" +
+      return "AURA KAZANÇ MODU — LAVİN DEMO\n" +
+        "Klasör: " + String(result?.folder || "bilinmiyor") + "\n" +
+        "Dosyalar: " + (Array.isArray(result?.files) ? result.files.map(file => file.name).join(", ") : "kontrol edilemedi") + "\n" +
+        "Kontroller: " + (failed.length ? "Eksik: " + failed.join(", ") : "HTML/CSS/JavaScript dosyaları ve bağlantıları kontrol edildi.") + "\n" +
+        "Durum: " + String(result?.message || "Demo oluşturma tamamlandı.") + "\n\n" +
         "Not: Bu bir portföy demosudur. Gerçek işletme bilgileri eklenmeden yayınlanmamalıdır.";
     } catch (error) {
       return "Kazanç Modu demo oluşturamadı: " + String(error?.message || error);
