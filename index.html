@@ -1681,7 +1681,13 @@ async function run(q) {
     status.textContent = "● HAZIR";
     setCoreState("ready");
     const message = String(error?.message || "Bilinmeyen hata");
-    addMessage("error", "AURA", "Cevap motorunda bir sorun oluştu: " + message);
+    if(/CacheStorage|cache api|indexeddb/i.test(message)){
+      aiEl.textContent="HAZIR DEĞİL";
+      subEl.textContent="Yerel model önbelleği açılamadı · PC komutları kullanılabilir.";
+      addMessage("error","AURA","Yerel yapay zekâ model önbelleğine erişemedi. PC, klasör ve dosya komutları yerel araçlarla çalışmaya devam edebilir. Ayrıntı: "+message);
+    }else{
+      addMessage("error", "AURA", "İşlem tamamlanamadı: " + message);
+    }
   }
 }
 
