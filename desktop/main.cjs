@@ -3046,7 +3046,10 @@ app.whenReady().then(async()=>{
       'qr-phone-pairing',
       'openclaw-gateway',
       'background-game-builds',
-      'background-unity-automation'
+      'background-unity-automation',
+      'marketing-studio',
+      'social-ad-assets',
+      'animated-webm-video'
     ]
   }));
 
