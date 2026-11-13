@@ -37,6 +37,7 @@ const SYSTEM_PROMPT = [
   "AURA: yerel Türkçe kişisel masaüstü AI asistanısın.",
   "Bilmediğin bilgiyi uydurma. Güncel bilgi gerekiyorsa web araştırma araçlarını kullan.",
   "PC, dosya, uygulama ve sistem işlemlerinde masaüstü ajanının güvenlik ve onay kurallarına uy; bunları aşma.",
+  "Bilgisayar erişimi yalnızca izinli çalışma klasörleriyle sınırlıdır. Tüm sürücüleri, Windows, Program Files, AppData veya kimlik bilgisi klasörlerini tarama. Yeni klasör erişimi için desktop_choose_folder kullan; dosya yazma/silme ve PowerShell işlemlerinde gösterilen kullanıcı onayını bekle.",
   "Kalıcı hafızaya yalnızca kullanıcı açıkça hatırlamamı istediğinde yaz. Geçmiş konuşma sorularında konuşma geçmişini ara.",
   "Unity görevlerinde önce mevcut projeyi ve Unity Editor kurulumunu incele; gerçek dosyaları oluştur/değiştir, mevcut yapıyı rastgele silme ve sonucu doğrula. Unity için mümkün olduğunca desktop_unity_autopilot ve desktop_unity_health_check araçlarını kullan.",
   "Unity/oyun geliştirme isteğinde yalnızca mevcut kullanıcı mesajının görevine odaklan. Sohbet geçmişindeki başka bir konuya atlama.",
@@ -286,6 +287,18 @@ const TOOLS = [
         type:"object",
         properties:{ purpose:{type:"string"} },
         required:["purpose"],
+        additionalProperties:false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "desktop_income_create_site",
+      description: "Kullanıcı açıkça Kazanç Modu ve restoran/web sitesi demosu istediğinde, onay alarak LAVİN örnek sitesini AURA-Gelir klasörüne oluşturur. Dosyaları kontrol eder; yayınlama veya mesaj gönderme yapmaz.",
+      parameters: {
+        type:"object",
+        properties:{ folderName:{type:"string"} },
         additionalProperties:false
       }
     }
@@ -965,7 +978,7 @@ function toolDirectoryPrompt(query = "", mode = "chat") {
   if(files) add([
     "desktop_search_files","desktop_list_directory","desktop_read_text_file","desktop_write_text_file","desktop_create_file_snapshot","desktop_restore_file_snapshot",
     "desktop_create_directory","desktop_copy_path","desktop_move_path","desktop_delete_path",
-    "desktop_open_path","desktop_run_powershell"
+    "desktop_open_path","desktop_run_powershell","desktop_choose_folder","desktop_income_create_site"
   ]);
   if(pc) add([
     "desktop_scan_environment","desktop_get_environment_profile","desktop_get_usage_report",
@@ -1027,7 +1040,7 @@ function buildAgentPlan(query, mode = "chat") {
 
   if (income) {
     steps.push("AURA-Gelir çalışma klasörünü ve mevcut şablonları kontrol et", "küçük işletme için özgün ve mobil uyumlu web sitesi taslağı üret", "HTML/CSS/JavaScript dosyalarını kaydet", "yerel dosya ve sözdizimi kontrollerini çalıştır", "demo ve kişiselleştirilmiş teklif metnini hazırla; yayınlama veya iletişim için kullanıcı onayı bekle");
-    toolHints.push("desktop_list_directory", "desktop_create_directory", "desktop_write_text_file", "desktop_read_text_file", "desktop_run_powershell", "desktop_open_path");
+    toolHints.push("desktop_list_directory", "desktop_create_directory", "desktop_write_text_file", "desktop_read_text_file", "desktop_run_powershell", "desktop_open_path", "desktop_income_create_site");
   } else if (code) {
     steps.push("görevi ve mevcut proje/dosya durumunu belirle", "ilgili kaynak dosyalarını oku ve değişiklik kapsamını çıkar", "değişikliği kontrollü şekilde uygula", "test/build/sağlık kontrolü çalıştır", "sonucu gerçek dosya veya proje durumu ile doğrula");
     toolHints.push("desktop_find_unity_projects", "desktop_unity_health_check", "desktop_unity_project_tree", "desktop_unity_read_file", "desktop_unity_write_file", "desktop_read_text_file", "desktop_create_file_snapshot", "desktop_write_text_file", "desktop_restore_file_snapshot", "desktop_run_powershell");
@@ -1355,6 +1368,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   if (!value) throw new Error("Mesaj boş.");
 
   const lowerValue = value.toLocaleLowerCase("tr-TR");
+  const workspaceAccessIntent = /tüm\\s+(pc|bilgisayar)|bilgisayarın\\s+tamamı|tüm\\s+bilgisayar|pc.*erişim|bilgisayar.*erişim|aura.*erişim.*alanı|erişim alanı|çalışma alanı ekle|klasör erişim izni/.test(lowerValue);
   const incomeModeIntent = /kazanç modu|kazanc modu|aura üzerinden para kazan|aura uzerinden para kazan|aura ile para kazan|gelir amaçlı site|gelir amacli site|müşteri sitesi|musteri sitesi|işletme sitesi|isletme sitesi|restoran sitesi/.test(lowerValue);
   const gameDevelopmentIntent = /unity|kamyon|nakliye|taşıma oyunu|tasima oyunu|oyun yap|oyun yapalım|oyun yapalim|oyun geliştir|oyun gelistir|oyun oluştur|oyun olustur|oyun yapmaya|game dev|game development|oyun projesi|oyun projesi oluştur|oyun projesi olustur/.test(lowerValue);
   const developmentIntent = mode === "code" || gameDevelopmentIntent || incomeModeIntent || /proje oluştur|proje olustur|dosya oluştur|dosya olustur|dosya yaz|kod yaz|kodu düzelt|kodu duzelt|hata düzelt|hata duzelt|build al|derle|compile|script oluştur|script olustur|sahne oluştur|sahne olustur|component oluştur|component olustur|prefab oluştur|prefab olustur/.test(lowerValue);
@@ -1383,6 +1397,40 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
       return "Aracın ham sonucu: " + JSON.stringify(selfTestResult);
     } catch (error) {
       return "Aracın ham sonucu: " + JSON.stringify({ ok:false, error:String(error?.message || error) });
+    }
+  }
+
+  // Folder access is handled deterministically so the model cannot over-grant access.
+  if (workspaceAccessIntent) {
+    if (!desktopAvailable()) return "Masaüstü ajanı bağlı değil. AURA'nın klasör izinlerini ayarlamak için masaüstü uygulamasını aç.";
+    try {
+      const access = await desktopCall("desktop_choose_folder", { purpose: "AURA çalışma alanı — kullanıcının seçtiği dosya ve proje klasörleri" });
+      const roots = Array.isArray(access?.roots) ? access.roots : [];
+      return "AURA çalışma alanı izni güncellendi.\\nSeçilen klasör: " + String(access?.path || "bilinmiyor") +
+        "\\nErişilebilir çalışma alanları: " + roots.join(" | ") +
+        "\\n\\nAURA bu klasörlerin içindeki dosyalarda çalışabilir. Tüm sürücülere, Windows sistem klasörlerine, AppData'ya veya kimlik bilgilerine sınırsız erişim verilmedi. Dosya değişiklikleri ve PowerShell komutları için ayrıca onay gerekir.";
+    } catch (error) {
+      return "Klasör erişim izni eklenemedi: " + String(error?.message || error);
+    }
+  }
+
+  // Build the sample site with a deterministic local tool; do not spend minutes
+  // generating large source files with the small on-device language model.
+  const incomeWebsiteIntent = incomeModeIntent && /(lavin|lavın|restoran|web sitesi|website|demo|site)/.test(lowerValue);
+  if (incomeWebsiteIntent) {
+    if (!desktopAvailable()) return "Masaüstü ajanı bağlı değil. Kazanç Modu dosyaları oluşturmak için AURA masaüstü uygulamasını aç.";
+    try {
+      const result = await desktopCall("desktop_income_create_site", { folderName: "LAVIN-Demo" });
+      const checks = result?.checks || {};
+      const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
+      return "AURA KAZANÇ MODU — LAVİN DEMO\\n" +
+        "Klasör: " + String(result?.folder || "bilinmiyor") + "\\n" +
+        "Dosyalar: " + (Array.isArray(result?.files) ? result.files.map(file => file.name).join(", ") : "kontrol edilemedi") + "\\n" +
+        "Kontroller: " + (failed.length ? "Eksik: " + failed.join(", ") : "HTML/CSS/JavaScript dosyaları ve bağlantıları kontrol edildi.") + "\\n" +
+        "Durum: " + String(result?.message || "Demo oluşturma tamamlandı.") + "\\n\\n" +
+        "Not: Bu bir portföy demosudur. Gerçek işletme bilgileri eklenmeden yayınlanmamalıdır.";
+    } catch (error) {
+      return "Kazanç Modu demo oluşturamadı: " + String(error?.message || error);
     }
   }
 
