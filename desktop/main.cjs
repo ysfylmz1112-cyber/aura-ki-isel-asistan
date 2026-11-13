@@ -9,6 +9,7 @@ const { execFile, spawn } = require('child_process');
 const { search } = require('duck-duck-scrape');
 const QRCode = require('qrcode');
 const openclaw = require('./openclaw.cjs');
+const createIncomeWebsiteDemo = require('./income.cjs');
 
 // Chromium'un Electron içindeki Web Speech servisinin etkinleştirilmesini destekle.
 const PROD_URL = 'https://aura-ki-isel-asistan.vercel.app/';
@@ -118,10 +119,49 @@ function getBackgroundTaskStatus() {
     tasks:[...backgroundTasks.values()].map(x=>({...x}))
   };
 }
+function isPathWithin(parent, target) {
+  const root = normalizePath(parent).toLowerCase();
+  const candidate = normalizePath(target).toLowerCase();
+  const relative = path.relative(root, candidate);
+  return relative === '' || (relative !== '..' && !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative));
+}
+
+function isRestrictedFolder(target) {
+  const selected = normalizePath(target);
+  if (!selected) return true;
+
+  const volumeRoot = path.parse(selected).root;
+  if (selected.toLowerCase() === normalizePath(volumeRoot).toLowerCase()) return true;
+
+  const home = normalizePath(os.homedir());
+  if (selected.toLowerCase() === home.toLowerCase()) return true;
+
+  const systemRoot = process.env.SystemRoot || 'C:\\Windows';
+  const programFiles = process.env.ProgramFiles || 'C:\\Program Files';
+  const programFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
+  const programData = process.env.ProgramData || 'C:\\ProgramData';
+  const blocked = [
+    path.join(home,'AppData'),
+    path.join(home,'.ssh'),
+    path.join(home,'.gnupg'),
+    path.join(home,'.aws'),
+    path.join(home,'.azure'),
+    path.join(home,'.config'),
+    path.join(home,'.kube'),
+    path.join(home,'.docker'),
+    systemRoot,
+    programFiles,
+    programFilesX86,
+    programData
+  ].filter(Boolean);
+
+  return blocked.some(root => isPathWithin(root, selected));
+}
+
 function allowedRoots() {
   const home = os.homedir();
-  return [
-    home,
+  const candidates = [
+    app.getPath('desktop'),
     path.join(home,'Desktop'),
     path.join(home,'Documents'),
     path.join(home,'Downloads'),
@@ -130,14 +170,24 @@ function allowedRoots() {
     path.join(home,'Videos'),
     path.join(home,'Music'),
     ...extraRoots
-  ].map(normalizePath);
+  ];
+  const result = [];
+  for (const candidate of candidates) {
+    const root = normalizePath(candidate);
+    if (!isRestrictedFolder(root) && !result.some(item => item.toLowerCase() === root.toLowerCase())) {
+      result.push(root);
+    }
+  }
+  return result;
 }
 
 async function loadExtraRoots() {
   try {
     const raw = await fsp.readFile(PERMISSIONS_FILE, 'utf8');
     const data = JSON.parse(raw);
-    extraRoots = Array.isArray(data?.roots) ? data.roots.map(normalizePath).filter(Boolean).slice(0,30) : [];
+    extraRoots = Array.isArray(data?.roots)
+      ? data.roots.map(normalizePath).filter(root => root && !isRestrictedFolder(root)).slice(0,30)
+      : [];
   } catch {
     extraRoots = [];
   }
@@ -1427,8 +1477,9 @@ async function getEnvironmentProfile() {
 }
 
 function isAllowedPath(target) {
-  const p = normalizePath(target).toLowerCase();
-  return allowedRoots().some(root => { const r = root.toLowerCase(); return p === r || p.startsWith(r + path.sep); });
+  const p = normalizePath(target);
+  if (isRestrictedFolder(p)) return false;
+  return allowedRoots().some(root => isPathWithin(root, p));
 }
 function safeUrl(value) {
   try { const u = new URL(String(value)); return u.protocol === 'https:' || u.protocol === 'http:'; } catch { return false; }
@@ -1445,7 +1496,12 @@ async function chooseFolder(purpose) {
   });
   if (result.canceled || !result.filePaths[0]) throw new Error('Klasör seçimi iptal edildi.');
   const selected = normalizePath(result.filePaths[0]);
-  const exists = allowedRoots().some(root => selected.toLowerCase() === root.toLowerCase());
+  if (isRestrictedFolder(selected)) {
+    throw new Error('Sürücü kökü, Windows/Program Files klasörleri, AppData ve kimlik bilgisi klasörleri çalışma alanı olarak seçilemez. Bunun yerine örneğin Belgeler içindeki bir proje klasörünü seç.');
+  }
+  const selectedStat = await fsp.stat(selected).catch(() => null);
+  if (!selectedStat?.isDirectory()) throw new Error('Seçilen yol geçerli bir klasör değil.');
+  const exists = isAllowedPath(selected);
   if (!exists) {
     const ok = await confirmAction(
       'AURA — Klasöre erişim izni',
@@ -2533,6 +2589,12 @@ async function handleTool(tool,args) {
     case 'desktop_delete_path': return deletePath(normalizePath(args.path));
     case 'desktop_open_path': return openPath(normalizePath(args.path));
     case 'desktop_choose_folder': return chooseFolder(args.purpose);
+    case 'desktop_income_create_site': return createIncomeWebsiteDemo({
+      desktopRoot: app.getPath('desktop'),
+      isAllowedPath,
+      confirmAction,
+      folderName: args?.folderName || 'LAVIN-Demo'
+    });
     case 'desktop_list_drives': return listDrives();
     case 'desktop_copy_path': return copyPath(args.source,args.destination);
     case 'desktop_move_path': return movePath(args.source,args.destination);
