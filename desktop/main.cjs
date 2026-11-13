@@ -10,6 +10,7 @@ const { search } = require('duck-duck-scrape');
 const QRCode = require('qrcode');
 const openclaw = require('./openclaw.cjs');
 const createIncomeWebsiteDemo = require('./income.cjs');
+const createMarketingKit = require('./marketing.cjs');
 
 // Chromium'un Electron içindeki Web Speech servisinin etkinleştirilmesini destekle.
 const PROD_URL = 'https://aura-ki-isel-asistan.vercel.app/';
@@ -2544,6 +2545,38 @@ function getAuraMemoryStats(){
   const newest=[...items].sort((a,b)=>String(b.updatedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.createdAt||'')))[0]||null;
   return {ok:true,count:items.length,tags,newest};
 }
+async function renderMarketingVideo(html, options = {}) {
+  const duration = Math.max(6, Math.min(20, Number(options.durationSeconds) || 12));
+  const view = new BrowserWindow({
+    show: false,
+    width: 540,
+    height: 960,
+    paintWhenInitiallyHidden: true,
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      backgroundThrottling: false
+    }
+  });
+  let timeoutId = null;
+  try {
+    await view.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(String(html || '')));
+    const renderPromise = view.webContents.executeJavaScript('window.__auraRender()', true);
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error('Video oluşturma zaman aşımına uğradı.')), (duration + 18) * 1000);
+    });
+    const result = await Promise.race([renderPromise, timeoutPromise]);
+    if (!result || typeof result.base64 !== 'string') throw new Error('Video oluşturucu geçerli bir çıktı döndürmedi.');
+    const bytes = Buffer.from(result.base64, 'base64');
+    if (!bytes.length) throw new Error('Video dosyası boş döndü.');
+    return bytes;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+    if (!view.isDestroyed()) view.destroy();
+  }
+}
+
 async function handleTool(tool,args) {
   switch(tool) {
     case 'openclaw_status': return openclaw.status();
@@ -2603,6 +2636,21 @@ async function handleTool(tool,args) {
       isAllowedPath,
       confirmAction,
       folderName: args?.folderName || 'LAVIN-Demo'
+    });
+    case 'desktop_marketing_create_kit': return createMarketingKit({
+      desktopRoot: app.getPath('desktop'),
+      isAllowedPath,
+      confirmAction,
+      renderVideo: renderMarketingVideo,
+      businessName: args?.businessName,
+      businessType: args?.businessType,
+      campaignGoal: args?.campaignGoal,
+      audience: args?.audience,
+      headline: args?.headline,
+      supportingText: args?.supportingText,
+      callToAction: args?.callToAction,
+      voiceover: args?.voiceover,
+      durationSeconds: args?.durationSeconds
     });
     case 'desktop_list_drives': return listDrives();
     case 'desktop_copy_path': return copyPath(args.source,args.destination);
