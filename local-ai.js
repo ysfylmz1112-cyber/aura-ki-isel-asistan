@@ -16,7 +16,7 @@ function isDriveListRequest(q) {
 // Eski renderer/inline script sürümleri bu fonksiyonu globalden çağırabiliyor.
 // Modül içinde de globalde de aynı güvenli sürücü algılama fonksiyonunu kullan.
 globalThis.isDriveListRequest = isDriveListRequest;
-import { CreateMLCEngine } from "https://esm.run/@mlc-ai/web-llm@0.2.85";
+import { CreateMLCEngine, prebuiltAppConfig } from "https://esm.run/@mlc-ai/web-llm@0.2.85";
 
 const CHAT_MODEL_ID = "Qwen2.5-3B-Instruct-q4f16_1-MLC";
 // 3B genel sohbet modeli, Türkçe bilgi yanıtlarında daha yüksek kalite için kullanılır.
@@ -802,6 +802,9 @@ async function ensureLocalAI(mode = "chat", onProgress = () => {}) {
   }
 
   const config = {
+    // Use IndexedDB instead of CacheStorage. This avoids CacheStorage.open failures
+    // observed in some Electron persistent sessions while retaining local model caching.
+    appConfig: { ...prebuiltAppConfig, cacheBackend: "indexeddb" },
     initProgressCallback: progress => {
       try {
         const percent = typeof progress?.progress === "number"
@@ -1368,7 +1371,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   if (!value) throw new Error("Mesaj boş.");
 
   const lowerValue = value.toLocaleLowerCase("tr-TR");
-  const workspaceAccessIntent = /tüm\s+(pc|bilgisayar)|bilgisayarın\s+tamamı|tüm\s+bilgisayar|pc.*erişim|bilgisayar.*erişim|aura.*erişim.*alanı|erişim alanı|çalışma alanı ekle|klasör erişim izni/.test(lowerValue);
+  const workspaceAccessIntent = /tüm\s+(pc|bilgisayar)|bilgisayarın\s+tamamı|tüm\s+bilgisayar|pc.*erişim|bilgisayar.*erişim|aura.*erişim.*alanı|erişim alanı|çalışma\s+alanı.*(?:erişim|izin)|klasör\s+seçme|klasör.*erişim\s+izni|proje\s+klasörüne.*erişim\s+izni|çalışma alanı ekle|klasör erişim izni/.test(lowerValue);
   const incomeModeIntent = /kazanç modu|kazanc modu|aura üzerinden para kazan|aura uzerinden para kazan|aura ile para kazan|gelir amaçlı site|gelir amacli site|müşteri sitesi|musteri sitesi|işletme sitesi|isletme sitesi|restoran sitesi/.test(lowerValue);
   const gameDevelopmentIntent = /unity|kamyon|nakliye|taşıma oyunu|tasima oyunu|oyun yap|oyun yapalım|oyun yapalim|oyun geliştir|oyun gelistir|oyun oluştur|oyun olustur|oyun yapmaya|game dev|game development|oyun projesi|oyun projesi oluştur|oyun projesi olustur/.test(lowerValue);
   const developmentIntent = mode === "code" || gameDevelopmentIntent || incomeModeIntent || /proje oluştur|proje olustur|dosya oluştur|dosya olustur|dosya yaz|kod yaz|kodu düzelt|kodu duzelt|hata düzelt|hata duzelt|build al|derle|compile|script oluştur|script olustur|sahne oluştur|sahne olustur|component oluştur|component olustur|prefab oluştur|prefab olustur/.test(lowerValue);
