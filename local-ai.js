@@ -1625,7 +1625,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     // models can produce fluent but irrelevant examples; ask the same model to
     // correct factual mismatches before the answer reaches the user.
     const factualQuestion = /\b(nedir|ne demek|kimdir|neresidir|neden|niçin|nasıl çalışır|nasıl oluşur|açıkla|örnek ver|örnekleri|hangi yıl|kim buldu)\b/i.test(lowerValue);
-    if (!wantsTools && !codeLikeMode && factualQuestion && round === 0) {
+    if (!wantsTools && !codeLikeMode && factualQuestion && String(value || "").length > 500 && round === 0) {
       try {
         const draftText = readAssistantText(assistantMessage);
         const reviewResponse = await runChatCompletionWithTimeout(localEngine, {
