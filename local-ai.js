@@ -1569,18 +1569,20 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
       if (/context window|prompt tokens exceed|maximum context|context length|too many tokens/i.test(msg)) {
         // Son çare: geçmişi, PC bağlamını ve araç listesini kaldırıp isteği daha da küçült.
         // Böylece WebLLM 4096 context modellerinde de cevap üretmeye devam eder.
-        const emergencyPrompt=compactLongUserRequest(value,2600);
+        // Context overflow recovery must be genuinely tiny: the full system prompt
+        // and mode instructions can themselves exceed the model's context window.
+        const emergencyPrompt=compactLongUserRequest(value,1200);
         const emergencyMessages=[
-          {role:"system",content:SYSTEM_PROMPT+modePrompt+"\nÇok uzun kullanıcı isteği acil sıkıştırma modunda işlendi. Eksik ayrıntı uydurma; mevcut ana gereksinimlere göre iler."},
+          {role:"system",content:"AURA: Kullanıcıya Türkçe, kısa ve doğrudan cevap ver. Yalnızca son isteği yanıtla. Araç çağırma. Eksik bilgi uydurma."},
           {role:"user",content:emergencyPrompt}
         ];
         response=await runChatCompletionWithTimeout(localEngine, {
           messages:emergencyMessages,
-          temperature:codeLikeMode?0.14:0.4,
-          top_p:0.82,
-          max_tokens:codeLikeMode?500:160,
+          temperature:0.25,
+          top_p:0.8,
+          max_tokens:128,
           stream:false
-        }, 180000, "kısa yanıt kurtarma");
+        }, 120000, "küçültülmüş bağlam kurtarma");
       } else {
         throw error;
       }
