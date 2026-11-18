@@ -1,6 +1,6 @@
 {
   "name": "aura-desktop",
-  "version": "6.2.1",
+  "version": "6.2.2",
   "private": true,
   "description": "AURA local desktop AI assistant",
   "main": "main.cjs",
@@ -25,30 +25,13 @@
     "appId": "com.aura.personalassistant",
     "productName": "AURA",
     "artifactName": "AURA-${version}-Setup.exe",
-    "directories": {
-      "output": "dist",
-      "buildResources": "build"
-    },
+    "directories": { "output": "dist", "buildResources": "build" },
     "files": [
-      "main.cjs",
-      "preload.cjs",
-      "prepare-renderer.cjs",
-      "renderer/**/*",
-      "package.json",
-      "openclaw.cjs",
-      "income.cjs",
-      "marketing.cjs",
-      "youtube-studio.cjs"
+      "main.cjs", "preload.cjs", "prepare-renderer.cjs", "renderer/**/*",
+      "package.json", "openclaw.cjs", "income.cjs", "marketing.cjs", "youtube-studio.cjs"
     ],
     "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
       "executableName": "AURA"
     },
     "asar": true,
@@ -59,13 +42,11 @@
       "createStartMenuShortcut": true,
       "shortcutName": "AURA"
     },
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "ysfylmz1112-cyber",
-        "repo": "aura-ki-isel-asistan",
-        "releaseType": "release"
-      }
-    ]
+    "publish": [{
+      "provider": "github",
+      "owner": "ysfylmz1112-cyber",
+      "repo": "aura-ki-isel-asistan",
+      "releaseType": "release"
+    }]
   }
 }
