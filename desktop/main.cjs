@@ -2757,7 +2757,47 @@ async function handleTool(tool,args) {
 }
 
 function localRendererRoot() {
-  return app.isPackaged ? path.join(__dirname,'renderer') : path.join(__dirname,'..');
+  if (!app.isPackaged) {
+    const devRoot = path.resolve(__dirname, '..');
+    for (const name of ['index.html', 'local-ai.js']) {
+      const file = path.join(devRoot, name);
+      if (!fs.existsSync(file) || !fs.statSync(file).isFile()) {
+        throw new Error('AURA geliştirme arayüzü eksik: ' + file);
+      }
+    }
+    return devRoot;
+  }
+
+  // electron-builder sürümüne ve kurulum biçimine göre __dirname farklı
+  // bir sanal dizini gösterebilir. Önce Electron'un gerçek uygulama yolunu
+  // kullan, ardından uyumlu paket yollarını dene.
+  const candidates = [
+    path.join(app.getAppPath(), 'renderer'),
+    path.join(__dirname, 'renderer'),
+    path.join(process.resourcesPath || '', 'app.asar', 'renderer')
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    try {
+      const root = path.resolve(candidate);
+      const valid = ['index.html', 'local-ai.js'].every(name => {
+        const file = path.join(root, name);
+        return fs.existsSync(file) && fs.statSync(file).isFile() && fs.statSync(file).size > 0;
+      });
+      if (valid) {
+        console.info('[AURA] renderer directory:', root);
+        return root;
+      }
+    } catch (error) {
+      console.warn('[AURA] renderer candidate unavailable:', candidate, error?.message || error);
+    }
+  }
+
+  throw new Error(
+    'AURA arayüz dosyaları kurulum paketinde bulunamadı. Denenen yollar: ' +
+    candidates.join(' | ') +
+    '. Kurulum paketini yeniden oluşturun.'
+  );
 }
 
 function startLocalRendererServer() {
