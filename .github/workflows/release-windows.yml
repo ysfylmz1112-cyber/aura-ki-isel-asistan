@@ -2,8 +2,11 @@ name: Publish AURA Windows Update
 
 on:
   push:
-    tags:
-      - "v*"
+    branches: [main]
+    paths:
+      - "desktop/package.json"
+      - ".github/workflows/release-windows.yml"
+  workflow_dispatch:
 
 permissions:
   contents: write
