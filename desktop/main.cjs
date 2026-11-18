@@ -8,11 +8,57 @@ const os = require('os');
 const { execFile, spawn } = require('child_process');
 const { search } = require('duck-duck-scrape');
 const QRCode = require('qrcode');
+const { autoUpdater } = require('electron-updater');
 const openclaw = require('./openclaw.cjs');
 const createIncomeWebsiteDemo = require('./income.cjs');
 const createMarketingKit = require('./marketing.cjs');
 const createYoutubeStudio = require('./youtube-studio.cjs');
 const youtubeStudio = createYoutubeStudio({ getUserDataPath: () => app.getPath('userData') });
+
+function startAURAUpdater() {
+  if (!app.isPackaged) return;
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = false;
+
+  autoUpdater.on('update-available', async (info) => {
+    const choice = await dialog.showMessageBox({
+      type: 'info',
+      title: 'AURA güncellemesi',
+      message: 'Yeni AURA sürümü hazır: ' + info.version,
+      detail: 'Güncellemeyi şimdi indirmek ister misin? Sohbetlerin ve kayıtların korunur.',
+      buttons: ['Şimdi indir', 'Daha sonra'],
+      defaultId: 0,
+      cancelId: 1
+    });
+    if (choice.response === 0) {
+      try { await autoUpdater.downloadUpdate(); }
+      catch (error) { console.error('[AURA updater] download failed:', error); }
+    }
+  });
+
+  autoUpdater.on('update-downloaded', async (info) => {
+    const choice = await dialog.showMessageBox({
+      type: 'info',
+      title: 'AURA güncellemesi hazır',
+      message: 'AURA ' + info.version + ' indirildi.',
+      detail: 'Güncellemeyi tamamlamak için AURA yeniden başlatılacak. Açık çalışmalarını kaydet.',
+      buttons: ['Şimdi yeniden başlat', 'Sonra'],
+      defaultId: 0,
+      cancelId: 1
+    });
+    if (choice.response === 0) autoUpdater.quitAndInstall();
+  });
+
+  autoUpdater.on('error', (error) => {
+    console.error('[AURA updater] update check failed:', error);
+  });
+
+  setTimeout(() => {
+    autoUpdater.checkForUpdates().catch(error => {
+      console.error('[AURA updater] check failed:', error);
+    });
+  }, 8000);
+}
 
 // Chromium'un Electron içindeki Web Speech servisinin etkinleştirilmesini destekle.
 const PROD_URL = 'https://aura-ki-isel-asistan.vercel.app/';
@@ -3033,7 +3079,7 @@ app.whenReady().then(async()=>{
 
   ipcMain.handle('aura:desktop-info',async()=>({
     connected:true,
-    version:'6.2.0',
+    version:app.getVersion(),
     mode:'secure-local-agent-pc-aware-core',
     roots:allowedRoots(),
     features:[
@@ -3061,6 +3107,7 @@ app.whenReady().then(async()=>{
   }));
 
   createWindow();
+  startAURAUpdater();
   scanEnvironment({mode:'quick'}).catch(()=>{});
 
   app.on('activate',()=>{
