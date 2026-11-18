@@ -36,7 +36,8 @@
       "package.json",
       "openclaw.cjs",
       "income.cjs",
-      "marketing.cjs"
+      "marketing.cjs",
+      "youtube-studio.cjs"
     ],
     "win": {
       "target": [
