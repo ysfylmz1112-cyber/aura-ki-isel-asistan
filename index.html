@@ -276,6 +276,41 @@ html,body{
 @media(max-width:600px){.core{width:270px;height:270px}.core:before{inset:35px}.core:after{inset:50px}}
 @media(prefers-reduced-motion:reduce){.core:before,.core:after,.coreGlow{animation:none!important}}
 
+
+/* AURA 6.2.7 · rebuilt layered energy core */
+.core{width:380px;height:380px}
+.coreSvg{z-index:2;overflow:visible;animation:none!important}
+.coreGlow{
+  width:112px;height:112px;z-index:4;
+  background:radial-gradient(circle at 42% 36%,#fff 0 3%,#d8fbff 8%,#76e6ff 19%,#347bd1 39%,rgba(39,54,125,.78) 61%,transparent 76%);
+  box-shadow:0 0 24px rgba(102,224,255,.48),0 0 58px rgba(73,141,255,.24),0 0 92px rgba(135,112,255,.13);
+  animation:nucleusBreathe 4.8s ease-in-out infinite;
+}
+.coreEnergy{
+  width:68px;height:68px;z-index:5;border:1px solid rgba(220,250,255,.72);
+  background:radial-gradient(circle,rgba(255,255,255,.13),rgba(85,209,255,.06) 58%,transparent 72%);
+  box-shadow:0 0 13px rgba(116,229,255,.38),inset 0 0 18px rgba(119,226,255,.28);
+}
+.core-orbit{transform-box:fill-box;transform-origin:center;will-change:transform}
+.orbit-one{animation:coreOrbitA 16s linear infinite}
+.orbit-two{animation:coreOrbitB 21s linear infinite}
+.orbit-three{animation:coreOrbitA 28s linear infinite reverse}
+.core-back-rings{transform-origin:180px 180px;animation:coreRingDrift 42s linear infinite}
+.core-light-streaks{animation:coreStreak 5.5s ease-in-out infinite}
+.coreText{z-index:9}
+.coreText b{font-size:25px;letter-spacing:8px;text-shadow:0 0 12px rgba(124,227,255,.38)}
+.coreText small{font-size:7px;letter-spacing:2px;color:#d8f7ff;text-shadow:0 0 9px rgba(110,218,255,.4)}
+@keyframes coreOrbitA{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes coreOrbitB{from{transform:rotate(360deg)}to{transform:rotate(0deg)}}
+@keyframes coreRingDrift{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes coreStreak{0%,100%{opacity:.38}50%{opacity:1}}
+.core[data-state="thinking"] .orbit-one{animation-duration:5s}
+.core[data-state="thinking"] .orbit-two{animation-duration:7s}
+.core[data-state="listening"] .core-light-streaks{opacity:1}
+.core[data-state="speaking"] .orbit-one,.core[data-state="speaking"] .orbit-two{animation-duration:3.5s}
+@media(max-width:600px){.core{width:290px;height:290px}}
+@media(prefers-reduced-motion:reduce){.core-orbit,.core-back-rings,.core-light-streaks,.coreGlow{animation:none!important}}
+
 </style>
 </head><body><div class="app">
 <aside class="sidebar">
@@ -356,28 +391,69 @@ html,body{
       <div class="core" id="core" data-state="ready">
         <div class="dataStream" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
         <div class="coreLabelTop">YAPAY ZEKÂ ÇEKİRDEĞİ</div>
-        <svg class="coreSvg" viewBox="0 0 340 340" aria-hidden="true">
+        <svg class="coreSvg" viewBox="0 0 360 360" aria-hidden="true">
           <defs>
-            <radialGradient id="g1"><stop offset="0%" stop-color="white"/><stop offset="16%" stop-color="#7feeff"/><stop offset="50%" stop-color="#1d5e73" stop-opacity=".4"/><stop offset="100%" stop-color="#09131a" stop-opacity="0"/></radialGradient>
-            <linearGradient id="ring" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="currentColor" stop-opacity=".05"/><stop offset="45%" stop-color="currentColor" stop-opacity=".9"/><stop offset="60%" stop-color="currentColor" stop-opacity=".12"/><stop offset="100%" stop-color="currentColor" stop-opacity=".75"/></linearGradient>
+            <radialGradient id="auraSphere">
+              <stop offset="0%" stop-color="#f7ffff"/>
+              <stop offset="10%" stop-color="#b9f6ff"/>
+              <stop offset="28%" stop-color="#5bc9f4"/>
+              <stop offset="55%" stop-color="#2859a8"/>
+              <stop offset="78%" stop-color="#18204f"/>
+              <stop offset="100%" stop-color="#0b1028" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="auraMetal" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#d9fbff" stop-opacity=".08"/>
+              <stop offset="32%" stop-color="#7ceaff" stop-opacity=".95"/>
+              <stop offset="58%" stop-color="#718aff" stop-opacity=".34"/>
+              <stop offset="82%" stop-color="#c4b3ff" stop-opacity=".9"/>
+              <stop offset="100%" stop-color="#d9fbff" stop-opacity=".12"/>
+            </linearGradient>
+            <linearGradient id="auraBeam" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#75eaff" stop-opacity="0"/>
+              <stop offset="48%" stop-color="#e8ffff"/>
+              <stop offset="100%" stop-color="#9d8cff" stop-opacity="0"/>
+            </linearGradient>
+            <filter id="auraSoftGlow" x="-100%" y="-100%" width="300%" height="300%">
+              <feGaussianBlur stdDeviation="3" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
           </defs>
-          <g fill="none" color="var(--accent)" stroke="currentColor">
-            <circle cx="170" cy="170" r="145" stroke-width="1" opacity=".20" stroke-dasharray="2 10"/>
-            <circle cx="170" cy="170" r="132" stroke-width="2" opacity=".55" stroke-dasharray="54 9 12 18"/>
-            <circle cx="170" cy="170" r="116" stroke-width="1" opacity=".45" stroke-dasharray="18 8 64 12"/>
-            <circle cx="170" cy="170" r="100" stroke-width="3" opacity=".30" stroke-dasharray="24 28"/>
-            <circle cx="170" cy="170" r="82" stroke-width="1" opacity=".35" stroke-dasharray="4 8"/>
-            <ellipse cx="170" cy="170" rx="126" ry="54" stroke-width="1" opacity=".30" transform="rotate(-18 170 170)"/>
-            <ellipse cx="170" cy="170" rx="118" ry="42" stroke-width="1" opacity=".24" transform="rotate(37 170 170)"/>
+          <g class="core-back-rings" fill="none" stroke="url(#auraMetal)">
+            <circle cx="180" cy="180" r="157" stroke-width=".8" opacity=".28" stroke-dasharray="1 8"/>
+            <circle cx="180" cy="180" r="146" stroke-width="1.2" opacity=".55" stroke-dasharray="52 8 3 11"/>
+            <circle cx="180" cy="180" r="132" stroke-width="2" opacity=".78" stroke-dasharray="26 7 4 14"/>
+            <circle cx="180" cy="180" r="119" stroke-width=".8" opacity=".45" stroke-dasharray="2 5"/>
+            <circle cx="180" cy="180" r="103" stroke-width="1.4" opacity=".62" stroke-dasharray="68 15 8 13"/>
           </g>
-          <g fill="url(#g1)" stroke="var(--accent)" stroke-width=".6" opacity=".85">
-            <circle cx="170" cy="170" r="66"/>
+          <g class="core-orbit orbit-one" fill="none" stroke="url(#auraMetal)" filter="url(#auraSoftGlow)">
+            <ellipse cx="180" cy="180" rx="143" ry="51" stroke-width="1.25" opacity=".9"/>
+            <path d="M38 180a142 50 0 0 1 74-43" stroke="#b9f8ff" stroke-width="2.2" stroke-linecap="round"/>
+            <path d="M248 147a142 50 0 0 1 34 33" stroke="#b9b0ff" stroke-width="2" stroke-linecap="round"/>
           </g>
-          <g fill="none" stroke="var(--accent)" stroke-width=".65" opacity=".32">
-            <ellipse cx="170" cy="170" rx="57" ry="20"/>
-            <ellipse cx="170" cy="170" rx="57" ry="38"/>
-            <path d="M113 170h114M117 151h106M117 189h106M170 113v114"/>
-            <path d="M133 118c-17 30-17 74 0 104M207 118c17 30 17 74 0 104"/>
+          <g class="core-orbit orbit-two" fill="none" stroke="url(#auraMetal)">
+            <ellipse cx="180" cy="180" rx="128" ry="43" stroke-width="1.1" opacity=".82"/>
+            <path d="M53 180a127 42 0 0 0 42 32" stroke="#d9fbff" stroke-width="2.3" stroke-linecap="round"/>
+          </g>
+          <g class="core-orbit orbit-three" fill="none" stroke="url(#auraMetal)">
+            <ellipse cx="180" cy="180" rx="111" ry="31" stroke-width="1" opacity=".72"/>
+            <path d="M181 149a111 31 0 0 1 92 31" stroke="#9d9bff" stroke-width="2" stroke-linecap="round"/>
+          </g>
+          <g fill="none" stroke="url(#auraMetal)">
+            <circle cx="180" cy="180" r="88" stroke-width="1.2" opacity=".62"/>
+            <circle cx="180" cy="180" r="76" stroke-width=".8" opacity=".4" stroke-dasharray="3 7"/>
+            <circle cx="180" cy="180" r="64" stroke-width="1" opacity=".45"/>
+          </g>
+          <circle cx="180" cy="180" r="59" fill="url(#auraSphere)" opacity=".92"/>
+          <circle cx="180" cy="180" r="43" fill="none" stroke="#a6f3ff" stroke-opacity=".4" stroke-width=".8"/>
+          <g class="core-light-streaks" fill="none" stroke="url(#auraBeam)" stroke-linecap="round">
+            <path d="M62 180h48" stroke-width="2.2"/>
+            <path d="M250 180h48" stroke-width="2.2"/>
+            <path d="M180 52v35" stroke-width="1.7"/>
+            <path d="M180 273v35" stroke-width="1.7"/>
+          </g>
+          <g fill="#dffcff" filter="url(#auraSoftGlow)">
+            <circle cx="37" cy="180" r="2.4"/><circle cx="323" cy="180" r="2.2"/>
+            <circle cx="180" cy="23" r="1.8"/><circle cx="180" cy="337" r="1.8"/>
           </g>
         </svg>
         <div class="coreGlow"></div>
