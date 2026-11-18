@@ -30,6 +30,19 @@ jobs:
         working-directory: desktop
         run: npm install --no-audit --no-fund
 
+      - name: Create version tag
+        shell: pwsh
+        run: |
+          $version = node -p "require('./desktop/package.json').version"
+          $tag = "v$version"
+          $existing = git ls-remote --tags origin "refs/tags/$tag"
+          if (-not $existing) {
+            git tag $tag
+            git push origin $tag
+          } else {
+            Write-Host "Tag $tag already exists; keeping it."
+          }
+
       - name: Publish installer and updater metadata
         working-directory: desktop
         env:
