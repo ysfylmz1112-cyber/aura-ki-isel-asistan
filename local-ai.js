@@ -59,6 +59,7 @@ const SYSTEM_PROMPT = [
   "Araç çağrısından sonra araç sonucunu kullanıcı isteğiyle ilişkilendirerek tamamla; ham araç çıktısını tek başına kullanıcıya gönderme.",
   "KAZANÇ MODU: Kullanıcı gelir amaçlı web sitesi işi istediğinde sıfır bütçeli, gerçek teslim edilebilir bir web sitesi paketi üret. Eksik işletme adı, adres, telefon, fiyat veya hizmet bilgisini uydurma; yer tutucu kullan ve kullanıcıdan doğrulamasını iste. Çıktıları Desktop\\AURA-Gelir altındaki bir proje klasöründe düzenli tut. HTML/CSS/JS dosyalarını yazdıktan sonra yerel kontroller yap ve müşteriye özel teklif taslağı hazırla. Gelir veya müşteri garantisi verme. Kullanıcı/veli onayı olmadan kimseye mesaj gönderme, site yayınlama, hesap açma, sözleşme kabul etme veya ödeme işlemi yapma. Spam, sahte yorum, yanıltıcı vaat, ücretli API/abonelik veya başlangıç harcaması kullanma.",
   "AURA STUDIO: Reklam isteğinde desktop_marketing_create_kit aracını kullan. Başlık, açıklama, çağrı metni ve seslendirme taslağını isteğin bağlamına göre özgün yaz; gerçek olmayan indirim, fiyat, yorum, müşteri sonucu veya iletişim bilgisi uydurma. Araç Instagram gönderisi ve hikâyesi için SVG, paylaşım metni, seslendirme metni, Reels akış planı ve animasyonlu dikey WebM video oluşturur. İlk video yerel grafik/metin animasyonudur; gerçek çekim, yapay zekâ ile üretilmiş foto-gerçekçi sahne veya ses içermez. Bunu asla varmış gibi tanıtma. Dosyalar paylaşılmaz/yayınlanmaz; yayınlama ve müşteri iletişimi için ayrıca kullanıcı/veli onayı gerekir. Ücretli API veya abonelik önerme."
+  "YOUTUBE SHORTS STÜDYOSU: YouTube isteğinde önce youtube_studio_get_profile kullan. Kanal/örnek bağlantılarını youtube_studio_save_profile ile kaydet. URL’leri izlemiş gibi davranma; içerik analizi için gerçek video içeriği veya kullanıcının sağladığı ekran görüntüsü/transkript gerekir. Shorts üretirken özgün Türkçe senaryo ve doğal İngilizce uyarlama, iki dilde sahne planı, açıklama ve etiket hazırla; youtube_studio_create_plan ile taslak kaydet. Günlük düzen Türkçe ilk, İngilizce tam 4 saat sonra. Araçlar yalnızca taslak saklar; video render etmez, YouTube’a bağlanmaz veya yayınlamaz. Gerçek yayın için OAuth ve uygun hesap/veli izni ayrıca gerekir.",
 ].join("\n");
 
 const TOOLS = [
@@ -303,6 +304,18 @@ const TOOLS = [
         additionalProperties:false
       }
     }
+  },
+  {
+    type:"function",function:{name:"youtube_studio_get_profile",description:"Kanal profilini, kayıtlı Shorts bağlantılarını ve günlük TR→EN düzenini getirir; bağlantıların analiz edildiğini varsaymaz.",parameters:{type:"object",properties:{},additionalProperties:false}}
+  },
+  {
+    type:"function",function:{name:"youtube_studio_save_profile",description:"Kanal URL'sini, örnek Shorts bağlantılarını ve Türkçe ilk/4 saat sonra İngilizce günlük düzenini yerel kaydeder. Videoları izlemez.",parameters:{type:"object",properties:{channelUrl:{type:"string"},exampleUrls:{type:"array",items:{type:"string"}},channelNotes:{type:"string"},publishTimeLocal:{type:"string"}},required:["channelUrl","exampleUrls"],additionalProperties:false}}
+  },
+  {
+    type:"function",function:{name:"youtube_studio_create_plan",description:"Türkçe Shorts ve İngilizce uyarlamasını, sahne planları ve açıklamalarıyla taslak olarak yerel kaydeder. Yayınlamaz ve video üretmez.",parameters:{type:"object",properties:{topic:{type:"string"},hookTr:{type:"string"},hookEn:{type:"string"},scriptTr:{type:"string"},scriptEn:{type:"string"},scenesTr:{type:"array",items:{type:"string"}},scenesEn:{type:"array",items:{type:"string"}},captionTr:{type:"string"},captionEn:{type:"string"},hashtagsTr:{type:"array",items:{type:"string"}},hashtagsEn:{type:"array",items:{type:"string"}},durationSeconds:{type:"integer",minimum:10,maximum:90}},required:["topic","scriptTr","scriptEn"],additionalProperties:false}}
+  },
+  {
+    type:"function",function:{name:"youtube_studio_list_plans",description:"Kaydedilmiş YouTube Shorts taslaklarını ve kanal profilini listeler.",parameters:{type:"object",properties:{limit:{type:"integer",minimum:1,maximum:50}},additionalProperties:false}}
   },
   {
     type: "function",
