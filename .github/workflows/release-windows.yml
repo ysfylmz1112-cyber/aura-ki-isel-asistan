@@ -30,6 +30,16 @@ jobs:
         working-directory: desktop
         run: npm install --no-audit --no-fund
 
+      - name: Prepare packaged renderer
+        working-directory: desktop
+        run: npm run prepare-renderer
+
+      - name: Verify packaged renderer
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "desktop/renderer/index.html")) { throw "renderer/index.html missing" }
+          if (-not (Test-Path "desktop/renderer/local-ai.js")) { throw "renderer/local-ai.js missing" }
+
       - name: Create version tag
         shell: pwsh
         run: |
