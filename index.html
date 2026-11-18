@@ -76,6 +76,82 @@ input,.composer,.composerArea,.topbar,.sidebar{pointer-events:auto;position:rela
 .qrModal{pointer-events:none}
 .qrModal.open{pointer-events:auto}
 
+
+/* AURA OS 6.2.5 · premium interface pass */
+:root{
+  --bg:#070914;--bg2:#0a0e1c;--side:#0b1020;--panel:#10172a;--panel2:#151d33;
+  --line:rgba(133,157,210,.16);--text:#f3f6ff;--muted:#8995b2;
+  --accent:#72e6ff;--accent2:#9b8cff;--ok:#69e6b1;--danger:#ff829d;
+}
+html,body{background:
+  radial-gradient(ellipse at 76% 12%,rgba(91,105,255,.10),transparent 34%),
+  radial-gradient(ellipse at 12% 86%,rgba(48,203,235,.07),transparent 30%),#070914}
+.app{grid-template-columns:260px minmax(0,1fr);background:transparent}
+.sidebar{background:linear-gradient(180deg,rgba(13,18,36,.97),rgba(8,12,25,.98));border-right:1px solid rgba(133,157,210,.18);box-shadow:12px 0 50px rgba(0,0,0,.18)}
+.sideTop{padding:21px 17px 16px}
+.brand{font-size:18px;letter-spacing:3.6px}
+.logo{width:34px;height:34px;border-color:rgba(114,230,255,.72);background:radial-gradient(circle,rgba(114,230,255,.13),transparent 70%);box-shadow:0 0 26px rgba(114,230,255,.18),inset 0 0 15px rgba(114,230,255,.08)}
+.logo:after{inset:9px;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 0 18px var(--accent)}
+.brandSub{color:#7d8cae}
+.newChat{margin-top:20px;padding:12px 14px;border-color:rgba(114,230,255,.2);border-radius:12px;background:linear-gradient(110deg,rgba(114,230,255,.10),rgba(155,140,255,.08));box-shadow:inset 0 1px rgba(255,255,255,.04);transition:.2s}
+.newChat:hover{border-color:rgba(114,230,255,.55);background:linear-gradient(110deg,rgba(114,230,255,.16),rgba(155,140,255,.14));transform:translateY(-1px)}
+.sideLabel{color:#7483a7;font-weight:750;letter-spacing:1.8px}
+.nav{padding:11px 12px;margin:2px 0;border:1px solid transparent;border-radius:10px;color:#aab6d0;transition:background .18s,border-color .18s,color .18s,transform .18s}
+.nav:hover{background:rgba(127,150,220,.09);border-color:rgba(127,150,220,.12);transform:translateX(2px)}
+.nav.active{background:linear-gradient(100deg,rgba(114,230,255,.14),rgba(155,140,255,.10));border-color:rgba(114,230,255,.2);color:#f4fbff;box-shadow:inset 3px 0 0 var(--accent)}
+.nav.active .ico{color:var(--accent)}
+.ico{color:#8795b4}
+.sideDivider{background:rgba(133,157,210,.14);margin:10px 15px}
+.stat{border-color:rgba(133,157,210,.14);background:linear-gradient(145deg,rgba(22,31,55,.88),rgba(13,19,36,.92));border-radius:10px;box-shadow:inset 0 1px rgba(255,255,255,.025)}
+.stat span{color:#8290b0}.stat b{color:#f0f5ff}
+.sideBottom{border-top-color:rgba(133,157,210,.16)}
+.main{background:transparent}
+.topbar{background:rgba(8,12,25,.84);border-bottom-color:rgba(133,157,210,.16);box-shadow:0 8px 35px rgba(0,0,0,.12)}
+.modelName{font-size:13px;letter-spacing:.7px}
+.modelMeta{color:#8290b0}
+.coreDot{background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 0 16px rgba(114,230,255,.65)}
+.btn{border-color:rgba(133,157,210,.19);background:rgba(17,24,44,.82);color:#c1cbe0;border-radius:10px;transition:.18s}
+.btn:hover{background:rgba(36,48,79,.85);border-color:rgba(114,230,255,.4);transform:translateY(-1px)}
+.btn.primary{background:linear-gradient(110deg,rgba(114,230,255,.15),rgba(155,140,255,.13));border-color:rgba(114,230,255,.35)}
+.status{background:rgba(105,230,177,.07);border-color:rgba(105,230,177,.25);color:#7cf0bd}
+.workspace{grid-template-rows:minmax(330px,42vh) minmax(0,1fr)}
+.coreStage{background:
+  radial-gradient(ellipse at 50% 48%,rgba(95,121,255,.10),transparent 26%),
+  radial-gradient(ellipse at 50% 52%,rgba(63,221,255,.08),transparent 42%),
+  linear-gradient(180deg,rgba(10,15,31,.88),rgba(7,9,20,.98))}
+.coreStage:before{width:590px;height:590px;border-color:rgba(114,230,255,.13);box-shadow:0 0 150px rgba(114,230,255,.055),inset 0 0 90px rgba(155,140,255,.025)}
+.coreStage:after{width:790px;height:790px;border-color:rgba(155,140,255,.11)}
+.core{filter:drop-shadow(0 0 42px rgba(114,230,255,.13))}
+.coreText b{background:linear-gradient(90deg,#e8fcff,#9beeff 48%,#c6bcff);background-clip:text;-webkit-background-clip:text;color:transparent;letter-spacing:8px}
+.coreText small{color:#94a8c7}
+.coreGlow{background:radial-gradient(circle,#e9fdff 0,#86efff 12%,#3985d9 31%,#111b39 63%,transparent 74%);box-shadow:0 0 42px rgba(114,230,255,.62),0 0 110px rgba(114,230,255,.2),0 0 150px rgba(155,140,255,.12)}
+.coreEnergy{border-color:#8ceeff;box-shadow:0 0 22px #72e6ff,inset 0 0 24px rgba(114,230,255,.62)}
+.hudCard{border-color:rgba(133,157,210,.17);background:rgba(11,17,35,.76);box-shadow:inset 0 1px rgba(255,255,255,.04),0 12px 28px rgba(0,0,0,.22)}
+.hudCard span{color:#8392b6}.hudCard b{color:#e9f2ff}
+.hudBar{background:#1a2540}
+.chatStage{background:rgba(7,10,21,.94);border-top-color:rgba(133,157,210,.16)}
+.welcome h1{font-size:20px;letter-spacing:.2px}
+.welcome p{color:#8390ac}
+.msg:not(.me):not(.error) b{color:#8cecff}
+.msg.me{background:linear-gradient(135deg,rgba(31,43,72,.88),rgba(25,28,54,.9));border-color:rgba(133,157,210,.2);box-shadow:0 8px 25px rgba(0,0,0,.12)}
+.composerArea{background:linear-gradient(180deg,transparent,rgba(7,10,21,.98) 25%)}
+.composer{border-color:rgba(133,157,210,.24);background:rgba(17,24,44,.94);border-radius:18px;box-shadow:0 14px 38px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.04);transition:border-color .2s,box-shadow .2s}
+.composer:focus-within{border-color:rgba(114,230,255,.5);box-shadow:0 0 0 3px rgba(114,230,255,.06),0 14px 38px rgba(0,0,0,.28)}
+.input{color:#f5f8ff}.input::placeholder{color:#7d89a6}
+.send{background:linear-gradient(135deg,#4fcde9,#8b82ff);color:#07101c;border:0;box-shadow:0 5px 18px rgba(90,195,255,.24);transition:.18s}
+.send:hover{filter:brightness(1.12);transform:translateY(-1px)}
+.chip{border-color:rgba(133,157,210,.17);background:rgba(16,23,42,.78);color:#9eabc8;border-radius:999px;transition:.18s}
+.chip:hover{border-color:rgba(114,230,255,.38);color:#eafaff;background:rgba(37,52,83,.8)}
+.commandTag{border-color:rgba(133,157,210,.16);background:rgba(13,19,37,.82);color:#8e9dbd;transition:.18s}
+.commandTag:hover{border-color:rgba(114,230,255,.35);color:#dffaff}
+.historyItem{border:1px solid transparent;transition:.18s}
+.historyItem:hover{background:rgba(127,150,220,.08);border-color:rgba(127,150,220,.12)}
+.qrPanel{border-color:rgba(114,230,255,.24);background:linear-gradient(145deg,#111a31,#090f20)}
+@media(max-width:1100px){.app{grid-template-columns:230px minmax(0,1fr)}}
+@media(max-width:900px){.app{grid-template-columns:0 1fr}.workspace{grid-template-rows:minmax(300px,38vh) minmax(0,1fr)}}
+@media(max-width:600px){.topbar{padding:0 12px}.modelMeta{max-width:58vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.workspace{grid-template-rows:minmax(270px,35vh) minmax(0,1fr)}.core{width:260px;height:260px}.composerArea{padding:8px 10px 10px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
+
 </style>
 </head><body><div class="app">
 <aside class="sidebar">
