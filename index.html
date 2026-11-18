@@ -152,6 +152,130 @@ html,body{background:
 @media(max-width:600px){.topbar{padding:0 12px}.modelMeta{max-width:58vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.workspace{grid-template-rows:minmax(270px,35vh) minmax(0,1fr)}.core{width:260px;height:260px}.composerArea{padding:8px 10px 10px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
 
+
+/* AURA OS 6.2.6 · core reactor + atmospheric color pass */
+:root{
+  --bg:#080b1b;--bg2:#0d1230;--side:#0b1025;--panel:#111a36;--panel2:#172246;
+  --line:rgba(137,164,235,.19);--accent:#75efff;--accent2:#a28cff;
+  --ok:#6ff0c0;--text:#f4f7ff;--muted:#9aa8c8;
+}
+html,body{
+  background:
+    radial-gradient(ellipse at 48% 38%,rgba(47,111,226,.16),transparent 38%),
+    radial-gradient(ellipse at 88% 9%,rgba(139,91,255,.16),transparent 31%),
+    radial-gradient(ellipse at 4% 92%,rgba(20,194,211,.12),transparent 32%),
+    linear-gradient(135deg,#080b1b 0%,#0b1025 48%,#090d20 100%);
+}
+.app{background:
+  radial-gradient(ellipse at 60% 42%,rgba(64,105,220,.055),transparent 42%),
+  transparent}
+.sidebar{
+  background:linear-gradient(180deg,rgba(14,20,43,.97),rgba(8,13,30,.985));
+  border-right-color:rgba(129,160,235,.2);
+  box-shadow:16px 0 55px rgba(0,0,0,.24),inset -1px 0 rgba(130,160,255,.035)
+}
+.main{background:transparent}
+.topbar{
+  background:linear-gradient(90deg,rgba(10,15,35,.92),rgba(16,20,48,.82),rgba(10,15,35,.92));
+  border-bottom-color:rgba(129,160,235,.18)
+}
+.workspace{grid-template-rows:minmax(350px,44vh) minmax(0,1fr)}
+.coreStage{
+  isolation:isolate;
+  background:
+    radial-gradient(ellipse at 50% 48%,rgba(62,139,255,.19),transparent 23%),
+    radial-gradient(ellipse at 50% 54%,rgba(43,220,244,.12),transparent 39%),
+    radial-gradient(ellipse at 50% 50%,rgba(132,91,255,.10),transparent 57%),
+    linear-gradient(115deg,rgba(10,17,43,.96),rgba(13,19,48,.94) 48%,rgba(10,14,36,.98));
+}
+.coreStage:before{
+  width:600px;height:600px;border:1px solid rgba(115,225,255,.19);
+  box-shadow:0 0 100px rgba(60,139,255,.09),inset 0 0 100px rgba(108,107,255,.045);
+  background:repeating-radial-gradient(circle,transparent 0 37px,rgba(123,163,255,.035) 38px 39px);
+}
+.coreStage:after{
+  width:820px;height:820px;border:1px solid rgba(165,137,255,.16);
+  box-shadow:0 0 130px rgba(111,102,255,.07);
+}
+.core{
+  width:360px;height:360px;
+  filter:drop-shadow(0 0 34px rgba(70,190,255,.22)) drop-shadow(0 0 75px rgba(132,101,255,.12));
+  isolation:isolate;
+}
+.core:before,.core:after{
+  content:"";position:absolute;inset:43px;border-radius:50%;pointer-events:none;z-index:1;
+}
+.core:before{
+  border:1px solid rgba(130,237,255,.62);
+  box-shadow:0 0 22px rgba(77,211,255,.25),inset 0 0 24px rgba(77,211,255,.10);
+  transform:rotateX(68deg) rotateZ(-18deg);
+  animation:reactorOrbit 12s linear infinite;
+}
+.core:after{
+  inset:62px;border:1px dashed rgba(178,157,255,.62);
+  box-shadow:0 0 25px rgba(146,119,255,.17);
+  transform:rotateX(68deg) rotateZ(28deg);
+  animation:reactorOrbitReverse 17s linear infinite;
+}
+.coreSvg{z-index:2;filter:drop-shadow(0 0 7px rgba(94,225,255,.32))}
+.coreGlow{
+  width:126px;height:126px;z-index:3;
+  background:
+    radial-gradient(circle at 46% 38%,#ffffff 0 3%,#b8f8ff 7%,#65e7ff 15%,#317be7 31%,rgba(75,72,190,.68) 48%,rgba(12,23,58,.92) 66%,transparent 74%);
+  box-shadow:0 0 34px rgba(91,222,255,.72),0 0 82px rgba(63,133,255,.34),0 0 145px rgba(144,102,255,.22),inset 0 0 22px rgba(255,255,255,.25);
+  animation:nucleusBreathe 4s ease-in-out infinite;
+}
+.coreEnergy{
+  width:76px;height:76px;z-index:4;border:1px solid rgba(207,250,255,.95);
+  background:radial-gradient(circle,rgba(255,255,255,.12),rgba(69,209,255,.08) 55%,transparent 70%);
+  box-shadow:0 0 20px #72eaff,inset 0 0 25px rgba(108,233,255,.55);
+}
+.coreText{z-index:8}
+.coreText b{
+  font-size:26px;letter-spacing:9px;
+  text-shadow:0 0 18px rgba(104,226,255,.58),0 0 38px rgba(144,121,255,.35)
+}
+.coreText small{color:#d0f6ff;text-shadow:0 0 12px rgba(94,220,255,.7)}
+.coreLabelTop,.coreLabelLive,.coreLabelBottom{z-index:12;text-shadow:0 0 12px rgba(77,206,255,.45)}
+.coreLabelTop{color:#9bb8e5;letter-spacing:2.4px}
+.coreLabelLive{color:#b8f6ff;font-weight:800}
+.coreLabelBottom{color:#8196c8}
+.particle{width:5px;height:5px;box-shadow:0 0 12px currentColor,0 0 22px currentColor}
+.p1{color:#75efff}.p2{color:#a28cff}.p3{color:#65dfff}.p4{color:#78f0c4}.p5{color:#b29aff}
+.core[data-state="thinking"] .core:before{animation-duration:3s;box-shadow:0 0 32px rgba(77,211,255,.5)}
+.core[data-state="thinking"] .core:after{animation-duration:4s}
+.core[data-state="listening"] .coreGlow{filter:brightness(1.25);box-shadow:0 0 50px rgba(91,222,255,.9),0 0 125px rgba(63,133,255,.48)}
+.core[data-state="speaking"] .core:before,.core[data-state="speaking"] .core:after{border-color:rgba(131,243,255,.9)}
+.hudCard{
+  border-color:rgba(135,171,255,.22);
+  background:linear-gradient(145deg,rgba(16,27,59,.84),rgba(9,16,39,.84));
+  box-shadow:inset 0 1px rgba(255,255,255,.055),0 14px 34px rgba(0,0,0,.24),0 0 24px rgba(76,127,255,.045)
+}
+.hudCard span{color:#91a6d2}
+.hudCard b{color:#f0f7ff}
+.hudBar{background:rgba(116,143,205,.16)}
+.chatStage{
+  background:linear-gradient(180deg,rgba(11,15,34,.97),rgba(8,11,25,.99));
+  border-top-color:rgba(129,160,235,.2)
+}
+.welcome h1{color:#f3f7ff;text-shadow:0 0 24px rgba(94,178,255,.14)}
+.welcome p{color:#92a0c3}
+.composerArea{background:linear-gradient(180deg,transparent,rgba(8,11,25,.99) 28%)}
+.composer{
+  border-color:rgba(124,173,255,.28);
+  background:linear-gradient(115deg,rgba(18,30,61,.97),rgba(23,25,61,.97));
+  box-shadow:0 14px 42px rgba(0,0,0,.3),0 0 26px rgba(65,146,255,.07),inset 0 1px rgba(255,255,255,.06)
+}
+.composer:focus-within{border-color:rgba(117,239,255,.62);box-shadow:0 0 0 3px rgba(117,239,255,.075),0 14px 42px rgba(0,0,0,.3)}
+.commandTag,.chip{background:rgba(17,27,57,.84);border-color:rgba(132,165,239,.2)}
+.stat{background:linear-gradient(145deg,rgba(24,36,72,.9),rgba(12,20,45,.95));border-color:rgba(132,165,239,.2)}
+@keyframes reactorOrbit{to{transform:rotateX(68deg) rotateZ(342deg)}}
+@keyframes reactorOrbitReverse{to{transform:rotateX(68deg) rotateZ(-332deg)}}
+@keyframes nucleusBreathe{50%{transform:scale(1.08);filter:brightness(1.18)}}
+@media(max-width:900px){.workspace{grid-template-rows:minmax(310px,40vh) minmax(0,1fr)}.core{width:310px;height:310px}}
+@media(max-width:600px){.core{width:270px;height:270px}.core:before{inset:35px}.core:after{inset:50px}}
+@media(prefers-reduced-motion:reduce){.core:before,.core:after,.coreGlow{animation:none!important}}
+
 </style>
 </head><body><div class="app">
 <aside class="sidebar">
