@@ -7,7 +7,7 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
-    "build:win": "electron-builder --win nsis",
+    "build:win": "electron-builder --win nsis --publish never",
     "prepare-renderer": "node prepare-renderer.cjs",
     "prestart": "npm run prepare-renderer",
     "prebuild:win": "npm run prepare-renderer"
