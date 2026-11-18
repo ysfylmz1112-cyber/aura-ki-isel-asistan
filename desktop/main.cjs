@@ -11,6 +11,8 @@ const QRCode = require('qrcode');
 const openclaw = require('./openclaw.cjs');
 const createIncomeWebsiteDemo = require('./income.cjs');
 const createMarketingKit = require('./marketing.cjs');
+const createYoutubeStudio = require('./youtube-studio.cjs');
+const youtubeStudio = createYoutubeStudio({ getUserDataPath: () => app.getPath('userData') });
 
 // Chromium'un Electron içindeki Web Speech servisinin etkinleştirilmesini destekle.
 const PROD_URL = 'https://aura-ki-isel-asistan.vercel.app/';
@@ -2637,6 +2639,10 @@ async function handleTool(tool,args) {
       confirmAction,
       folderName: args?.folderName || 'LAVIN-Demo'
     });
+    case 'youtube_studio_get_profile': return youtubeStudio.getProfile();
+    case 'youtube_studio_save_profile': return youtubeStudio.saveProfile(args||{});
+    case 'youtube_studio_create_plan': return youtubeStudio.createPlan(args||{});
+    case 'youtube_studio_list_plans': return youtubeStudio.listPlans(args||{});
     case 'desktop_marketing_create_kit': return createMarketingKit({
       desktopRoot: app.getPath('desktop'),
       isAllowedPath,
@@ -3049,7 +3055,8 @@ app.whenReady().then(async()=>{
       'background-unity-automation',
       'marketing-studio',
       'social-ad-assets',
-      'animated-webm-video'
+      'animated-webm-video',
+      'youtube-shorts-studio-drafts'
     ]
   }));
 
