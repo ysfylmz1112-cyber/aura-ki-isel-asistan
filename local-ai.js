@@ -800,21 +800,37 @@ async function createEngine(modelId, config, onProgress) {
 }
 
 // WebLLM inference can take longer on first use or with large prompts.
-// Keep a generous timeout and always clear its timer when generation completes.
+// A timeout must interrupt the actual GPU generation too; Promise.race alone
+// only rejects the UI promise and leaves the model busy in the background.
 async function runChatCompletionWithTimeout(localEngine, options, timeoutMs, phase = "yanıt üretimi") {
   let timeoutId;
+  let timedOut = false;
   const inference = localEngine.chat.completions.create(options);
   try {
     return await Promise.race([
       inference,
       new Promise((_, reject) => {
         timeoutId = setTimeout(() => {
-          reject(new Error("Yerel AI " + phase + " için " + Math.round(timeoutMs / 1000) + " saniyede yanıt veremedi. Model çalışmaya devam ediyor olabilir; aynı anda yeni istek göndermeden önce biraz bekle."));
+          timedOut = true;
+          try {
+            const interruption = localEngine?.interruptGenerate?.();
+            if (interruption && typeof interruption.catch === "function") {
+              interruption.catch(() => {});
+            }
+          } catch (_) {
+            // Keep the timeout error as the primary, user-visible failure.
+          }
+          reject(new Error("Yerel AI " + phase + " için " + Math.round(timeoutMs / 1000) + " saniyede yanıt veremedi. Üretim durduruldu; modeli yeniden başlatıp tekrar deneyebilirsin."));
         }, timeoutMs);
       })
     ]);
   } finally {
     if (timeoutId) clearTimeout(timeoutId);
+    // Do not allow a late completion from an expired request to be mistaken
+    // for a successful foreground response.
+    if (timedOut) {
+      try { await localEngine?.interruptGenerate?.(); } catch (_) {}
+    }
   }
 }
 
