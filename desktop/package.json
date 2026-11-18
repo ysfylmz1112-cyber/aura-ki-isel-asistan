@@ -1,6 +1,6 @@
 {
   "name": "aura-desktop",
-  "version": "6.2.0",
+  "version": "6.2.1",
   "private": true,
   "description": "AURA local desktop AI assistant",
   "main": "main.cjs",
@@ -14,7 +14,8 @@
   },
   "dependencies": {
     "duck-duck-scrape": "2.2.7",
-    "qrcode": "1.5.4"
+    "qrcode": "1.5.4",
+    "electron-updater": "^6.6.2"
   },
   "devDependencies": {
     "electron": "44.5.0",
@@ -57,6 +58,14 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "AURA"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "ysfylmz1112-cyber",
+        "repo": "aura-ki-isel-asistan",
+        "releaseType": "release"
+      }
+    ]
   }
 }
