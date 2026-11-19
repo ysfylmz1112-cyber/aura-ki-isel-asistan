@@ -1037,6 +1037,8 @@ function toolDirectoryPrompt(query = "", mode = "chat") {
 
   const income=/kazanç modu|kazanc modu|aura üzerinden para kazan|aura uzerinden para kazan|aura ile para kazan|gelir amaçlı site|gelir amacli site|müşteri sitesi|musteri sitesi|işletme sitesi|isletme sitesi|restoran sitesi/.test(q);
   const marketing=/reklam|tanıtım|tanitim|kampanya|instagram|reels|shorts|video|afiş|sosyal medya|gönderi|gonderi|hikaye|story|pazarlama/.test(q);
+  const youtube=/youtube|shorts|kanal|video üret|video uret|video oluştur|video olustur|animasyonlu video/.test(q);
+  const inputControl=/tıkla|tikla|fare|mouse|klavye|tuş|tus|ekrana yaz|enter tuşu|tab tuşu/.test(q);
   const unity=/unity|kamyon|nakliye|oyun geliştir|oyun gelistir|oyun yap|oyun projesi|game dev/.test(q) || (isCodeMode(mode) && !income);
   const files=income || marketing || /dosya|klasör|klasor|kod|script|proje|oku|yaz|oluştur|olustur|düzenle|duzenle|sil|taşı|tasi|kopya|kopyala|build|derle|web sitesi|website|landing page/.test(q);
   const pc=/bilgisayar|pc|sistem|cpu|ram|gpu|disk|donanım|donanim|performans|çalışan|calisan|uygulama|program|oyun|masaüstü|masaustu/.test(q);
@@ -1052,6 +1054,8 @@ function toolDirectoryPrompt(query = "", mode = "chat") {
     "desktop_unity_build","desktop_unity_run_editor"
   ]);
   if(marketing) add(["desktop_marketing_create_kit"]);
+  if(youtube) add(["youtube_studio_get_profile","youtube_studio_save_profile","youtube_studio_create_plan","youtube_studio_list_plans","desktop_marketing_create_kit"]);
+  if(inputControl) add(["desktop_get_screen_context","desktop_get_foreground_window","desktop_capture_screen","desktop_mouse_click","desktop_keyboard_type","desktop_keyboard_key"]);
   if(files) add([
     "desktop_search_files","desktop_list_directory","desktop_read_text_file","desktop_write_text_file","desktop_create_file_snapshot","desktop_restore_file_snapshot",
     "desktop_create_directory","desktop_copy_path","desktop_move_path","desktop_delete_path",
@@ -1061,7 +1065,9 @@ function toolDirectoryPrompt(query = "", mode = "chat") {
     "desktop_scan_environment","desktop_get_environment_profile","desktop_get_usage_report",
     "desktop_get_hardware_metrics","desktop_get_system_info","desktop_list_drives",
     "desktop_get_running_apps","desktop_get_background_tasks",
-    "desktop_find_and_launch_app","desktop_close_app","desktop_restart_app","desktop_launch_app"
+    "desktop_find_and_launch_app","desktop_close_app","desktop_restart_app","desktop_launch_app",
+    "desktop_get_screen_context","desktop_get_foreground_window","desktop_capture_screen",
+    "desktop_mouse_click","desktop_keyboard_type","desktop_keyboard_key"
   ]);
   if(web) add(["desktop_web_research","desktop_web_search","desktop_fetch_web_page","desktop_get_weather"]);
   if(memory) add([
@@ -1117,8 +1123,9 @@ function buildAgentPlan(query, mode = "chat") {
   const destructive = /sil|kapat|kaldır|kaldir|taşı|tasi|değiştir|degistir|yaz|oluştur|olustur|çalıştır|calistir/.test(q);
 
   if (marketing) {
-    steps.push("reklam briefini ve gerçek işletme bilgilerini belirle", "özgün başlık, açıklama, çağrı ve seslendirme metni hazırla", "Instagram gönderisi ve hikâyesi SVG tasarımları üret", "animasyonlu dikey WebM tanıtım videosu oluştur", "dosyaları ve video çıktısını doğrula; yayınlama veya mesaj gönderme yapma");
+    steps.push("reklam/video briefini ve gerçek işletme veya kanal bilgilerini belirle", "özgün senaryo, başlık, açıklama ve sahne akışı hazırla", "uygun görsel ve animasyon çıktısını üret", "çıktı dosyalarını ve video biçimini doğrula", "yayınlama veya mesaj gönderme için ayrıca kullanıcı onayı bekle");
     toolHints.push("desktop_marketing_create_kit", "desktop_create_directory", "desktop_write_text_file", "desktop_open_path");
+    if (/youtube|shorts|kanal/.test(q)) toolHints.push("youtube_studio_get_profile", "youtube_studio_create_plan", "youtube_studio_list_plans");
   } else if (income) {
     steps.push("AURA-Gelir çalışma klasörünü ve mevcut şablonları kontrol et", "küçük işletme için özgün ve mobil uyumlu web sitesi taslağı üret", "HTML/CSS/JavaScript dosyalarını kaydet", "yerel dosya ve sözdizimi kontrollerini çalıştır", "demo ve kişiselleştirilmiş teklif metnini hazırla; yayınlama veya iletişim için kullanıcı onayı bekle");
     toolHints.push("desktop_list_directory", "desktop_create_directory", "desktop_write_text_file", "desktop_read_text_file", "desktop_run_powershell", "desktop_open_path", "desktop_income_create_site");
@@ -1581,7 +1588,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   let developerRepairRounds = 0;
   const maxDeveloperRepairRounds = 2;
   const developerTestFailures = new Map();
-  for(let round=0; round<5; round++){
+  for(let round=0; round<7; round++){
     agentRound = round + 1;
     let response;
     try {
