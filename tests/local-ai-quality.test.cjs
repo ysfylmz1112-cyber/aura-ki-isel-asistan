@@ -256,3 +256,17 @@ test("answer review skips non-factual chat and preserves long factual review", (
   assert.equal(sandbox.shouldReviewAnswer("Merhaba, nasılsın?", "İyiyim, teşekkürler."), false);
   assert.equal(sandbox.shouldReviewAnswer("Fotosentez nedir? " + "Ayrıntı ".repeat(70), "Bitkiler ışık enerjisini kullanır."), true);
 });
+
+test("generation timing records first token and total inference duration", () => {
+  assert.match(source, /const generationStartedAt = Date\.now\(\)/);
+  assert.match(source, /if \(partial && firstTokenAt === null\) firstTokenAt = Date\.now\(\)/);
+  assert.match(source, /timeToFirstTokenMs:/);
+  assert.match(source, /generationMs:/);
+  assert.match(source, /onProgress\(timing\)/);
+});
+
+test("renderer displays first-token and total generation timings", () => {
+  assert.ok(rendererSource.includes('p?.stage === "metrics"'));
+  assert.ok(rendererSource.includes("generationMetrics.timeToFirstTokenMs"));
+  assert.ok(rendererSource.includes("generationMetrics.generationMs"));
+});
