@@ -230,5 +230,5 @@ test("follow-up intent normalizes Turkish accents, punctuation and common varian
 });
 
 test("short follow-ups always request related project context", () => {
-  assert.match(source, /const needsRelatedContext = isShortFollowUp \\|\\|/);
+  assert.ok(source.includes("const needsRelatedContext = isShortFollowUp ||"));
 });
