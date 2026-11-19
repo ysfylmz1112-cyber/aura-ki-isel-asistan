@@ -1548,17 +1548,18 @@ function shouldReviewAnswer(question, answer) {
   const q = String(question || '').trim();
   const a = String(answer || '').trim();
   if (!q || !a) return false;
-  const factualQuestion = new RegExp('\\b(nedir|ne demek|kimdir|neresidir|neden|niçin|nasıl çalışır|nasıl oluşur|açıkla|örnek ver|örnekleri|hangi yıl|kim buldu)\\b', 'i').test(q.toLocaleLowerCase('tr-TR'));
+  const factualQuestion = new RegExp('\b(nedir|ne demek|kimdir|neresidir|neden|niçin|nasıl çalışır|nasıl oluşur|açıkla|örnek ver|örnekleri|hangi yıl|kim buldu)\b', 'i').test(q.toLocaleLowerCase('tr-TR'));
   if (!factualQuestion) return false;
   if (q.length > 500 || a.length < 55) return true;
   const stop = new Set(['nedir','neden','nasil','icin','olan','olarak','gibi','daha','veya','ile','bunu','bunun','hangi','eder','olur','yani']);
-  const normalize = text => String(text || '').toLocaleLowerCase('tr-TR').normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '').replace(/ı/g, 'i').replace(/[^a-z0-9\\s]/g, ' ').split(/\\s+/).filter(token => token.length >= 4 && !stop.has(token));
+  const normalize = text => String(text || '').toLocaleLowerCase('tr-TR').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/ı/g, 'i').replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(token => token.length >= 4 && !stop.has(token));
   const terms = [...new Set(normalize(q))];
   if (terms.length < 2) return false;
   const answerTerms = new Set(normalize(a));
   const overlap = terms.filter(term => answerTerms.has(term)).length / terms.length;
   return overlap < 0.2;
 }
+
 function resolveFollowUpIntent(message, history = []) {
   const value = String(message || "").trim();
   const normalizedValue = value.toLocaleLowerCase("tr-TR")
