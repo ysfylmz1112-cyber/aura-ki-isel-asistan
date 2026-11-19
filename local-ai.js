@@ -1056,10 +1056,10 @@ function compactMemory(memory, query = "") {
   const items = Array.isArray(memory) ? memory : [];
   const normalize = value => String(value || "")
     .toLocaleLowerCase("tr-TR")
-    .replace(/[^\\p{L}\\p{N}]+/gu, " ")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
   const stopWords = new Set(["ve","veya","ile","bir","bu","şu","o","ben","sen","biz","siz","için","gibi","mi","mı","mu","mü","ne","nasıl","nedir","da","de","çok","daha"]);
-  const queryTerms = normalize(query).split(/\\s+/).filter(word => word.length > 2 && !stopWords.has(word));
+  const queryTerms = normalize(query).split(/\s+/).filter(word => word.length > 2 && !stopWords.has(word));
   const ranked = items.map((item, index) => {
     const text = String(item?.text || "");
     const tags = Array.isArray(item?.tags) ? item.tags : [];
