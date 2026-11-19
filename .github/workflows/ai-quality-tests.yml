@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "local-ai.js"
+      - "index.html"
       - "tests/**"
       - "desktop/package.json"
       - ".github/workflows/ai-quality-tests.yml"
