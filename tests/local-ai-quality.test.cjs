@@ -74,6 +74,13 @@ test("short follow-up inherits the most recent user request", () => {
   assert.match(result.intentValue, /restoran için mobil uyumlu web sitesi/);
 });
 
+test("natural continuation variants are recognized", () => {
+  const previous = [{ role: "user", content: "AURA AI kalitesini geliştir" }];
+  for (const phrase of ["devam et", "daha da geliştir", "geliştirmeye devam et", "bunu da ekle", "daha fazla"]) {
+    assert.equal(sandbox.resolveFollowUpIntent(phrase, previous).isShortFollowUp, true, phrase);
+  }
+});
+
 test("standalone greetings do not inherit old task intent", () => {
   const result = sandbox.resolveFollowUpIntent("Merhaba", [
     { role: "user", content: "Unity oyunu geliştir" }
