@@ -1505,7 +1505,7 @@ function resolveFollowUpIntent(message, history = []) {
     ? [...history].reverse().find(item => item?.role === "user" && String(item.content || "").trim())
     : null;
   const isShortFollowUp = value.length <= 120 &&
-    /^(?:(?:bunu|şunu|sunu|onu|aynısını|aynisini|biraz daha|daha fazla|sonraki adım|sonraki adim|bu şekilde|bu sekilde)\s+)*(?:da\s+)?(?:devam(?: et| edelim)?|ekle|düzelt|duzelt|yap|tamamla|sürdür|surdur|ilerle|geliştir|gelistir|genişlet|genislet|iyileştir|iyilestir|kaldığın yerden devam et|kaldigin yerden devam et)\b/i.test(value);
+    /^(?:(?:bunu|şunu|sunu|onu|aynısını|aynisini|bu şekilde|bu sekilde|şimdi|simdi|daha da)\s+)*(?:da\s+)?(?:devam(?: et| edelim)?|geliştirmeye devam et|gelistirmeye devam et|çalışmaya devam et|calismaya devam et|ekle|düzelt|duzelt|yap|tamamla|sürdür|surdur|ilerle|geliştir|gelistir|genişlet|genislet|iyileştir|iyilestir|kaldığın yerden devam et|kaldigin yerden devam et|daha fazla|biraz daha|sonraki adım|sonraki adim)\b/i.test(value);
   const intentValue = isShortFollowUp && previousUserMessage
     ? (String(previousUserMessage.content || "") + " " + value).toLocaleLowerCase("tr-TR")
     : value.toLocaleLowerCase("tr-TR");
