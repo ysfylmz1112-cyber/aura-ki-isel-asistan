@@ -1,0 +1,33 @@
+name: AURA AI Quality Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "local-ai.js"
+      - "tests/**"
+      - "desktop/package.json"
+      - ".github/workflows/ai-quality-tests.yml"
+  pull_request:
+    paths:
+      - "local-ai.js"
+      - "tests/**"
+      - "desktop/package.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ai-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run deterministic AI quality tests
+        run: node --test tests/local-ai-quality.test.cjs
