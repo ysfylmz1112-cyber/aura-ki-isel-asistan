@@ -985,7 +985,7 @@ function compactLongUserRequest(text, maxChars = 6000) {
     "[UZUN İSTEK SIKIŞTIRILDI]",
     "Aşağıdaki metin kullanıcının uzun isteğinin bölüm başlıklarını ve ana gereksinimlerini koruyan sıkıştırılmış halidir. Eksik ayrıntıları uydurma; mevcut gereksinimlere göre ilerle.",
     output
-  ].join("\\n\\n");
+  ].join("\n\n");
 }
 
 function cleanMessages(history, options = {}) {
@@ -1058,22 +1058,37 @@ function compactMemory(memory, query = "") {
     .toLocaleLowerCase("tr-TR")
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
-  const stopWords = new Set(["ve","veya","ile","bir","bu","şu","o","ben","sen","biz","siz","için","gibi","mi","mı","mu","mü","ne","nasıl","nedir","da","de","çok","daha"]);
-  const queryTerms = normalize(query).split(/\s+/).filter(word => word.length > 2 && !stopWords.has(word));
+  const stopWords = new Set(["ve","veya","ile","bir","bu","şu","o","ben","sen","biz","siz","için","gibi","mi","mı","mu","mü","ne","nasıl","nedir","da","de","çok","daha","olan","olarak","şey","şeyi","bana","beni","senin","benim","şimdi","lütfen","acaba","yani","var","yok","ise","ama","fakat","ki","her","hem","çok"]);
+  const queryTerms = [...new Set(normalize(query).split(/\s+/).filter(word => word.length > 2 && !stopWords.has(word)))];
+  const explicitContext = /hatırla|hatirla|geçmiş|gecmis|önceki|onceki|daha önce|daha once|geçen hafta|gecen hafta|geçen gün|gecen gun|dün|dun|az önce|az once|konuşmuştuk|konusmustuk|bahsetmiştim|bahsetmistim|devam et|devam edelim|kaldığımız|kaldigimiz|aynı proje|ayni proje|son yaptığımız|son yaptigimiz|nerede kalmıştık|nerede kalmistik|sıradaki adım|siradaki adim|projemiz|planımız|planimiz/i.test(query);
+  if (!queryTerms.length && !explicitContext) return [];
+
   const ranked = items.map((item, index) => {
     const text = String(item?.text || "");
-    const tags = Array.isArray(item?.tags) ? item.tags : [];
-    const haystack = normalize(text + " " + tags.join(" "));
+    const tags = Array.isArray(item?.tags) ? item.tags.map(String) : [];
+    const textTokens = new Set(normalize(text).split(/\s+/).filter(Boolean));
+    const tagTokens = new Set(normalize(tags.join(" ")).split(/\s+/).filter(Boolean));
     let score = 0;
     for (const term of queryTerms) {
-      if (haystack.includes(term)) score += term.length >= 6 ? 3 : 1;
+      if (textTokens.has(term)) score += 3;
+      else if (tagTokens.has(term)) score += 5;
+      else if (textTokens.has(term.slice(0, -1)) && term.length > 5) score += 1;
     }
+    const phrase = normalize(query);
+    if (phrase.length >= 8 && normalize(text).includes(phrase)) score += 8;
     return { index, score, text, tags };
   });
-  ranked.sort((a, b) => b.score - a.score || b.index - a.index);
-  return ranked.slice(0, 10).sort((a, b) => a.index - b.index).map(({ text, tags }) => ({
-    text: text.slice(0, 420),
-    tags: tags.slice(0, 4)
+
+  const matched = ranked.filter(item => item.score > 0)
+    .sort((a, b) => b.score - a.score || b.index - a.index)
+    .slice(0, 6);
+  const selected = matched.length
+    ? matched
+    : (explicitContext ? ranked.sort((a, b) => b.index - a.index).slice(0, 2) : []);
+
+  return selected.map(({ text, tags }) => ({
+    text: text.slice(0, 340),
+    tags: tags.slice(0, 3)
   })).filter(item => item.text);
 }
 
@@ -1508,8 +1523,8 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   const previousUserMessage = Array.isArray(history)
     ? [...history].reverse().find(item => item?.role === "user" && String(item.content || "").trim())
     : null;
-  const isShortFollowUp = value.length <= 100 &&
-    /^(devam(?: et)?|ekle|düzelt|duzelt|bunu|şunu|sunu|onu|aynısını|aynisini|biraz daha|daha fazla|sonraki adım|sonraki adim|ilerle|yap|tamamla|sürdür|surdur)\b/i.test(value);
+  const isShortFollowUp = value.length <= 120 &&
+    /^(?:(?:bunu|şunu|sunu|onu|aynısını|aynisini|biraz daha|daha fazla|sonraki adım|sonraki adim|bu şekilde|bu sekilde)\\s+)*(?:da\\s+)?(?:devam(?: et| edelim)?|ekle|düzelt|duzelt|yap|tamamla|sürdür|surdur|ilerle|geliştir|gelistir|genişlet|genislet|iyileştir|iyilestir|kaldığın yerden devam et|kaldigin yerden devam et)\\b/i.test(value.trim());
   const intentValue = isShortFollowUp && previousUserMessage
     ? (String(previousUserMessage.content || "") + " " + value).toLocaleLowerCase("tr-TR")
     : lowerValue;
@@ -1562,7 +1577,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
 
   // Build the sample site with a deterministic local tool; do not spend minutes
   // generating large source files with the small on-device language model.
-  const incomeWebsiteIntent = incomeModeIntent && /(lavin|lavın|restoran|web sitesi|website|demo|site)/.test(lowerValue);
+  const incomeWebsiteIntent = incomeModeIntent && /(lavin|lavın|restoran|web sitesi|website|demo|site|devam|ekle|düzelt|duzelt|yap)/.test(intentValue);
   if (incomeWebsiteIntent) {
     if (!desktopAvailable()) return "Masaüstü ajanı bağlı değil. Kazanç Modu dosyaları oluşturmak için AURA masaüstü uygulamasını aç.";
     try {
@@ -1583,9 +1598,9 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   const localEngine = await ensureLocalAI(effectiveMode,onProgress);
   const memoryItems = compactMemory(memory, value);
   let memoryContext = memoryItems.length
-    ? "\nKALICI HAFIZA:\n" + JSON.stringify(memoryItems)
-    : "\nKALICI HAFIZA: boş.";
-  const needsRelatedContext = /hatırla|hatirla|geçmiş|gecmis|önceki|onceki|daha önce|daha once|geçen hafta|gecen hafta|geçen gün|gecen gun|dün|dun|az önce|az once|konuşmuştuk|konusmustuk|bahsetmiştim|bahsetmistim|devam et|kaldığımız|kaldigimiz|aynı proje|ayni proje|benim projem|aura|projem|planım|planim/i.test(intentValue);
+    ? "\nİLGİLİ KALICI HAFIZA:\n" + JSON.stringify(memoryItems)
+    : "";
+  const needsRelatedContext = /hatırla|hatirla|geçmiş|gecmis|önceki|onceki|daha önce|daha once|geçen hafta|gecen hafta|geçen gün|gecen gun|dün|dun|az önce|az once|konuşmuştuk|konusmustuk|bahsetmiştim|bahsetmistim|devam et|devam edelim|kaldığımız|kaldigimiz|aynı proje|ayni proje|benim projem|son yaptığımız|son yaptigimiz|nerede kalmıştık|nerede kalmistik|sıradaki adım|siradaki adim|planım|planim|kendini geliştir|kendini gelistir/i.test(intentValue);
   if (desktopAvailable() && value.trim() && needsRelatedContext) {
     try {
       const related = await desktopCall("desktop_relevant_context", { query: value, maxMemory: 5, maxConversations: 5 });
