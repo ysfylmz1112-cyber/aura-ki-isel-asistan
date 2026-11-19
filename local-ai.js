@@ -1505,10 +1505,18 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   if (!value) throw new Error("Mesaj boş.");
 
   const lowerValue = value.toLocaleLowerCase("tr-TR");
+  const previousUserMessage = Array.isArray(history)
+    ? [...history].reverse().find(item => item?.role === "user" && String(item.content || "").trim())
+    : null;
+  const isShortFollowUp = value.length <= 100 &&
+    /^(devam(?: et)?|ekle|düzelt|duzelt|bunu|şunu|sunu|onu|aynısını|aynisini|biraz daha|daha fazla|sonraki adım|sonraki adim|ilerle|yap|tamamla|sürdür|surdur)\b/i.test(value);
+  const intentValue = isShortFollowUp && previousUserMessage
+    ? (String(previousUserMessage.content || "") + " " + value).toLocaleLowerCase("tr-TR")
+    : lowerValue;
   const workspaceAccessIntent = /tüm\s+(pc|bilgisayar)|bilgisayarın\s+tamamı|tüm\s+bilgisayar|pc.*erişim|bilgisayar.*erişim|aura.*erişim.*alanı|erişim alanı|çalışma\s+alanı.*(?:erişim|izin)|klasör\s+seçme|klasör.*erişim\s+izni|proje\s+klasörüne.*erişim\s+izni|çalışma alanı ekle|klasör erişim izni/.test(lowerValue);
   const incomeModeIntent = /kazanç modu|kazanc modu|aura üzerinden para kazan|aura uzerinden para kazan|aura ile para kazan|gelir amaçlı site|gelir amacli site|müşteri sitesi|musteri sitesi|işletme sitesi|isletme sitesi|restoran sitesi/.test(lowerValue);
   const marketingModeIntent = /reklam|tanıtım|tanitim|kampanya|instagram|reels|shorts|video reklamı|video reklami|reklam videosu|afiş|sosyal medya|gönderi|gonderi|hikaye|story|pazarlama/.test(lowerValue);
-  const gameDevelopmentIntent = /unity|kamyon|nakliye|taşıma oyunu|tasima oyunu|oyun yap|oyun yapalım|oyun yapalim|oyun geliştir|oyun gelistir|oyun oluştur|oyun olustur|oyun yapmaya|game dev|game development|oyun projesi|oyun projesi oluştur|oyun projesi olustur/.test(lowerValue);
+  const gameDevelopmentIntent = /unity|kamyon|nakliye|taşıma oyunu|tasima oyunu|oyun yap|oyun yapalım|oyun yapalim|oyun geliştir|oyun gelistir|oyun oluştur|oyun olustur|oyun yapmaya|game dev|game development|oyun projesi|oyun projesi oluştur|oyun projesi olustur/.test(intentValue);
   const developmentIntent = mode === "code" || gameDevelopmentIntent || incomeModeIntent || marketingModeIntent || /kendini geliştir|kendini gelistir|kendi kodunu|kendi kaynak kodunu|aura geliştir|aura gelistir|aura iyileştir|aura iyilestir|self.?improv|self.?develop|proje oluştur|proje olustur|dosya oluştur|dosya olustur|dosya yaz|kod yaz|kodu düzelt|kodu duzelt|hata düzelt|hata duzelt|build al|derle|compile|script oluştur|script olustur|sahne oluştur|sahne olustur|component oluştur|component olustur|prefab oluştur|prefab olustur/.test(lowerValue);
   const effectiveMode = gameDevelopmentIntent ? "background-code" : (developmentIntent ? "code" : mode);
   const codeLikeMode = isCodeMode(effectiveMode);
@@ -1607,10 +1615,10 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
 
   const promptValue = compactLongUserRequest(value, effectiveMode==="background-code" ? 3600 : (codeLikeMode ? 4500 : 6000));
   const toolProtocol = wantsTools
-    ? "\nARAÇ PROTOKOLÜ: Gerektiğinde yalnızca tek JSON nesnesi üret: " + JSON.stringify({tool:"desktop_tool_name",args:{}}) + ". JSON dışında metin yazma. Araç sonucu gelince göreve devam et.\nKULLANILABİLEN ARAÇLAR:\n" + toolDirectoryPrompt(lowerValue,effectiveMode)
+    ? "\nARAÇ PROTOKOLÜ: Gerektiğinde yalnızca tek JSON nesnesi üret: " + JSON.stringify({tool:"desktop_tool_name",args:{}}) + ". JSON dışında metin yazma. Araç sonucu gelince göreve devam et.\nKULLANILABİLEN ARAÇLAR:\n" + toolDirectoryPrompt(intentValue,effectiveMode)
     : "";
 
-  let agentPlan = buildAgentPlan(value, effectiveMode);
+  let agentPlan = buildAgentPlan(isShortFollowUp && previousUserMessage ? String(previousUserMessage.content || "") + " " + value : value, effectiveMode);
     const availableToolNames = Array.isArray(TOOLS)
       ? TOOLS.map(tool => typeof tool === "string" ? tool : (tool?.function?.name || tool?.name)).filter(Boolean)
       : [];
