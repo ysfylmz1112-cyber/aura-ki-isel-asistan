@@ -26,7 +26,7 @@ const CODE_LARGE_MODEL_ID = "Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC";
 const CODE_FALLBACK_MODEL_ID = CODE_MODEL_ID;
 const WEB_MODEL_ID = CHAT_MODEL_ID;
 const DESKTOP_MODEL_ID = CHAT_MODEL_ID;
-const AURA_CORE_VERSION = '6.3.1';
+const AURA_CORE_VERSION = '6.3.2';
 
 function desktopAvailable() {
   return !!globalThis.auraDesktop?.isDesktop;
@@ -801,10 +801,44 @@ async function createEngine(modelId, config, onProgress) {
 // WebLLM inference can take longer on first use or with large prompts.
 // A timeout must interrupt the actual GPU generation too; Promise.race alone
 // only rejects the UI promise and leaves the model busy in the background.
-async function runChatCompletionWithTimeout(localEngine, options, timeoutMs, phase = "yanıt üretimi") {
+async function collectChatCompletionStream(stream, onToken = () => {}) {
+  let content = "";
+  const toolCalls = [];
+  let finishReason = null;
+  let usage = null;
+  for await (const chunk of stream) {
+    const choice = chunk?.choices?.[0];
+    const delta = choice?.delta || {};
+    if (typeof delta.content === "string" && delta.content) {
+      content += delta.content;
+      try { onToken(content); } catch (_) {}
+    }
+    if (Array.isArray(delta.tool_calls)) {
+      for (const part of delta.tool_calls) {
+        const index = Number.isInteger(part?.index) ? part.index : 0;
+        if (!toolCalls[index]) toolCalls[index] = { id: "", type: "function", function: { name: "", arguments: "" } };
+        const target = toolCalls[index];
+        if (part.id) target.id += part.id;
+        if (part.type) target.type = part.type;
+        if (part.function?.name) target.function.name += part.function.name;
+        if (part.function?.arguments) target.function.arguments += part.function.arguments;
+      }
+    }
+    if (choice?.finish_reason) finishReason = choice.finish_reason;
+    if (chunk?.usage) usage = chunk.usage;
+  }
+  return { choices: [{ index: 0, message: { role: "assistant", content, ...(toolCalls.length ? { tool_calls: toolCalls.filter(Boolean) } : {}) }, finish_reason: finishReason }], ...(usage ? { usage } : {}) };
+}
+
+// WebLLM inference can take longer on first use or with large prompts.
+// A timeout must interrupt the actual GPU generation too; Promise.race alone
+// only rejects the UI promise and leaves the model busy in the background.
+async function runChatCompletionWithTimeout(localEngine, options, timeoutMs, phase = "yanıt üretimi", onToken = () => {}) {
   let timeoutId;
   let timedOut = false;
-  const inference = localEngine.chat.completions.create(options);
+  const inference = options?.stream
+    ? collectChatCompletionStream(localEngine.chat.completions.create(options), onToken)
+    : localEngine.chat.completions.create(options);
   try {
     return await Promise.race([
       inference,
@@ -1662,8 +1696,10 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         temperature:codeLikeMode?0.16:0.25,
         top_p:codeLikeMode?0.82:0.85,
         max_tokens:effectiveMode==="background-code"?650:(effectiveMode==="code"?1000:640),
-        stream:false
-      }, inferenceTimeout, "yanıt üretimi");
+        stream:true
+      }, inferenceTimeout, "yanıt üretimi", (partialText) => {
+        try { onProgress({ stage:"generating", text:partialText, model:effectiveMode==="code" ? CODE_MODEL_ID : CHAT_MODEL_ID }); } catch (_) {}
+      });
     } catch (error) {
       const msg=String(error?.message||error);
       if (/context window|prompt tokens exceed|maximum context|context length|too many tokens/i.test(msg)) {
