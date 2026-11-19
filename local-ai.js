@@ -1003,6 +1003,17 @@ function compactLongUserRequest(text, maxChars = 6000) {
   ].join("\n\n");
 }
 
+function resolveAnswerTokenBudget(message, mode = "chat") {
+  if (mode === "background-code") return 650;
+  if (mode === "code") return 1000;
+  const value = String(message || "").trim();
+  const normalized = value.toLocaleLowerCase("tr-TR");
+  const asksForDepth = /uzun|detaylı|detayli|kapsamlı|kapsamli|ayrıntılı|ayrintili|adım adım|adim adim|tek tek|örneklerle|orneklerle|karşılaştır|karsilastir|analiz et|açıkla|acikla|rehber|rapor|plan hazırla|plan hazirla/.test(normalized);
+  if (asksForDepth || value.length > 500) return 640;
+  if (value.length <= 140) return 320;
+  return 448;
+}
+
 function cleanMessages(history, options = {}) {
   const codeLike = options.codeLike === true;
   const maxMessages = codeLike ? 6 : 12;
@@ -1703,7 +1714,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         messages,
         temperature:codeLikeMode?0.16:0.25,
         top_p:codeLikeMode?0.82:0.85,
-        max_tokens:effectiveMode==="background-code"?650:(effectiveMode==="code"?1000:640),
+        max_tokens:resolveAnswerTokenBudget(value,effectiveMode),
         stream:true
       }, inferenceTimeout, "yanıt üretimi", (partialText) => {
         try { onProgress({ stage:"generating", text:partialText, model:effectiveMode==="code" ? CODE_MODEL_ID : CHAT_MODEL_ID }); } catch (_) {}
