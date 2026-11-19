@@ -132,7 +132,7 @@ test("stream collector emits incremental text and returns a compatible final mes
   const emitted = [];
   const stream = (async function* () { for (const chunk of chunks) yield chunk; })();
   const sandbox = {};
-  vm.runInNewContext(streamHelpers + "\\nthis.collectChatCompletionStream = collectChatCompletionStream;", sandbox);
+  vm.runInNewContext(streamHelpers + "\nthis.collectChatCompletionStream = collectChatCompletionStream;", sandbox);
   const result = await sandbox.collectChatCompletionStream(stream, value => emitted.push(value));
   assert.deepEqual(emitted, ["Mer", "Merhaba"]);
   assert.equal(result.choices[0].message.content, "Merhaba");
@@ -141,19 +141,18 @@ test("stream collector emits incremental text and returns a compatible final mes
 
 test("stream collector reconstructs fragmented tool calls", async () => {
   const chunks = [
-    { choices: [{ delta: { tool_calls: [{ index: 0, id: "call_", type: "function", function: { name: "desktop_", arguments: "{\\"path\\":" } }] } }] },
-    { choices: [{ delta: { tool_calls: [{ index: 0, id: "abc", function: { name: "read_text_file", arguments: "\\"a.txt\\"}" } }] } }] }
+    { choices: [{ delta: { tool_calls: [{ index: 0, id: "call_", type: "function", function: { name: "desktop_", arguments: '{"path":' } }] } }] },
+    { choices: [{ delta: { tool_calls: [{ index: 0, id: "abc", function: { name: "read_text_file", arguments: '"a.txt"}' } }] } }] }
   ];
   const stream = (async function* () { for (const chunk of chunks) yield chunk; })();
   const sandbox = {};
-  vm.runInNewContext(streamHelpers + "\\nthis.collectChatCompletionStream = collectChatCompletionStream;", sandbox);
+  vm.runInNewContext(streamHelpers + "\nthis.collectChatCompletionStream = collectChatCompletionStream;", sandbox);
   const result = await sandbox.collectChatCompletionStream(stream);
   const call = result.choices[0].message.tool_calls[0];
   assert.equal(call.id, "call_abc");
   assert.equal(call.function.name, "desktop_read_text_file");
-  assert.equal(call.function.arguments, "{\\"path\\":\\"a.txt\\"}");
+  assert.equal(call.function.arguments, '{"path":"a.txt"}');
 });
-
 test("primary answer generation streams and renderer shows the live response", () => {
   assert.match(source, /stream:true/);
   assert.match(source, /collectChatCompletionStream/);
