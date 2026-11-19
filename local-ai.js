@@ -37,6 +37,8 @@ const SYSTEM_PROMPT = [
   "AURA: yerel Türkçe kişisel masaüstü AI asistanısın.",
   "Bilmediğin bilgiyi uydurma. Güncel bilgi gerekiyorsa web araştırma araçlarını kullan.",
   "Cevap kalitesi: Önce kullanıcının tam olarak ne sorduğunu belirle ve doğrudan onu yanıtla. Bilinen gerçekleri, tahminleri ve belirsiz noktaları birbirine karıştırma. Kaynak görmediysen kaynak veya doğrulama yaptığını iddia etme. Hesaplama ve mantık sorularında sonucu göndermeden önce işlemi kontrol et. Gereksiz tekrar, konu dışı örnek ve uydurma ayrıntı ekleme.",
+  "BAĞLAM VE TAKİP: Kullanıcının son mesajını önceki mesajlarla birlikte yorumla. 'onu', 'bunu', 'devam et', 'aynısını yap' gibi ifadelerde en yakın açık referansı kullan; eski bir konuyu yanlışlıkla yeni göreve taşıma. Kullanıcının daha önce belirttiği kısıtları ve tercihleri görevle ilgili olduklarında koru. Çelişki varsa en yeni açık talimatı esas al.",
+  "YANIT ÖZ DENETİMİ: Cevabı göndermeden önce sessizce şu kontrolleri yap: Soruyu gerçekten yanıtlıyor muyum? İstenen dil, uzunluk ve örnek sayısına uyuyor muyum? Önceki bağlamla çelişiyor muyum? Emin olmadığım bir şeyi gerçekmiş gibi mi yazıyorum? Hata varsa düzelt; kontrol sürecini kullanıcıya anlatma.",
   "PC, dosya, uygulama ve sistem işlemlerinde masaüstü ajanının güvenlik ve onay kurallarına uy; bunları aşma.",
   "Bilgisayar erişimi yalnızca izinli çalışma klasörleriyle sınırlıdır. Tüm sürücüleri, Windows, Program Files, AppData veya kimlik bilgisi klasörlerini tarama. Yeni klasör erişimi için desktop_choose_folder kullan; dosya yazma/silme ve PowerShell işlemlerinde gösterilen kullanıcı onayını bekle.",
   "Kalıcı hafızaya yalnızca kullanıcı açıkça hatırlamamı istediğinde yaz. Geçmiş konuşma sorularında konuşma geçmişini ara.",
@@ -988,7 +990,7 @@ function compactLongUserRequest(text, maxChars = 6000) {
 
 function cleanMessages(history, options = {}) {
   const codeLike = options.codeLike === true;
-  const maxMessages = codeLike ? 4 : 10;
+  const maxMessages = codeLike ? 6 : 12;
   const maxTotalChars = codeLike ? 5200 : 7600;
   const maxMessageChars = codeLike ? 1800 : 2400;
   const source = (Array.isArray(history) ? history : [])
@@ -1050,12 +1052,29 @@ async function executeTool(toolCall) {
   return desktopCall(name, parseArguments(toolCall?.function?.arguments));
 }
 
-function compactMemory(memory){
-  const items=Array.isArray(memory)?memory:[];
-  return items.slice(-10).map(x=>({
-    text:String(x?.text||"").slice(0,360),
-    tags:Array.isArray(x?.tags)?x.tags.slice(0,4):[]
-  })).filter(x=>x.text);
+function compactMemory(memory, query = "") {
+  const items = Array.isArray(memory) ? memory : [];
+  const normalize = value => String(value || "")
+    .toLocaleLowerCase("tr-TR")
+    .replace(/[^\\p{L}\\p{N}]+/gu, " ")
+    .trim();
+  const stopWords = new Set(["ve","veya","ile","bir","bu","şu","o","ben","sen","biz","siz","için","gibi","mi","mı","mu","mü","ne","nasıl","nedir","da","de","çok","daha"]);
+  const queryTerms = normalize(query).split(/\\s+/).filter(word => word.length > 2 && !stopWords.has(word));
+  const ranked = items.map((item, index) => {
+    const text = String(item?.text || "");
+    const tags = Array.isArray(item?.tags) ? item.tags : [];
+    const haystack = normalize(text + " " + tags.join(" "));
+    let score = 0;
+    for (const term of queryTerms) {
+      if (haystack.includes(term)) score += term.length >= 6 ? 3 : 1;
+    }
+    return { index, score, text, tags };
+  });
+  ranked.sort((a, b) => b.score - a.score || b.index - a.index);
+  return ranked.slice(0, 10).sort((a, b) => a.index - b.index).map(({ text, tags }) => ({
+    text: text.slice(0, 420),
+    tags: tags.slice(0, 4)
+  })).filter(item => item.text);
 }
 
 function toolDirectoryPrompt(query = "", mode = "chat") {
@@ -1554,15 +1573,16 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   }
 
   const localEngine = await ensureLocalAI(effectiveMode,onProgress);
-  const memoryItems = compactMemory(memory);
+  const memoryItems = compactMemory(memory, value);
   let memoryContext = memoryItems.length
     ? "\nKALICI HAFIZA:\n" + JSON.stringify(memoryItems)
     : "\nKALICI HAFIZA: boş.";
-  if (desktopAvailable() && value.trim()) {
+  const needsRelatedContext = /hatırla|hatirla|geçmiş|gecmis|önceki|onceki|daha önce|daha once|geçen hafta|gecen hafta|geçen gün|gecen gun|dün|dun|az önce|az once|konuşmuştuk|konusmustuk|bahsetmiştim|bahsetmistim|devam et|kaldığımız|kaldigimiz|aynı proje|ayni proje|benim projem|aura|projem|planım|planim/i.test(lowerValue);
+  if (desktopAvailable() && value.trim() && needsRelatedContext) {
     try {
       const related = await desktopCall("desktop_relevant_context", { query: value, maxMemory: 5, maxConversations: 5 });
       if (related && (related.memory?.length || related.conversations?.length)) {
-        memoryContext += "\nİLGİLİ GEÇMİŞ BAĞLAMI:\n" + JSON.stringify(related).slice(0, 7000);
+        memoryContext += "\\nİLGİLİ GEÇMİŞ BAĞLAMI:\\n" + JSON.stringify(related).slice(0, 5200);
       }
     } catch {}
   }
