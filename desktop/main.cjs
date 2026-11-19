@@ -3142,7 +3142,10 @@ app.whenReady().then(async()=>{
       'marketing-studio',
       'social-ad-assets',
       'animated-webm-video',
-      'youtube-shorts-studio-drafts'
+      'youtube-shorts-studio-drafts',
+      'unified-agent-orchestration',
+      'multi-step-agent-routing',
+      'pc-interaction-controls'
     ]
   }));
 
