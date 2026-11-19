@@ -1838,6 +1838,9 @@ async function run(q) {
 
   const myGeneration=++runGeneration;
   let streamingMessage = null;
+  // Token başına DOM/scroll işlemi yapmak yerine en fazla ~25 FPS güncelle.
+  // Son tam yanıt finish() içinde yine eksiksiz yazılır.
+  let lastStreamPaintAt = 0;
   busy = true;
   sendBtn.disabled = true;
   micBtn.disabled = true;
@@ -1953,11 +1956,13 @@ async function run(q) {
       ]),
       (p) => {
         if (p?.stage === "generating") {
+          const now = Date.now();
           const target = streamingMessage?.querySelector(".msgText");
-          if (target && myGeneration === runGeneration) {
+          if (target && myGeneration === runGeneration && (lastStreamPaintAt === 0 || now - lastStreamPaintAt >= 40)) {
             target.textContent = String(p.text || "Yanıt hazırlanıyor…");
             streamingMessage.classList.add("streaming");
             chat.scrollTop = chat.scrollHeight;
+            lastStreamPaintAt = now;
           }
           status.textContent = "● YANIT YAZILIYOR";
           aiEl.textContent = "YAZIYOR";
