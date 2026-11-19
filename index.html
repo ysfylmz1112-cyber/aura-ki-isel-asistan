@@ -879,7 +879,7 @@ function getLocalAIModel() {
 async function loadLocalAI() {
   if (localAIModule) return localAIModule;
   if (!localAIPromise) {
-    localAIPromise = import("./local-ai.js?v=6.3.1-corewarmup1").then((mod) => {
+    localAIPromise = import("./local-ai.js?v=6.3.2-stream1").then((mod) => {
       localAIModule = mod;
       return mod;
     });
@@ -996,9 +996,10 @@ function renderHistory() {
 function addMessage(kind, label, text) {
   chat.insertAdjacentHTML(
     "beforeend",
-    '<div class="msg ' + kind + '"><b>' + esc(label) + "</b> · " + esc(text) + "</div>"
+    '<div class="msg ' + kind + '"><b>' + esc(label) + '</b> · <span class="msgText">' + esc(text) + "</span></div>"
   );
   chat.scrollTop = chat.scrollHeight;
+  return chat.lastElementChild;
 }
 
 let speechFallbackTimer=null;
@@ -1110,9 +1111,15 @@ async function speak(text){
   },1200);
 }
 
-function finish(q, answer, usedAI = false) {
+function finish(q, answer, usedAI = false, existingMessage = null) {
   stopScanPoll();
-  addMessage("", "AURA", answer);
+  if (existingMessage?.isConnected) {
+    const textNode = existingMessage.querySelector(".msgText");
+    if (textNode) textNode.textContent = String(answer || "");
+    existingMessage.classList.remove("streaming");
+  } else {
+    addMessage("", "AURA", answer);
+  }
   if(hasDesktopAgent()){
     callDesktop("desktop_conversation_log",{
       user:String(q||""),
@@ -1835,6 +1842,8 @@ async function run(q) {
   micBtn.disabled = true;
   input.disabled = false;
   addMessage("me", "SEN", q);
+  const streamingMessage = addMessage("streaming", "AURA", "Yanıt hazırlanıyor…");
+  streamingMessage?.classList.add("streaming");
   input.value = "";
   status.textContent = "● ÇALIŞIYOR";
   setCoreState("thinking");
@@ -1942,6 +1951,18 @@ async function run(q) {
         { role: "assistant", content: item.a }
       ]),
       (p) => {
+        if (p?.stage === "generating") {
+          const target = streamingMessage?.querySelector(".msgText");
+          if (target && myGeneration === runGeneration) {
+            target.textContent = String(p.text || "Yanıt hazırlanıyor…");
+            streamingMessage.classList.add("streaming");
+            chat.scrollTop = chat.scrollHeight;
+          }
+          status.textContent = "● YANIT YAZILIYOR";
+          aiEl.textContent = "YAZIYOR";
+          subEl.textContent = "Yanıt canlı olarak oluşturuluyor...";
+          return;
+        }
         status.textContent = p?.percent != null ? "● MODEL " + p.percent + "%" : "● MODEL";
         aiEl.textContent = p?.percent != null ? p.percent + "%" : "YÜKLENİYOR";
         subEl.textContent = p?.text || "Yerel yapay zekâ hazırlanıyor...";
@@ -1953,8 +1974,9 @@ async function run(q) {
 
     aiEl.textContent = "YEREL";
     subEl.textContent = "Yerel model: " + getLocalAIModel();
-    if(myGeneration===runGeneration) finish(q, answer, true);
+    if(myGeneration===runGeneration) finish(q, answer, true, streamingMessage);
   } catch (error) {
+    streamingMessage?.remove();
     console.error("[AURA] cevap üretme hatası:", error);
     busy = false;
     sendBtn.disabled = false;
