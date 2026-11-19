@@ -17,40 +17,54 @@ const youtubeStudio = createYoutubeStudio({ getUserDataPath: () => app.getPath('
 
 function startAURAUpdater() {
   if (!app.isPackaged) return;
-  autoUpdater.autoDownload = false;
-  autoUpdater.autoInstallOnAppQuit = false;
 
-  autoUpdater.on('update-available', async (info) => {
-    const choice = await dialog.showMessageBox({
-      type: 'info',
-      title: 'AURA güncellemesi',
-      message: 'Yeni AURA sürümü hazır: ' + info.version,
-      detail: 'Güncellemeyi şimdi indirmek ister misin? Sohbetlerin ve kayıtların korunur.',
-      buttons: ['Şimdi indir', 'Daha sonra'],
-      defaultId: 0,
-      cancelId: 1
-    });
-    if (choice.response === 0) {
-      try { await autoUpdater.downloadUpdate(); }
-      catch (error) { console.error('[AURA updater] download failed:', error); }
+  // Güncellemeyi kullanıcı dosya indirip kurmadan arka planda hazırla.
+  // Kurulum, kullanıcı AURA'yı yeniden başlatmayı seçtiğinde veya uygulamadan
+  // normal şekilde çıktığında electron-updater tarafından tamamlanır.
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.allowDowngrade = false;
+
+  autoUpdater.on('checking-for-update', () => {
+    console.log('[AURA updater] checking for updates');
+  });
+
+  autoUpdater.on('update-available', (info) => {
+    console.log('[AURA updater] update available:', info.version);
+    try {
+      if (Notification.isSupported()) {
+        new Notification({
+          title: 'AURA güncellemesi',
+          body: 'AURA ' + info.version + ' arka planda indiriliyor.'
+        }).show();
+      }
+    } catch (error) {
+      console.warn('[AURA updater] notification failed:', error);
     }
+  });
+
+  autoUpdater.on('download-progress', (progress) => {
+    console.log('[AURA updater] download progress:', Math.round(progress.percent || 0) + '%');
   });
 
   autoUpdater.on('update-downloaded', async (info) => {
     const choice = await dialog.showMessageBox({
       type: 'info',
       title: 'AURA güncellemesi hazır',
-      message: 'AURA ' + info.version + ' indirildi.',
-      detail: 'Güncellemeyi tamamlamak için AURA yeniden başlatılacak. Açık çalışmalarını kaydet.',
-      buttons: ['Şimdi yeniden başlat', 'Sonra'],
+      message: 'AURA ' + info.version + ' güncellemesi indirildi ve kuruluma hazır.',
+      detail: 'Kurulumu tamamlamak için AURA yeniden başlatılacak. Şimdi yeniden başlatabilir veya çalışmalarını bitirip AURA’dan normal şekilde çıkabilirsin. Güncelleme çıkışta otomatik kurulur.',
+      buttons: ['Şimdi yeniden başlat', 'Daha sonra'],
       defaultId: 0,
-      cancelId: 1
+      cancelId: 1,
+      noLink: true
     });
-    if (choice.response === 0) autoUpdater.quitAndInstall();
+    if (choice.response === 0) {
+      autoUpdater.quitAndInstall(false, true);
+    }
   });
 
   autoUpdater.on('error', (error) => {
-    console.error('[AURA updater] update check failed:', error);
+    console.error('[AURA updater] update error:', error);
   });
 
   setTimeout(() => {
@@ -59,7 +73,6 @@ function startAURAUpdater() {
     });
   }, 8000);
 }
-
 // Chromium'un Electron içindeki Web Speech servisinin etkinleştirilmesini destekle.
 const PROD_URL = 'https://aura-ki-isel-asistan.vercel.app/';
 const ALLOWED_REMOTE_ORIGIN = 'https://aura-ki-isel-asistan.vercel.app';
