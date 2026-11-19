@@ -21,12 +21,13 @@ const streamHelpers = extract("async function collectChatCompletionStream(", "\n
 
 const helpers = [
   extract("function compactMemory(", "\nfunction toolDirectoryPrompt"),
+  extract("function resolveAnswerTokenBudget(", "\nfunction cleanMessages"),
   extract("function cleanMessages(", "\nfunction compactEnvironment"),
   extract("function resolveFollowUpIntent(", "\nexport async function askLocalAI")
 ].join("\n");
 
 const sandbox = {};
-vm.runInNewContext(helpers + "\nthis.compactMemory = compactMemory; this.cleanMessages = cleanMessages; this.resolveFollowUpIntent = resolveFollowUpIntent;", sandbox);
+vm.runInNewContext(helpers + "\nthis.compactMemory = compactMemory; this.cleanMessages = cleanMessages; this.resolveFollowUpIntent = resolveFollowUpIntent; this.resolveAnswerTokenBudget = resolveAnswerTokenBudget;", sandbox);
 
 test("ordinary factual questions do not receive unrelated saved memories", () => {
   const memories = [
@@ -231,4 +232,14 @@ test("follow-up intent normalizes Turkish accents, punctuation and common varian
 
 test("short follow-ups always request related project context", () => {
   assert.ok(source.includes("const needsRelatedContext = isShortFollowUp ||"));
+});
+
+
+test("adaptive token budget keeps short answers fast and detailed requests complete", () => {
+  assert.equal(sandbox.resolveAnswerTokenBudget("Merhaba"), 320);
+  assert.equal(sandbox.resolveAnswerTokenBudget("Fotosentez nedir?"), 320);
+  assert.equal(sandbox.resolveAnswerTokenBudget("Bu konuyu adım adım ve detaylı açıkla"), 640);
+  assert.equal(sandbox.resolveAnswerTokenBudget("A".repeat(501)), 640);
+  assert.equal(sandbox.resolveAnswerTokenBudget("Kod yaz", "code"), 1000);
+  assert.equal(sandbox.resolveAnswerTokenBudget("Oyun geliştir", "background-code"), 650);
 });
