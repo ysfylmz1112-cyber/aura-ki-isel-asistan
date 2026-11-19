@@ -1056,6 +1056,9 @@ function compactMemory(memory, query = "") {
   const items = Array.isArray(memory) ? memory : [];
   const normalize = value => String(value || "")
     .toLocaleLowerCase("tr-TR")
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .replace(/ı/g, "i")
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
   const stopWords = new Set(["ve","veya","ile","bir","bu","şu","o","ben","sen","biz","siz","için","gibi","mi","mı","mu","mü","ne","nasıl","nedir","da","de","çok","daha","olan","olarak","şey","şeyi","bana","beni","senin","benim","şimdi","lütfen","acaba","yani","var","yok","ise","ama","fakat","ki","her","hem","çok"]);
@@ -1072,7 +1075,7 @@ function compactMemory(memory, query = "") {
     for (const term of queryTerms) {
       if (textTokens.has(term)) score += 3;
       else if (tagTokens.has(term)) score += 5;
-      else if (textTokens.has(term.slice(0, -1)) && term.length > 5) score += 1;
+      else if (term.length > 5 && [...textTokens].some(token => token.length > 4 && (token.startsWith(term) || term.startsWith(token)))) score += 1;
     }
     const phrase = normalize(query);
     if (phrase.length >= 8 && normalize(text).includes(phrase)) score += 8;
