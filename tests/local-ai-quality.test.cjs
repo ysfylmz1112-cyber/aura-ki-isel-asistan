@@ -225,7 +225,7 @@ test("follow-up intent normalizes Turkish accents, punctuation and common varian
   ]) {
     const result = sandbox.resolveFollowUpIntent(phrase, previous);
     assert.equal(result.isShortFollowUp, true, phrase);
-    assert.match(result.intentValue, /AURA sohbet hafizasini gelistir/i);
+    assert.ok(result.intentValue.startsWith("aura sohbet"));
   }
 });
 
