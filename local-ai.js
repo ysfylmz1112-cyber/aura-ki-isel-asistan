@@ -1044,7 +1044,7 @@ function compactMemory(memory, query = "") {
     .trim();
   const stopWords = new Set(["ve","veya","ile","bir","bu","şu","o","ben","sen","biz","siz","için","gibi","mi","mı","mu","mü","ne","nasıl","nedir","da","de","çok","daha","olan","olarak","şey","şeyi","bana","beni","senin","benim","şimdi","lütfen","acaba","yani","var","yok","ise","ama","fakat","ki","her","hem","çok"]);
   const queryTerms = [...new Set(normalize(query).split(/\s+/).filter(word => word.length > 2 && !stopWords.has(word)))];
-  const explicitContext = /hatırla|hatirla|geçmiş|gecmis|önceki|onceki|daha önce|daha once|geçen hafta|gecen hafta|geçen gün|gecen gun|dün|dun|az önce|az once|konuşmuştuk|konusmustuk|bahsetmiştim|bahsetmistim|devam et|devam edelim|kaldığımız|kaldigimiz|aynı proje|ayni proje|son yaptığımız|son yaptigimiz|nerede kalmıştık|nerede kalmistik|sıradaki adım|siradaki adim|projemiz|planımız|planimiz/i.test(query);
+  const explicitContext = /hatırla|hatirla|geçmiş|gecmis|önceki|onceki|daha önce|daha once|geçen hafta|gecen hafta|geçen gün|gecen gun|dün|dun|az önce|az once|konuşmuştuk|konusmustuk|bahsetmiştim|bahsetmistim|devam et|devam edelim|kaldığımız|kaldigimiz|aynı proje|ayni proje|son yaptığımız|son yaptigimiz|ne yapmıştık|ne yapmistik|ne yapıyorduk|ne yapiyorduk|hangi noktadaydık|hangi noktadaydik|nerede kalmıştık|nerede kalmistik|sıradaki adım|siradaki adim|projemiz|planımız|planimiz/i.test(query);
   if (!queryTerms.length && !explicitContext) return [];
 
   const ranked = items.map((item, index) => {
@@ -1591,7 +1591,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   let memoryContext = memoryItems.length
     ? "\nİLGİLİ KALICI HAFIZA:\n" + JSON.stringify(memoryItems)
     : "";
-  const needsRelatedContext = /hatırla|hatirla|geçmiş|gecmis|önceki|onceki|daha önce|daha once|geçen hafta|gecen hafta|geçen gün|gecen gun|dün|dun|az önce|az once|konuşmuştuk|konusmustuk|bahsetmiştim|bahsetmistim|devam et|devam edelim|kaldığımız|kaldigimiz|aynı proje|ayni proje|benim projem|son yaptığımız|son yaptigimiz|nerede kalmıştık|nerede kalmistik|sıradaki adım|siradaki adim|planım|planim|kendini geliştir|kendini gelistir/i.test(intentValue);
+  const needsRelatedContext = /hatırla|hatirla|geçmiş|gecmis|önceki|onceki|daha önce|daha once|geçen hafta|gecen hafta|geçen gün|gecen gun|dün|dun|az önce|az once|konuşmuştuk|konusmustuk|bahsetmiştim|bahsetmistim|devam et|devam edelim|kaldığımız|kaldigimiz|aynı proje|ayni proje|benim projem|son yaptığımız|son yaptigimiz|ne yapmıştık|ne yapmistik|ne yapıyorduk|ne yapiyorduk|hangi noktadaydık|hangi noktadaydik|nerede kalmıştık|nerede kalmistik|sıradaki adım|siradaki adim|planım|planim|kendini geliştir|kendini gelistir/i.test(intentValue);
   if (desktopAvailable() && value.trim() && needsRelatedContext) {
     try {
       const related = await desktopCall("desktop_relevant_context", { query: intentValue, maxMemory: 5, maxConversations: 5 });
