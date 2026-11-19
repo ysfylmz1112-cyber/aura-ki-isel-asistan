@@ -1535,11 +1535,19 @@ function assistantToolResultMessage(toolCall, result) {
 
 function resolveFollowUpIntent(message, history = []) {
   const value = String(message || "").trim();
+  const normalizedValue = value.toLocaleLowerCase("tr-TR")
+    .normalize("NFKD")
+    .replace(/[\\u0300-\\u036f]/g, "")
+    .replace(/ı/g, "i")
+    .replace(/[.!?]+$/g, "")
+    .trim();
   const previousUserMessage = Array.isArray(history)
     ? [...history].reverse().find(item => item?.role === "user" && String(item.content || "").trim())
     : null;
-  const isShortFollowUp = value.length <= 120 &&
-    /^(?:(?:bunu|şunu|sunu|onu|aynısını|aynisini|bu şekilde|bu sekilde|şimdi|simdi|daha da)\s+)*(?:da\s+)?(?:devam(?: et| edelim)?|geliştirmeye devam et|gelistirmeye devam et|çalışmaya devam et|calismaya devam et|ekle|düzelt|duzelt|yap|tamamla|sürdür|surdur|ilerle|geliştir|gelistir|genişlet|genislet|iyileştir|iyilestir|kaldığın yerden devam et|kaldigin yerden devam et|daha fazla|biraz daha|sonraki adım|sonraki adim)\b/i.test(value);
+  // Turkish diacritics are normalized first, so common spelling variants
+  // share one intent matcher instead of maintaining duplicate regex branches.
+  const isShortFollowUp = normalizedValue.length <= 140 &&
+    /^(?:(?:bunu|sunu|onu|aynisini|bu sekilde|simdi|daha da|biraz daha|ayni sekilde)\\s+)*(?:da\\s+)?(?:devam(?: et| edelim|ini getir|ini yap)?|gelistirmeye devam et|calismaya devam et|ekle|duzelt|yap|tamamla|surdur|ilerle|gelistir|genislet|iyilestir|kaldigin yerden devam et|devamini getir|daha fazla|biraz daha|sonraki adim|uzun sursun)\\b$/.test(normalizedValue);
   const intentValue = isShortFollowUp && previousUserMessage
     ? (String(previousUserMessage.content || "") + " " + value).toLocaleLowerCase("tr-TR")
     : value.toLocaleLowerCase("tr-TR");
@@ -1625,7 +1633,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   let memoryContext = memoryItems.length
     ? "\nİLGİLİ KALICI HAFIZA:\n" + JSON.stringify(memoryItems)
     : "";
-  const needsRelatedContext = /hatırla|hatirla|geçmiş|gecmis|önceki|onceki|daha önce|daha once|geçen hafta|gecen hafta|geçen gün|gecen gun|dün|dun|az önce|az once|konuşmuştuk|konusmustuk|bahsetmiştim|bahsetmistim|devam et|devam edelim|kaldığımız|kaldigimiz|aynı proje|ayni proje|benim projem|son yaptığımız|son yaptigimiz|ne yapmıştık|ne yapmistik|ne yapıyorduk|ne yapiyorduk|hangi noktadaydık|hangi noktadaydik|nerede kalmıştık|nerede kalmistik|sıradaki adım|siradaki adim|planım|planim|kendini geliştir|kendini gelistir/i.test(intentValue);
+  const needsRelatedContext = isShortFollowUp || /hatırla|hatirla|geçmiş|gecmis|önceki|onceki|daha önce|daha once|geçen hafta|gecen hafta|geçen gün|gecen gun|dün|dun|az önce|az once|konuşmuştuk|konusmustuk|bahsetmiştim|bahsetmistim|devam et|devam edelim|kaldığımız|kaldigimiz|aynı proje|ayni proje|benim projem|son yaptığımız|son yaptigimiz|ne yapmıştık|ne yapmistik|ne yapıyorduk|ne yapiyorduk|hangi noktadaydık|hangi noktadaydik|nerede kalmıştık|nerede kalmistik|sıradaki adım|siradaki adim|planım|planim|kendini geliştir|kendini gelistir/i.test(intentValue);
   if (desktopAvailable() && value.trim() && needsRelatedContext) {
     try {
       const related = await desktopCall("desktop_relevant_context", { query: intentValue, maxMemory: 5, maxConversations: 5 });
