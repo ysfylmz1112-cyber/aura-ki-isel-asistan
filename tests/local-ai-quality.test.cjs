@@ -167,3 +167,46 @@ test("stream placeholder is created only after direct command routing", () => {
   assert.ok(directReturn > runStart);
   assert.ok(streamStart > directReturn);
 });
+
+
+test("stream collector preserves independent tool-call indexes", async () => {
+  const chunks = [
+    { choices: [{ delta: { tool_calls: [
+      { index: 0, id: "call_a", type: "function", function: { name: "first", arguments: "{}" } },
+      { index: 1, id: "call_b", type: "function", function: { name: "second", arguments: '{"ok":true}' } }
+    ] } }] }
+  ];
+  const stream = (async function* () { for (const chunk of chunks) yield chunk; })();
+  const sandbox = {};
+  vm.runInNewContext(streamHelpers + "\nthis.collectChatCompletionStream = collectChatCompletionStream;", sandbox);
+  const result = await sandbox.collectChatCompletionStream(stream);
+  const calls = result.choices[0].message.tool_calls;
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].function.name, "first");
+  assert.equal(calls[1].function.name, "second");
+  assert.equal(calls[1].function.arguments, '{"ok":true}');
+});
+
+test("empty stream returns a valid empty assistant message", async () => {
+  const stream = (async function* () {})();
+  const sandbox = {};
+  vm.runInNewContext(streamHelpers + "\nthis.collectChatCompletionStream = collectChatCompletionStream;", sandbox);
+  const result = await sandbox.collectChatCompletionStream(stream);
+  assert.equal(result.choices[0].message.content, "");
+  assert.equal(result.choices[0].message.role, "assistant");
+});
+
+test("stream collector propagates iterator errors instead of returning partial success", async () => {
+  const stream = (async function* () {
+    yield { choices: [{ delta: { content: "yarım" } }] };
+    throw new Error("stream transport failed");
+  })();
+  const sandbox = {};
+  vm.runInNewContext(streamHelpers + "\nthis.collectChatCompletionStream = collectChatCompletionStream;", sandbox);
+  await assert.rejects(() => sandbox.collectChatCompletionStream(stream), /stream transport failed/);
+});
+
+test("renderer throttles token paints while final answer remains complete", () => {
+  assert.match(rendererSource, /lastStreamPaintAt === 0 \|\| now - lastStreamPaintAt >= 40/);
+  assert.ok(rendererSource.includes("finish(q, answer, true, streamingMessage)"));
+});
