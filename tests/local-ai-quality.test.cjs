@@ -23,11 +23,12 @@ const helpers = [
   extract("function compactMemory(", "\nfunction toolDirectoryPrompt"),
   extract("function resolveAnswerTokenBudget(", "\nfunction cleanMessages"),
   extract("function cleanMessages(", "\nfunction compactEnvironment"),
+  extract("function shouldReviewAnswer(", "\nfunction resolveFollowUpIntent"),
   extract("function resolveFollowUpIntent(", "\nexport async function askLocalAI")
 ].join("\n");
 
 const sandbox = {};
-vm.runInNewContext(helpers + "\nthis.compactMemory = compactMemory; this.cleanMessages = cleanMessages; this.resolveFollowUpIntent = resolveFollowUpIntent; this.resolveAnswerTokenBudget = resolveAnswerTokenBudget;", sandbox);
+vm.runInNewContext(helpers + "\nthis.compactMemory = compactMemory; this.cleanMessages = cleanMessages; this.resolveFollowUpIntent = resolveFollowUpIntent; this.resolveAnswerTokenBudget = resolveAnswerTokenBudget; this.shouldReviewAnswer = shouldReviewAnswer;", sandbox);
 
 test("ordinary factual questions do not receive unrelated saved memories", () => {
   const memories = [
@@ -243,4 +244,15 @@ test("adaptive token budget keeps short answers fast and detailed requests compl
   assert.equal(sandbox.resolveAnswerTokenBudget("A".repeat(501)), 640);
   assert.equal(sandbox.resolveAnswerTokenBudget("Kod yaz", "code"), 1000);
   assert.equal(sandbox.resolveAnswerTokenBudget("Oyun geliştir", "background-code"), 650);
+});
+
+test("factual answer review catches short empty and clearly unrelated drafts", () => {
+  assert.equal(sandbox.shouldReviewAnswer("Fotosentez nedir?", "Bitkilerin ışık enerjisini kullanarak besin üretme sürecidir."), false);
+  assert.equal(sandbox.shouldReviewAnswer("Fotosentez nedir?", "Bu konu oldukça önemlidir ve günlük yaşamda sıkça karşımıza çıkar."), true);
+  assert.equal(sandbox.shouldReviewAnswer("Fotosentez nedir?", "Kısa."), true);
+});
+
+test("answer review skips non-factual chat and preserves long factual review", () => {
+  assert.equal(sandbox.shouldReviewAnswer("Merhaba, nasılsın?", "İyiyim, teşekkürler."), false);
+  assert.equal(sandbox.shouldReviewAnswer("Fotosentez nedir? " + "Ayrıntı ".repeat(70), "Bitkiler ışık enerjisini kullanır."), true);
 });
