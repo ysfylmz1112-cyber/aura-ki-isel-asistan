@@ -1948,6 +1948,7 @@ async function run(q) {
 
     streamingMessage = addMessage("streaming", "AURA", "Yanıt hazırlanıyor…");
     streamingMessage?.classList.add("streaming");
+    let generationMetrics = null;
     const answer = await callLocalAI(
       q,
       history.slice(0, 8).reverse().flatMap((item) => [
@@ -1955,6 +1956,10 @@ async function run(q) {
         { role: "assistant", content: item.a }
       ]),
       (p) => {
+        if (p?.stage === "metrics") {
+          generationMetrics = p;
+          return;
+        }
         if (p?.stage === "generating") {
           const now = Date.now();
           const shouldPaint = lastStreamPaintAt === 0 || now - lastStreamPaintAt >= 40;
@@ -1983,7 +1988,16 @@ async function run(q) {
 
     aiEl.textContent = "YEREL";
     subEl.textContent = "Yerel model: " + getLocalAIModel();
-    if(myGeneration===runGeneration) finish(q, answer, true, streamingMessage);
+    if(myGeneration===runGeneration) {
+      finish(q, answer, true, streamingMessage);
+      if (generationMetrics) {
+        const firstToken = generationMetrics.timeToFirstTokenMs == null
+          ? "ölçülemedi"
+          : (generationMetrics.timeToFirstTokenMs / 1000).toFixed(2) + " sn";
+        const total = (generationMetrics.generationMs / 1000).toFixed(2) + " sn";
+        subEl.textContent = "Yerel model: " + getLocalAIModel() + " · İlk yanıt: " + firstToken + " · Üretim: " + total;
+      }
+    }
   } catch (error) {
     streamingMessage?.remove();
     console.error("[AURA] cevap üretme hatası:", error);
