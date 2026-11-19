@@ -210,3 +210,25 @@ test("renderer throttles token paints while final answer remains complete", () =
   assert.match(rendererSource, /lastStreamPaintAt === 0 \|\| now - lastStreamPaintAt >= 40/);
   assert.ok(rendererSource.includes("finish(q, answer, true, streamingMessage)"));
 });
+
+
+test("follow-up intent normalizes Turkish accents, punctuation and common variants", () => {
+  const previous = [{ role: "user", content: "AURA sohbet hafızasını geliştir" }];
+  for (const phrase of [
+    "Bunu da ekle!",
+    "Şunu düzelt.",
+    "Aynı şekilde devam et",
+    "Kaldığın yerden devam et",
+    "Devamını getir",
+    "Biraz daha geliştir",
+    "Uzun sürsün"
+  ]) {
+    const result = sandbox.resolveFollowUpIntent(phrase, previous);
+    assert.equal(result.isShortFollowUp, true, phrase);
+    assert.match(result.intentValue, /AURA sohbet hafizasini gelistir/i);
+  }
+});
+
+test("short follow-ups always request related project context", () => {
+  assert.match(source, /const needsRelatedContext = isShortFollowUp \\|\\|/);
+});
