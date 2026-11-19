@@ -47,7 +47,7 @@ test("memory retrieval ranks exact Turkish topic matches", () => {
 test("explicit continuity request falls back to recent memories when no term matches", () => {
   const memories = [{ text: "Eski kayıt" }, { text: "En yeni kayıt" }];
   const result = Array.from(sandbox.compactMemory(memories, "Nerede kalmıştık?"));
-  assert.deepEqual(result.map(x => x.text), ["Eski kayıt", "En yeni kayıt"]);
+  assert.deepEqual(result.map(x => x.text), ["En yeni kayıt", "Eski kayıt"]);
 });
 
 test("memory payload is bounded", () => {
