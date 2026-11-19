@@ -1837,13 +1837,12 @@ async function run(q) {
   if (!q || busy) return;
 
   const myGeneration=++runGeneration;
+  let streamingMessage = null;
   busy = true;
   sendBtn.disabled = true;
   micBtn.disabled = true;
   input.disabled = false;
   addMessage("me", "SEN", q);
-  const streamingMessage = addMessage("streaming", "AURA", "Yanıt hazırlanıyor…");
-  streamingMessage?.classList.add("streaming");
   input.value = "";
   status.textContent = "● ÇALIŞIYOR";
   setCoreState("thinking");
@@ -1944,6 +1943,8 @@ async function run(q) {
       return;
     }
 
+    streamingMessage = addMessage("streaming", "AURA", "Yanıt hazırlanıyor…");
+    streamingMessage?.classList.add("streaming");
     const answer = await callLocalAI(
       q,
       history.slice(0, 8).reverse().flatMap((item) => [
