@@ -257,6 +257,18 @@ test("answer review skips non-factual chat and preserves long factual review", (
   assert.equal(sandbox.shouldReviewAnswer("Fotosentez nedir? " + "Ayrıntı ".repeat(70), "Bitkiler ışık enerjisini kullanır."), true);
 });
 
+test("factual review recognizes common Turkish who-when-where-how-many questions", () => {
+  for (const question of [
+    "Türkiye'nin başkenti nerede bulunur?",
+    "Cumhuriyet ne zaman ilan edildi?",
+    "Bir insanın kaç kemiği vardır?",
+    "Dünya'nın en büyük okyanusu hangisidir?",
+    "Fotosentez ne işe yarar?"
+  ]) {
+    assert.equal(sandbox.shouldReviewAnswer(question, "Bu yanıt konuya yeterince değinmiyor ve soruyu doğrudan açıklamıyor."), true, question);
+  }
+});
+
 test("generation timing records first token and total inference duration", () => {
   assert.match(source, /const generationStartedAt = Date\.now\(\)/);
   assert.match(source, /if \(partial && firstTokenAt === null\) firstTokenAt = Date\.now\(\)/);
