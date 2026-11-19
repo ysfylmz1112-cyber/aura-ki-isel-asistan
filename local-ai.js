@@ -36,6 +36,7 @@ const MODEL_ID = CHAT_MODEL_ID;
 const SYSTEM_PROMPT = [
   "AURA: yerel Türkçe kişisel masaüstü AI asistanısın.",
   "Bilmediğin bilgiyi uydurma. Güncel bilgi gerekiyorsa web araştırma araçlarını kullan.",
+  "Cevap kalitesi: Önce kullanıcının tam olarak ne sorduğunu belirle ve doğrudan onu yanıtla. Bilinen gerçekleri, tahminleri ve belirsiz noktaları birbirine karıştırma. Kaynak görmediysen kaynak veya doğrulama yaptığını iddia etme. Hesaplama ve mantık sorularında sonucu göndermeden önce işlemi kontrol et. Gereksiz tekrar, konu dışı örnek ve uydurma ayrıntı ekleme.",
   "PC, dosya, uygulama ve sistem işlemlerinde masaüstü ajanının güvenlik ve onay kurallarına uy; bunları aşma.",
   "Bilgisayar erişimi yalnızca izinli çalışma klasörleriyle sınırlıdır. Tüm sürücüleri, Windows, Program Files, AppData veya kimlik bilgisi klasörlerini tarama. Yeni klasör erişimi için desktop_choose_folder kullan; dosya yazma/silme ve PowerShell işlemlerinde gösterilen kullanıcı onayını bekle.",
   "Kalıcı hafızaya yalnızca kullanıcı açıkça hatırlamamı istediğinde yaz. Geçmiş konuşma sorularında konuşma geçmişini ara.",
@@ -984,14 +985,39 @@ function compactLongUserRequest(text, maxChars = 6000) {
   ].join("\\n\\n");
 }
 
-function cleanMessages(history) {
-  return (Array.isArray(history) ? history : [])
+function cleanMessages(history, options = {}) {
+  const codeLike = options.codeLike === true;
+  const maxMessages = codeLike ? 4 : 10;
+  const maxTotalChars = codeLike ? 5200 : 7600;
+  const maxMessageChars = codeLike ? 1800 : 2400;
+  const source = (Array.isArray(history) ? history : [])
     .filter(m => m && (m.role === "user" || m.role === "assistant"))
-    .slice(-2)
-    .map(m => ({
-      role:m.role,
-      content:String(m.content || "").slice(0,480)
-    }));
+    .slice(-maxMessages);
+
+  // En yeni konuşma sırası korunur. Toplam bağlam bütçesi aşılırsa
+  // en eski mesajlar çıkarılır; tek bir uzun mesaj tüm geçmişi tüketemez.
+  const selected = [];
+  let usedChars = 0;
+  for (let i = source.length - 1; i >= 0; i--) {
+    const item = source[i];
+    let content = String(item.content || "").trim();
+    if (!content) continue;
+    if (content.length > maxMessageChars) {
+      content = content.slice(-maxMessageChars);
+    }
+    const separatorCost = selected.length ? 32 : 0;
+    if (usedChars + content.length + separatorCost > maxTotalChars) {
+      // Son kullanıcı/yanıt bağlamını koru; daha eski mesajları bırak.
+      if (!selected.length) {
+        content = content.slice(-maxTotalChars);
+      } else {
+        break;
+      }
+    }
+    selected.push({ role:item.role, content });
+    usedChars += content.length + separatorCost;
+  }
+  return selected.reverse();
 }
 
 function compactEnvironment(environment) {
@@ -1580,7 +1606,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
           : "\nGENEL SOHBET KURALI: Bu istek bir bilgisayar/araç görevi değilse araç planı üretme. Sorulan bilgiye doğrudan, doğru ve sade Türkçe cevap ver; kullanıcının istediği örnek sayısına uy. Konuyla ilgisiz teknoloji, veri kümesi, entegrasyon veya kurumsal ifadeler uydurma.") +
         toolProtocol
     },
-    ...cleanMessages(codeLikeMode ? history.slice(-2) : history),
+    ...cleanMessages(history, { codeLike: codeLikeMode }),
     { role:"user", content:promptValue }
   ];
 
@@ -1598,7 +1624,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         messages,
         temperature:codeLikeMode?0.16:0.25,
         top_p:codeLikeMode?0.82:0.85,
-        max_tokens:effectiveMode==="background-code"?650:(effectiveMode==="code"?900:320),
+        max_tokens:effectiveMode==="background-code"?650:(effectiveMode==="code"?1000:640),
         stream:false
       }, inferenceTimeout, "yanıt üretimi");
     } catch (error) {
