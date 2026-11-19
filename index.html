@@ -1957,16 +1957,19 @@ async function run(q) {
       (p) => {
         if (p?.stage === "generating") {
           const now = Date.now();
-          const target = streamingMessage?.querySelector(".msgText");
-          if (target && myGeneration === runGeneration && (lastStreamPaintAt === 0 || now - lastStreamPaintAt >= 40)) {
-            target.textContent = String(p.text || "Yanıt hazırlanıyor…");
-            streamingMessage.classList.add("streaming");
-            chat.scrollTop = chat.scrollHeight;
+          const shouldPaint = lastStreamPaintAt === 0 || now - lastStreamPaintAt >= 40;
+          if (shouldPaint) {
+            const target = streamingMessage?.querySelector(".msgText");
+            if (target && myGeneration === runGeneration) {
+              target.textContent = String(p.text || "Yanıt hazırlanıyor…");
+              streamingMessage.classList.add("streaming");
+              chat.scrollTop = chat.scrollHeight;
+            }
+            status.textContent = "● YANIT YAZILIYOR";
+            aiEl.textContent = "YAZIYOR";
+            subEl.textContent = "Yanıt canlı olarak oluşturuluyor...";
             lastStreamPaintAt = now;
           }
-          status.textContent = "● YANIT YAZILIYOR";
-          aiEl.textContent = "YAZIYOR";
-          subEl.textContent = "Yanıt canlı olarak oluşturuluyor...";
           return;
         }
         status.textContent = p?.percent != null ? "● MODEL " + p.percent + "%" : "● MODEL";
