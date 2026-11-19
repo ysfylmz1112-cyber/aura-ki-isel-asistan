@@ -10,7 +10,9 @@
     "build:win": "electron-builder --win nsis --publish never",
     "prepare-renderer": "node prepare-renderer.cjs",
     "prestart": "npm run prepare-renderer",
-    "prebuild:win": "npm run prepare-renderer"
+    "prebuild:win": "npm run prepare-renderer",
+    "test": "node --test ../tests/local-ai-quality.test.cjs",
+    "test:ai-quality": "node --test ../tests/local-ai-quality.test.cjs"
   },
   "dependencies": {
     "duck-duck-scrape": "2.2.7",
