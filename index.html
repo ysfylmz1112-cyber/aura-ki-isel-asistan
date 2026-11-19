@@ -879,7 +879,7 @@ function getLocalAIModel() {
 async function loadLocalAI() {
   if (localAIModule) return localAIModule;
   if (!localAIPromise) {
-    localAIPromise = import("./local-ai.js?v=6.3.1").then((mod) => {
+    localAIPromise = import("./local-ai.js?v=6.3.1-corewarmup1").then((mod) => {
       localAIModule = mod;
       return mod;
     });
@@ -896,8 +896,7 @@ async function warmLocalModel(){
   try{
     const mod=await loadLocalAI();
     if(typeof mod.warmLocalAI!=="function") return;
-    const idle=window.requestIdleCallback||((cb)=>setTimeout(cb,1200));
-    idle(()=>mod.warmLocalAI((p)=>{
+    const startWarmup=()=>mod.warmLocalAI((p)=>{
       if(!busy && p?.percent!=null){
         aiEl.textContent=p.percent+"%";
         subEl.textContent=p.text||"Yerel yapay zekâ arka planda hazırlanıyor...";
@@ -913,7 +912,14 @@ async function warmLocalModel(){
           ? "Model önbelleği açılamadı · PC ve dosya komutları kullanılabilir."
           : "Yerel yapay zekâ başlatılamadı · PC komutları kullanılabilir.";
       }
-    }));
+    });
+    // requestIdleCallback can otherwise wait indefinitely on an animated desktop.
+    // The timeout starts model preparation soon while still preferring idle time.
+    if(typeof window.requestIdleCallback==="function"){
+      window.requestIdleCallback(startWarmup,{timeout:2500});
+    }else{
+      setTimeout(startWarmup,700);
+    }
   }catch(error){
     console.warn("[AURA] Yerel AI modülü yüklenemedi:",error);
     if(!busy){ aiEl.textContent="HAZIR DEĞİL"; subEl.textContent="Yerel yapay zekâ modülü yüklenemedi."; }
@@ -2460,7 +2466,7 @@ setInterval(()=>refreshWeather(false).catch(()=>{}),10*60*1000);
 ttsEl.textContent = voiceEnabled ? "HAZIR" : "KAPALI";
 input.focus();
 
-setTimeout(()=>warmLocalModel(),3500);
+setTimeout(()=>warmLocalModel(),1200);
 
 setTimeout(async () => {
   if (!hasDesktopAgent()) {
