@@ -1524,7 +1524,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     ? [...history].reverse().find(item => item?.role === "user" && String(item.content || "").trim())
     : null;
   const isShortFollowUp = value.length <= 120 &&
-    /^(?:(?:bunu|şunu|sunu|onu|aynısını|aynisini|biraz daha|daha fazla|sonraki adım|sonraki adim|bu şekilde|bu sekilde)\\s+)*(?:da\\s+)?(?:devam(?: et| edelim)?|ekle|düzelt|duzelt|yap|tamamla|sürdür|surdur|ilerle|geliştir|gelistir|genişlet|genislet|iyileştir|iyilestir|kaldığın yerden devam et|kaldigin yerden devam et)\\b/i.test(value.trim());
+    /^(?:(?:bunu|şunu|sunu|onu|aynısını|aynisini|biraz daha|daha fazla|sonraki adım|sonraki adim|bu şekilde|bu sekilde)\s+)*(?:da\s+)?(?:devam(?: et| edelim)?|ekle|düzelt|duzelt|yap|tamamla|sürdür|surdur|ilerle|geliştir|gelistir|genişlet|genislet|iyileştir|iyilestir|kaldığın yerden devam et|kaldigin yerden devam et)\b/i.test(value.trim());
   const intentValue = isShortFollowUp && previousUserMessage
     ? (String(previousUserMessage.content || "") + " " + value).toLocaleLowerCase("tr-TR")
     : lowerValue;
@@ -1596,16 +1596,16 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   }
 
   const localEngine = await ensureLocalAI(effectiveMode,onProgress);
-  const memoryItems = compactMemory(memory, value);
+  const memoryItems = compactMemory(memory, intentValue);
   let memoryContext = memoryItems.length
     ? "\nİLGİLİ KALICI HAFIZA:\n" + JSON.stringify(memoryItems)
     : "";
   const needsRelatedContext = /hatırla|hatirla|geçmiş|gecmis|önceki|onceki|daha önce|daha once|geçen hafta|gecen hafta|geçen gün|gecen gun|dün|dun|az önce|az once|konuşmuştuk|konusmustuk|bahsetmiştim|bahsetmistim|devam et|devam edelim|kaldığımız|kaldigimiz|aynı proje|ayni proje|benim projem|son yaptığımız|son yaptigimiz|nerede kalmıştık|nerede kalmistik|sıradaki adım|siradaki adim|planım|planim|kendini geliştir|kendini gelistir/i.test(intentValue);
   if (desktopAvailable() && value.trim() && needsRelatedContext) {
     try {
-      const related = await desktopCall("desktop_relevant_context", { query: value, maxMemory: 5, maxConversations: 5 });
+      const related = await desktopCall("desktop_relevant_context", { query: intentValue, maxMemory: 5, maxConversations: 5 });
       if (related && (related.memory?.length || related.conversations?.length)) {
-        memoryContext += "\\nİLGİLİ GEÇMİŞ BAĞLAMI:\\n" + JSON.stringify(related).slice(0, 5200);
+        memoryContext += "\nİLGİLİ GEÇMİŞ BAĞLAMI:\n" + JSON.stringify(related).slice(0, 5200);
       }
     } catch {}
   }
