@@ -156,8 +156,8 @@ test("stream collector reconstructs fragmented tool calls", async () => {
 test("primary answer generation streams and renderer shows the live response", () => {
   assert.match(source, /stream:true/);
   assert.match(source, /collectChatCompletionStream/);
-  assert.match(rendererSource, /p\\?\\.stage === "generating"/);
-  assert.match(rendererSource, /finish\\(q, answer, true, streamingMessage\\)/);
+  assert.ok(rendererSource.includes('p?.stage === "generating"'));
+  assert.ok(rendererSource.includes("finish(q, answer, true, streamingMessage)"));
 });
 
 test("stream placeholder is created only after direct command routing", () => {
