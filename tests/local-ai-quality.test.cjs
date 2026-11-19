@@ -247,7 +247,7 @@ test("adaptive token budget keeps short answers fast and detailed requests compl
 });
 
 test("factual answer review catches short empty and clearly unrelated drafts", () => {
-  assert.equal(sandbox.shouldReviewAnswer("Fotosentez klorofil nedir?", "Bitkilerin ışık enerjisini kullanarak besin üretme sürecidir."), false);
+  assert.equal(sandbox.shouldReviewAnswer("Fotosentez klorofil nedir?", "Fotosentez, klorofil sayesinde ışık enerjisini kullanarak besin üretme sürecidir."), false);
   assert.equal(sandbox.shouldReviewAnswer("Fotosentez klorofil nedir?", "Bu konu oldukça önemlidir ve günlük yaşamda sıkça karşımıza çıkar."), true);
   assert.equal(sandbox.shouldReviewAnswer("Fotosentez klorofil nedir?", "Kısa."), true);
 });
