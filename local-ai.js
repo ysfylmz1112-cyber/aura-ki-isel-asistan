@@ -1548,7 +1548,7 @@ function shouldReviewAnswer(question, answer) {
   const q = String(question || '').trim();
   const a = String(answer || '').trim();
   if (!q || !a) return false;
-  const factualQuestion = /(^|[^a-zçğıöşü])(nedir|ne demek|kimdir|neresidir|neden|niçin|nasıl çalışır|nasıl oluşur|açıkla|örnek ver|örnekleri|hangi yıl|kim buldu)(?=$|[^a-zçğıöşü])/i.test(q.toLocaleLowerCase('tr-TR'));
+  const factualQuestion = /(^|[^a-zçğıöşü])(nedir|ne demek|kimdir|kim|neresidir|nerede|neden|niçin|nasıl çalışır|nasıl oluşur|nasıl işler|ne zaman|kaç|hangi|ne işe yarar|farkı|açıkla|örnek ver|örnekleri|hangi yıl|kim buldu|kim tarafından)(?=$|[^a-zçğıöşü])/i.test(q.toLocaleLowerCase('tr-TR'));
   if (!factualQuestion) return false;
   if (q.length > 500 || a.length < 55) return true;
   const stop = new Set(['nedir','neden','nasil','icin','olan','olarak','gibi','daha','veya','ile','bunu','bunun','hangi','eder','olur','yani']);
