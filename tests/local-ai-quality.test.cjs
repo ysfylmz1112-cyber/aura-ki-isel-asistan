@@ -44,6 +44,13 @@ test("memory retrieval ranks exact Turkish topic matches", () => {
   assert.match(result[0].text, /AURA/);
 });
 
+test("Turkish diacritics and suffixes match saved memories", () => {
+  const memories = [{ text: "AURA yapay zekâ projesi geliştiriliyor", tags: ["AURA"] }];
+  const result = Array.from(sandbox.compactMemory(memories, "AURA yapay zeka projesine devam"));
+  assert.equal(result.length, 1);
+  assert.match(result[0].text, /yapay zekâ/);
+});
+
 test("explicit continuity request falls back to recent memories when no term matches", () => {
   const memories = [{ text: "Eski kayıt" }, { text: "En yeni kayıt" }];
   const result = Array.from(sandbox.compactMemory(memories, "Nerede kalmıştık?"));
