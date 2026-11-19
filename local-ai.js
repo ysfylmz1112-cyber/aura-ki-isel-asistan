@@ -1515,19 +1515,26 @@ function assistantToolResultMessage(toolCall, result) {
     "\n\nİlk göreve devam et. Başka bir araç gerekiyorsa yalnızca JSON çağrısı üret.";
 }
 
+function resolveFollowUpIntent(message, history = []) {
+  const value = String(message || "").trim();
+  const previousUserMessage = Array.isArray(history)
+    ? [...history].reverse().find(item => item?.role === "user" && String(item.content || "").trim())
+    : null;
+  const isShortFollowUp = value.length <= 120 &&
+    /^(?:(?:bunu|şunu|sunu|onu|aynısını|aynisini|biraz daha|daha fazla|sonraki adım|sonraki adim|bu şekilde|bu sekilde)\s+)*(?:da\s+)?(?:devam(?: et| edelim)?|ekle|düzelt|duzelt|yap|tamamla|sürdür|surdur|ilerle|geliştir|gelistir|genişlet|genislet|iyileştir|iyilestir|kaldığın yerden devam et|kaldigin yerden devam et)\b/i.test(value);
+  const intentValue = isShortFollowUp && previousUserMessage
+    ? (String(previousUserMessage.content || "") + " " + value).toLocaleLowerCase("tr-TR")
+    : value.toLocaleLowerCase("tr-TR");
+  return { intentValue, isShortFollowUp, previousUserMessage };
+}
+
 export async function askLocalAI(message, history = [], onProgress = () => {}, environment = null, mode = "chat", memory = []) {
   const value = String(message || "").trim();
   if (!value) throw new Error("Mesaj boş.");
 
   const lowerValue = value.toLocaleLowerCase("tr-TR");
-  const previousUserMessage = Array.isArray(history)
-    ? [...history].reverse().find(item => item?.role === "user" && String(item.content || "").trim())
-    : null;
-  const isShortFollowUp = value.length <= 120 &&
-    /^(?:(?:bunu|şunu|sunu|onu|aynısını|aynisini|biraz daha|daha fazla|sonraki adım|sonraki adim|bu şekilde|bu sekilde)\s+)*(?:da\s+)?(?:devam(?: et| edelim)?|ekle|düzelt|duzelt|yap|tamamla|sürdür|surdur|ilerle|geliştir|gelistir|genişlet|genislet|iyileştir|iyilestir|kaldığın yerden devam et|kaldigin yerden devam et)\b/i.test(value.trim());
-  const intentValue = isShortFollowUp && previousUserMessage
-    ? (String(previousUserMessage.content || "") + " " + value).toLocaleLowerCase("tr-TR")
-    : lowerValue;
+  const followUp = resolveFollowUpIntent(value, history);
+  const { intentValue, isShortFollowUp, previousUserMessage } = followUp;
   const workspaceAccessIntent = /tüm\s+(pc|bilgisayar)|bilgisayarın\s+tamamı|tüm\s+bilgisayar|pc.*erişim|bilgisayar.*erişim|aura.*erişim.*alanı|erişim alanı|çalışma\s+alanı.*(?:erişim|izin)|klasör\s+seçme|klasör.*erişim\s+izni|proje\s+klasörüne.*erişim\s+izni|çalışma alanı ekle|klasör erişim izni/.test(lowerValue);
   const incomeModeIntent = /kazanç modu|kazanc modu|aura üzerinden para kazan|aura uzerinden para kazan|aura ile para kazan|gelir amaçlı site|gelir amacli site|müşteri sitesi|musteri sitesi|işletme sitesi|isletme sitesi|restoran sitesi/.test(intentValue);
   const marketingModeIntent = /reklam|tanıtım|tanitim|kampanya|instagram|reels|shorts|video reklamı|video reklami|reklam videosu|afiş|sosyal medya|gönderi|gonderi|hikaye|story|pazarlama/.test(intentValue);
