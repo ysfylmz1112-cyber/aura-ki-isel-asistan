@@ -236,6 +236,7 @@ test("short follow-ups always request related project context", () => {
 
 
 test("adaptive token budget keeps short answers fast and detailed requests complete", () => {
+  assert.ok(source.includes("max_tokens:resolveAnswerTokenBudget(value,effectiveMode)"));
   assert.equal(sandbox.resolveAnswerTokenBudget("Merhaba"), 320);
   assert.equal(sandbox.resolveAnswerTokenBudget("Fotosentez nedir?"), 320);
   assert.equal(sandbox.resolveAnswerTokenBudget("Bu konuyu adım adım ve detaylı açıkla"), 640);
