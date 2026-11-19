@@ -1724,6 +1724,9 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   for(let round=0; round<7; round++){
     agentRound = round + 1;
     let response;
+    const generationStartedAt = Date.now();
+    let firstTokenAt = null;
+    let latestPartialText = "";
     try {
       const inferenceTimeout = effectiveMode === "background-code" ? 480000 : (codeLikeMode ? 360000 : 300000);
       response = await runChatCompletionWithTimeout(localEngine, {
@@ -1733,8 +1736,24 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         max_tokens:resolveAnswerTokenBudget(value,effectiveMode),
         stream:true
       }, inferenceTimeout, "yanıt üretimi", (partialText) => {
+        const partial = String(partialText || "");
+        if (partial && firstTokenAt === null) firstTokenAt = Date.now();
+        if (partial) latestPartialText = partial;
         try { onProgress({ stage:"generating", text:partialText, model:effectiveMode==="code" ? CODE_MODEL_ID : CHAT_MODEL_ID }); } catch (_) {}
       });
+      const generationFinishedAt = Date.now();
+      const timing = {
+        stage: "metrics",
+        model: effectiveMode === "code" ? CODE_MODEL_ID : CHAT_MODEL_ID,
+        timeToFirstTokenMs: firstTokenAt === null ? null : firstTokenAt - generationStartedAt,
+        generationMs: generationFinishedAt - generationStartedAt,
+        responseCharacters: latestPartialText.length,
+        charactersPerSecond: generationFinishedAt > generationStartedAt
+          ? Math.round(latestPartialText.length / ((generationFinishedAt - generationStartedAt) / 1000))
+          : 0
+      };
+      try { onProgress(timing); } catch (_) {}
+    }
     } catch (error) {
       const msg=String(error?.message||error);
       if (/context window|prompt tokens exceed|maximum context|context length|too many tokens/i.test(msg)) {
