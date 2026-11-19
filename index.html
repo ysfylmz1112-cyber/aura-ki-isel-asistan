@@ -873,13 +873,13 @@ function hasDesktopAgent() {
 }
 
 function getLocalAIModel() {
-  return localAIModule?.getLocalAIModel?.() || "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
+  return localAIModule?.getLocalAIModel?.() || "Qwen2.5-3B-Instruct-q4f16_1-MLC";
 }
 
 async function loadLocalAI() {
   if (localAIModule) return localAIModule;
   if (!localAIPromise) {
-    localAIPromise = import("./local-ai.js?v=6.2.1").then((mod) => {
+    localAIPromise = import("./local-ai.js?v=6.3.1").then((mod) => {
       localAIModule = mod;
       return mod;
     });
