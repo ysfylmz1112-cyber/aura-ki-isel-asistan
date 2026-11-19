@@ -7,6 +7,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const source = fs.readFileSync(path.join(__dirname, "..", "local-ai.js"), "utf8");
+const rendererSource = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 
 function extract(startMarker, endMarker) {
   const start = source.indexOf(startMarker);
@@ -107,4 +108,15 @@ test("very long individual messages are bounded without losing their latest part
   ]));
   assert.equal(result[0].content.length, 2400);
   assert.equal(result[0].content, "A".repeat(2400));
+});
+
+
+test("renderer starts model warmup promptly with a bounded idle wait", () => {
+  assert.match(rendererSource, /requestIdleCallback\(startWarmup,\s*\{\s*timeout:\s*2500\s*\}\)/);
+  assert.match(rendererSource, /setTimeout\(startWarmup,\s*700\)/);
+  assert.match(rendererSource, /setTimeout\(\(\)=>warmLocalModel\(\),1200\)/);
+});
+
+test("AI core version matches the current desktop release", () => {
+  assert.match(source, /const AURA_CORE_VERSION = ['"]6\.3\.1['"]/);
 });
