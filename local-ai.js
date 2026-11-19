@@ -1514,10 +1514,10 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     ? (String(previousUserMessage.content || "") + " " + value).toLocaleLowerCase("tr-TR")
     : lowerValue;
   const workspaceAccessIntent = /tüm\s+(pc|bilgisayar)|bilgisayarın\s+tamamı|tüm\s+bilgisayar|pc.*erişim|bilgisayar.*erişim|aura.*erişim.*alanı|erişim alanı|çalışma\s+alanı.*(?:erişim|izin)|klasör\s+seçme|klasör.*erişim\s+izni|proje\s+klasörüne.*erişim\s+izni|çalışma alanı ekle|klasör erişim izni/.test(lowerValue);
-  const incomeModeIntent = /kazanç modu|kazanc modu|aura üzerinden para kazan|aura uzerinden para kazan|aura ile para kazan|gelir amaçlı site|gelir amacli site|müşteri sitesi|musteri sitesi|işletme sitesi|isletme sitesi|restoran sitesi/.test(lowerValue);
-  const marketingModeIntent = /reklam|tanıtım|tanitim|kampanya|instagram|reels|shorts|video reklamı|video reklami|reklam videosu|afiş|sosyal medya|gönderi|gonderi|hikaye|story|pazarlama/.test(lowerValue);
+  const incomeModeIntent = /kazanç modu|kazanc modu|aura üzerinden para kazan|aura uzerinden para kazan|aura ile para kazan|gelir amaçlı site|gelir amacli site|müşteri sitesi|musteri sitesi|işletme sitesi|isletme sitesi|restoran sitesi/.test(intentValue);
+  const marketingModeIntent = /reklam|tanıtım|tanitim|kampanya|instagram|reels|shorts|video reklamı|video reklami|reklam videosu|afiş|sosyal medya|gönderi|gonderi|hikaye|story|pazarlama/.test(intentValue);
   const gameDevelopmentIntent = /unity|kamyon|nakliye|taşıma oyunu|tasima oyunu|oyun yap|oyun yapalım|oyun yapalim|oyun geliştir|oyun gelistir|oyun oluştur|oyun olustur|oyun yapmaya|game dev|game development|oyun projesi|oyun projesi oluştur|oyun projesi olustur/.test(intentValue);
-  const developmentIntent = mode === "code" || gameDevelopmentIntent || incomeModeIntent || marketingModeIntent || /kendini geliştir|kendini gelistir|kendi kodunu|kendi kaynak kodunu|aura geliştir|aura gelistir|aura iyileştir|aura iyilestir|self.?improv|self.?develop|proje oluştur|proje olustur|dosya oluştur|dosya olustur|dosya yaz|kod yaz|kodu düzelt|kodu duzelt|hata düzelt|hata duzelt|build al|derle|compile|script oluştur|script olustur|sahne oluştur|sahne olustur|component oluştur|component olustur|prefab oluştur|prefab olustur/.test(lowerValue);
+  const developmentIntent = mode === "code" || gameDevelopmentIntent || incomeModeIntent || marketingModeIntent || /kendini geliştir|kendini gelistir|kendi kodunu|kendi kaynak kodunu|aura geliştir|aura gelistir|aura iyileştir|aura iyilestir|self.?improv|self.?develop|proje oluştur|proje olustur|dosya oluştur|dosya olustur|dosya yaz|kod yaz|kodu düzelt|kodu duzelt|hata düzelt|hata duzelt|build al|derle|compile|script oluştur|script olustur|sahne oluştur|sahne olustur|component oluştur|component olustur|prefab oluştur|prefab olustur/.test(intentValue);
   const effectiveMode = gameDevelopmentIntent ? "background-code" : (developmentIntent ? "code" : mode);
   const codeLikeMode = isCodeMode(effectiveMode);
 
@@ -1585,7 +1585,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   let memoryContext = memoryItems.length
     ? "\nKALICI HAFIZA:\n" + JSON.stringify(memoryItems)
     : "\nKALICI HAFIZA: boş.";
-  const needsRelatedContext = /hatırla|hatirla|geçmiş|gecmis|önceki|onceki|daha önce|daha once|geçen hafta|gecen hafta|geçen gün|gecen gun|dün|dun|az önce|az once|konuşmuştuk|konusmustuk|bahsetmiştim|bahsetmistim|devam et|kaldığımız|kaldigimiz|aynı proje|ayni proje|benim projem|aura|projem|planım|planim/i.test(lowerValue);
+  const needsRelatedContext = /hatırla|hatirla|geçmiş|gecmis|önceki|onceki|daha önce|daha once|geçen hafta|gecen hafta|geçen gün|gecen gun|dün|dun|az önce|az once|konuşmuştuk|konusmustuk|bahsetmiştim|bahsetmistim|devam et|kaldığımız|kaldigimiz|aynı proje|ayni proje|benim projem|aura|projem|planım|planim/i.test(intentValue);
   if (desktopAvailable() && value.trim() && needsRelatedContext) {
     try {
       const related = await desktopCall("desktop_relevant_context", { query: value, maxMemory: 5, maxConversations: 5 });
@@ -1595,7 +1595,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     } catch {}
   }
 
-  const generalToolIntent = incomeModeIntent || marketingModeIntent || /openclaw|güncel|guncel|araştır|arastir|internette|web|site|dosya|klasör|klasor|uygulama|oyun|bilgisayar|masaüstü|masaustu|sistem|kullanım|kullanim|hatırla|hatirla|unut|geçen hafta|gecen hafta|dün|dun|bugün|bugun|konuşma geçmişi|konusma gecmisi|pano|clipboard|ekran görüntüsü|ekran goruntusu|screenshot|bildirim|notification|unity|kamyon|nakliye|cpu|ram|gpu|disk|performans|donanım|donanim|hava|sıcaklık|sicaklik|derece|pil|batarya/.test(lowerValue);
+  const generalToolIntent = incomeModeIntent || marketingModeIntent || /openclaw|güncel|guncel|araştır|arastir|internette|web|site|dosya|klasör|klasor|uygulama|oyun|bilgisayar|masaüstü|masaustu|sistem|kullanım|kullanim|hatırla|hatirla|unut|geçen hafta|gecen hafta|dün|dun|bugün|bugun|konuşma geçmişi|konusma gecmisi|pano|clipboard|ekran görüntüsü|ekran goruntusu|screenshot|bildirim|notification|unity|kamyon|nakliye|cpu|ram|gpu|disk|performans|donanım|donanim|hava|sıcaklık|sicaklik|derece|pil|batarya/.test(intentValue);
 
   const modePrompt = marketingModeIntent
     ? "\nAURA STUDIO REKLAM MODU: Önce işletme/marka, sektör, kampanya amacı ve hedef kitleyi mevcut istekteki bilgilerden çıkar. Gerçek olmayan fiyat, indirim, yorum, iletişim bilgisi veya sonuç iddiası uydurma. Kısa bir başlık, açıklama, çağrı ve Türkçe seslendirme taslağı hazırla. desktop_marketing_create_kit aracını çağırarak Instagram gönderisi/hikâyesi, paylaşım metni, seslendirme metni, Reels akış planı ve animasyonlu dikey WebM videosu üret. Video grafik ve metin animasyonudur; gerçek görüntü veya ses içermez. Çıktıyı Desktop\\AURA-Gelir\\AURA-Studio altında tut. Hiçbir içeriği otomatik paylaşma, yayınlama veya kimseye gönderme."
