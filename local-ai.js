@@ -1547,7 +1547,7 @@ function resolveFollowUpIntent(message, history = []) {
   // Turkish diacritics are normalized first, so common spelling variants
   // share one intent matcher instead of maintaining duplicate regex branches.
   const isShortFollowUp = normalizedValue.length <= 140 &&
-    /^(?:(?:bunu|sunu|onu|aynisini|bu sekilde|simdi|daha da|biraz daha|ayni sekilde)\s+)*(?:da\\s+)?(?:devam(?: et| edelim|ini getir|ini yap)?|gelistirmeye devam et|calismaya devam et|ekle|duzelt|yap|tamamla|surdur|ilerle|gelistir|genislet|iyilestir|kaldigin yerden devam et|devamini getir|daha fazla|biraz daha|sonraki adim|uzun sursun)\b$/.test(normalizedValue);
+    /^(?:(?:bunu|sunu|onu|aynisini|bu sekilde|simdi|daha da|biraz daha|ayni sekilde)\s+)*(?:da\s+)?(?:devam(?: et| edelim|ini getir|ini yap)?|gelistirmeye devam et|calismaya devam et|ekle|duzelt|yap|tamamla|surdur|ilerle|gelistir|genislet|iyilestir|kaldigin yerden devam et|devamini getir|daha fazla|biraz daha|sonraki adim|uzun sursun)\b$/.test(normalizedValue);
   const intentValue = isShortFollowUp && previousUserMessage
     ? (String(previousUserMessage.content || "") + " " + value).toLocaleLowerCase("tr-TR")
     : value.toLocaleLowerCase("tr-TR");
