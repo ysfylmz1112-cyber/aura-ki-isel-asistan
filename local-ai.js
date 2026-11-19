@@ -48,6 +48,7 @@ const SYSTEM_PROMPT = [
   "OpenClaw'ı yalnızca kullanıcı açıkça istediğinde kullan.",
   "Araç gerekiyorsa yalnızca izin verilen aracı JSON çağrısıyla kullan; araç sonucundan sonra ilk göreve devam et.",
   "AJAN KOORDİNASYONU: Bir istek birden fazla alanı kapsıyorsa önce tek bir kısa görev planı kur; uygun yapay zekâ, Developer, Video/Shorts ve PC araçlarını aynı görev içinde sırayla kullan. Araç sonucunu kontrol etmeden başarılı olduğunu söyleme. Bir görevi bitirmek için gerekirse en fazla 7 araç turu kullan; aynı aracı aynı argümanlarla tekrar tekrar çağırma. Dosya yazma/silme, uygulama kapatma, mouse/klavye etkileşimi ve dışarıya yayın/mesaj gönderme gibi işlemlerde mevcut kullanıcı onayı kurallarını asla atlama.",
+  "AURA KENDİNİ GELİŞTİRME MODU: Kullanıcı AURA'yı veya kendini geliştirmeni istediğinde bunu kod geliştirme görevi say. Önce gerçek AURA kaynak projesini bul ve doğrula; kurulu uygulamanın app.asar dosyasını veya çalışan kurulum dosyalarını doğrudan değiştirmeye çalışma. Kaynak kodu bulamazsan konum uydurma; kullanıcıdan kaynak klasörünü seçmesini iste. Önce mevcut mimariyi, ilgili dosyaları, mevcut testleri ve developer_self_test sonucunu incele. Kısa bir iyileştirme planı çıkar; değişecek her mevcut dosya için değişiklikten önce snapshot oluştur. Önce küçük ve bağımsız değişiklik yap; kaynak dosyalarını kullanıcı onayı olmadan yazma. Değişiklikten sonra uygun syntax/test/build kontrollerini çalıştır, başarısızsa nedeni analiz et ve güvenli değilse snapshot geri yükle. GitHub push, release, installer yayınlama, uygulamayı kapatma veya yeniden başlatma gibi dış etkili adımları açık kullanıcı onayı olmadan yapma. Sonuçta değişen dosyaları, test sonuçlarını ve kalan sorunları açıkça bildir. Kendi kendini geliştirme sınırsız veya otomatik yetki anlamına gelmez.",
   "Türkçe konuş.",
   "Kullanıcı açık ve basit bir talimat verdiğinde doğrudan o talimatı yerine getir; gereksiz yere 'daha fazla veri verin', 'daha fazla bilgi verin' veya benzeri belirsiz cevaplar verme.",
   "Kullanıcının isteği yeterince açıksa ek soru sorma. Eksik bilgi gerçekten gerekiyorsa yalnızca gereken tek bilgiyi kısa biçimde sor.",
@@ -1063,11 +1064,12 @@ function toolDirectoryPrompt(query = "", mode = "chat") {
   const add=(names)=>names.forEach(name=>selected.add(name));
 
   const income=/kazanç modu|kazanc modu|aura üzerinden para kazan|aura uzerinden para kazan|aura ile para kazan|gelir amaçlı site|gelir amacli site|müşteri sitesi|musteri sitesi|işletme sitesi|isletme sitesi|restoran sitesi/.test(q);
+  const selfDevelopment=/kendini geliştir|kendini gelistir|kendi kodunu|kendi kaynak kodunu|aura geliştir|aura gelistir|aura iyileştir|aura iyilestir|self.?improv|self.?develop/.test(q);
   const marketing=/reklam|tanıtım|tanitim|kampanya|instagram|reels|shorts|video|afiş|sosyal medya|gönderi|gonderi|hikaye|story|pazarlama/.test(q);
   const youtube=/youtube|shorts|kanal|video üret|video uret|video oluştur|video olustur|animasyonlu video/.test(q);
   const inputControl=/tıkla|tikla|fare|mouse|klavye|tuş|tus|ekrana yaz|enter tuşu|tab tuşu/.test(q);
   const unity=/unity|kamyon|nakliye|oyun geliştir|oyun gelistir|oyun yap|oyun projesi|game dev/.test(q) || (isCodeMode(mode) && !income);
-  const files=income || marketing || /dosya|klasör|klasor|kod|script|proje|oku|yaz|oluştur|olustur|düzenle|duzenle|sil|taşı|tasi|kopya|kopyala|build|derle|web sitesi|website|landing page/.test(q);
+  const files=selfDevelopment || income || marketing || /dosya|klasör|klasor|kod|script|proje|oku|yaz|oluştur|olustur|düzenle|duzenle|sil|taşı|tasi|kopya|kopyala|build|derle|web sitesi|website|landing page/.test(q);
   const pc=/bilgisayar|pc|sistem|cpu|ram|gpu|disk|donanım|donanim|performans|çalışan|calisan|uygulama|program|oyun|masaüstü|masaustu/.test(q);
   // Unity/oyun geliştirme görevlerinde "hava durumu", "trafik", "yağmur" gibi
   // kelimeler oyun mekaniği olabilir; bunları gerçek dünya hava aracına yönlendirme.
@@ -1083,6 +1085,7 @@ function toolDirectoryPrompt(query = "", mode = "chat") {
   if(marketing) add(["desktop_marketing_create_kit"]);
   if(youtube) add(["youtube_studio_get_profile","youtube_studio_save_profile","youtube_studio_create_plan","youtube_studio_list_plans","desktop_marketing_create_kit"]);
   if(inputControl) add(["desktop_get_screen_context","desktop_get_foreground_window","desktop_capture_screen","desktop_mouse_click","desktop_keyboard_type","desktop_keyboard_key"]);
+  if(selfDevelopment) add(["desktop_self_diagnostics","desktop_developer_self_test","desktop_get_system_health","desktop_search_files","desktop_list_directory","desktop_read_text_file","desktop_write_text_file","desktop_create_file_snapshot","desktop_restore_file_snapshot","desktop_run_powershell"]);
   if(files) add([
     "desktop_search_files","desktop_list_directory","desktop_read_text_file","desktop_write_text_file","desktop_create_file_snapshot","desktop_restore_file_snapshot",
     "desktop_create_directory","desktop_copy_path","desktop_move_path","desktop_delete_path",
@@ -1487,7 +1490,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   const incomeModeIntent = /kazanç modu|kazanc modu|aura üzerinden para kazan|aura uzerinden para kazan|aura ile para kazan|gelir amaçlı site|gelir amacli site|müşteri sitesi|musteri sitesi|işletme sitesi|isletme sitesi|restoran sitesi/.test(lowerValue);
   const marketingModeIntent = /reklam|tanıtım|tanitim|kampanya|instagram|reels|shorts|video reklamı|video reklami|reklam videosu|afiş|sosyal medya|gönderi|gonderi|hikaye|story|pazarlama/.test(lowerValue);
   const gameDevelopmentIntent = /unity|kamyon|nakliye|taşıma oyunu|tasima oyunu|oyun yap|oyun yapalım|oyun yapalim|oyun geliştir|oyun gelistir|oyun oluştur|oyun olustur|oyun yapmaya|game dev|game development|oyun projesi|oyun projesi oluştur|oyun projesi olustur/.test(lowerValue);
-  const developmentIntent = mode === "code" || gameDevelopmentIntent || incomeModeIntent || marketingModeIntent || /proje oluştur|proje olustur|dosya oluştur|dosya olustur|dosya yaz|kod yaz|kodu düzelt|kodu duzelt|hata düzelt|hata duzelt|build al|derle|compile|script oluştur|script olustur|sahne oluştur|sahne olustur|component oluştur|component olustur|prefab oluştur|prefab olustur/.test(lowerValue);
+  const developmentIntent = mode === "code" || gameDevelopmentIntent || incomeModeIntent || marketingModeIntent || /kendini geliştir|kendini gelistir|kendi kodunu|kendi kaynak kodunu|aura geliştir|aura gelistir|aura iyileştir|aura iyilestir|self.?improv|self.?develop|proje oluştur|proje olustur|dosya oluştur|dosya olustur|dosya yaz|kod yaz|kodu düzelt|kodu duzelt|hata düzelt|hata duzelt|build al|derle|compile|script oluştur|script olustur|sahne oluştur|sahne olustur|component oluştur|component olustur|prefab oluştur|prefab olustur/.test(lowerValue);
   const effectiveMode = gameDevelopmentIntent ? "background-code" : (developmentIntent ? "code" : mode);
   const codeLikeMode = isCodeMode(effectiveMode);
 
