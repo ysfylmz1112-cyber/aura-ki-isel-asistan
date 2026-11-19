@@ -35,7 +35,7 @@ test("ordinary factual questions do not receive unrelated saved memories", () =>
     { text: "AURA projesinde Qwen modelini kullanıyoruz", tags: ["AURA", "AI"] },
     { text: "Kullanıcı futbol orta saha oynuyor", tags: ["futbol"] }
   ];
-  assert.deepEqual(Array.from(sandbox.compactMemory(memories, "Fotosentez nedir?")), []);
+  assert.deepEqual(Array.from(sandbox.compactMemory(memories, "Fotosentez klorofil nedir?")), []);
 });
 
 test("memory retrieval ranks exact Turkish topic matches", () => {
@@ -239,7 +239,7 @@ test("short follow-ups always request related project context", () => {
 test("adaptive token budget keeps short answers fast and detailed requests complete", () => {
   assert.ok(source.includes("max_tokens:resolveAnswerTokenBudget(value,effectiveMode)"));
   assert.equal(sandbox.resolveAnswerTokenBudget("Merhaba"), 320);
-  assert.equal(sandbox.resolveAnswerTokenBudget("Fotosentez nedir?"), 320);
+  assert.equal(sandbox.resolveAnswerTokenBudget("Fotosentez klorofil nedir?"), 320);
   assert.equal(sandbox.resolveAnswerTokenBudget("Bu konuyu adım adım ve detaylı açıkla"), 640);
   assert.equal(sandbox.resolveAnswerTokenBudget("A".repeat(501)), 640);
   assert.equal(sandbox.resolveAnswerTokenBudget("Kod yaz", "code"), 1000);
@@ -247,9 +247,9 @@ test("adaptive token budget keeps short answers fast and detailed requests compl
 });
 
 test("factual answer review catches short empty and clearly unrelated drafts", () => {
-  assert.equal(sandbox.shouldReviewAnswer("Fotosentez nedir?", "Bitkilerin ışık enerjisini kullanarak besin üretme sürecidir."), false);
-  assert.equal(sandbox.shouldReviewAnswer("Fotosentez nedir?", "Bu konu oldukça önemlidir ve günlük yaşamda sıkça karşımıza çıkar."), true);
-  assert.equal(sandbox.shouldReviewAnswer("Fotosentez nedir?", "Kısa."), true);
+  assert.equal(sandbox.shouldReviewAnswer("Fotosentez klorofil nedir?", "Bitkilerin ışık enerjisini kullanarak besin üretme sürecidir."), false);
+  assert.equal(sandbox.shouldReviewAnswer("Fotosentez klorofil nedir?", "Bu konu oldukça önemlidir ve günlük yaşamda sıkça karşımıza çıkar."), true);
+  assert.equal(sandbox.shouldReviewAnswer("Fotosentez klorofil nedir?", "Kısa."), true);
 });
 
 test("answer review skips non-factual chat and preserves long factual review", () => {
