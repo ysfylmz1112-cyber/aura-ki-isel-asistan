@@ -3158,7 +3158,10 @@ app.whenReady().then(async()=>{
       'youtube-shorts-studio-drafts',
       'unified-agent-orchestration',
       'multi-step-agent-routing',
-      'pc-interaction-controls'
+      'pc-interaction-controls',
+      'aura-self-improvement-planner',
+      'developer-self-review',
+      'snapshot-backed-code-changes'
     ]
   }));
 
