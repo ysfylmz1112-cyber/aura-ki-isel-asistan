@@ -12,6 +12,7 @@ on:
   pull_request:
     paths:
       - "local-ai.js"
+      - "index.html"
       - "tests/**"
       - "desktop/package.json"
   workflow_dispatch:
