@@ -1068,7 +1068,7 @@ function toolDirectoryPrompt(query = "", mode = "chat") {
   const marketing=/reklam|tanıtım|tanitim|kampanya|instagram|reels|shorts|video|afiş|sosyal medya|gönderi|gonderi|hikaye|story|pazarlama/.test(q);
   const youtube=/youtube|shorts|kanal|video üret|video uret|video oluştur|video olustur|animasyonlu video/.test(q);
   const inputControl=/tıkla|tikla|fare|mouse|klavye|tuş|tus|ekrana yaz|enter tuşu|tab tuşu/.test(q);
-  const unity=/unity|kamyon|nakliye|oyun geliştir|oyun gelistir|oyun yap|oyun projesi|game dev/.test(q) || (isCodeMode(mode) && !income);
+  const unity=/unity|kamyon|nakliye|oyun geliştir|oyun gelistir|oyun yap|oyun projesi|game dev/.test(q) || (isCodeMode(mode) && !income && !selfDevelopment);
   const files=selfDevelopment || income || marketing || /dosya|klasör|klasor|kod|script|proje|oku|yaz|oluştur|olustur|düzenle|duzenle|sil|taşı|tasi|kopya|kopyala|build|derle|web sitesi|website|landing page/.test(q);
   const pc=/bilgisayar|pc|sistem|cpu|ram|gpu|disk|donanım|donanim|performans|çalışan|calisan|uygulama|program|oyun|masaüstü|masaustu/.test(q);
   // Unity/oyun geliştirme görevlerinde "hava durumu", "trafik", "yağmur" gibi
