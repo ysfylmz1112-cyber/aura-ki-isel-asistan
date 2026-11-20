@@ -17,7 +17,7 @@ function extract(startMarker, endMarker) {
   return source.slice(start, end);
 }
 
-const streamHelpers = extract("async function collectChatCompletionStream(", "\n// WebLLM inference can take longer");
+const streamHelpers = extract("async function collectChatCompletionStream(", "\nfunction isCodeMode");
 
 const helpers = [
   extract("function compactMemory(", "\nfunction toolDirectoryPrompt"),
@@ -122,7 +122,7 @@ test("renderer starts model warmup promptly with a bounded idle wait", () => {
 });
 
 test("AI core version matches the current desktop release", () => {
-  assert.match(source, /const AURA_CORE_VERSION = ['"]6.3.3['"]/);
+  assert.match(source, /const AURA_CORE_VERSION = ['"]6.3.4['"]/);
 });
 
 test("stream collector emits incremental text and returns a compatible final message", async () => {
@@ -155,8 +155,37 @@ test("stream collector reconstructs fragmented tool calls", async () => {
   assert.equal(call.function.name, "desktop_read_text_file");
   assert.equal(call.function.arguments, '{"path":"a.txt"}');
 });
-test("primary answer generation streams and renderer shows the live response", () => {
-  assert.match(source, /stream:true/);
+
+test("stream async-iterable provider error retries as a non-stream completion", async () => {
+  const sandbox = {};
+  vm.runInNewContext(streamHelpers + "\\nthis.runChatCompletionWithTimeout = runChatCompletionWithTimeout;", sandbox);
+  const calls = [];
+  const engine = { chat: { completions: { create: async options => {
+    calls.push(options.stream);
+    if (options.stream) throw new Error("stream is not async iterable");
+    return { choices: [{ message: { role: "assistant", content: "Güncelleme kontrol edildi." } }] };
+  } } } };
+  const emitted = [];
+  const result = await sandbox.runChatCompletionWithTimeout(engine, { messages: [], stream: true }, 1000, "test", text => emitted.push(text));
+  assert.deepEqual(calls, [true, false]);
+  assert.equal(result.choices[0].message.content, "Güncelleme kontrol edildi.");
+  assert.deepEqual(emitted, ["Güncelleme kontrol edildi."]);
+});
+
+test("non-iterable stream response retries without streaming", async () => {
+  const sandbox = {};
+  vm.runInNewContext(streamHelpers + "\\nthis.runChatCompletionWithTimeout = runChatCompletionWithTimeout;", sandbox);
+  const calls = [];
+  const engine = { chat: { completions: { create: async options => {
+    calls.push(options.stream);
+    return options.stream ? { unexpected: true } : { choices: [{ message: { role: "assistant", content: "Tamam." } }] };
+  } } } };
+  const result = await sandbox.runChatCompletionWithTimeout(engine, { messages: [], stream: true }, 1000);
+  assert.deepEqual(calls, [true, false]);
+  assert.equal(result.choices[0].message.content, "Tamam.");
+});
+\ntest("primary answer generation streams and renderer shows the live response", () => {
+  assert.match(source, /stream:true/);\n  assert.match(source, /stream:false/);\n  assert.match(source, /async iterable.*Retry the same request|Some bundled WebLLM builds reject stream:true internally/s);
   assert.match(source, /collectChatCompletionStream/);
   assert.ok(rendererSource.includes('p?.stage === "generating"'));
   assert.ok(rendererSource.includes("finish(q, answer, true, streamingMessage)"));
