@@ -33,7 +33,7 @@ const CODE_LARGE_MODEL_ID = "Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC";
 const CODE_FALLBACK_MODEL_ID = CODE_MODEL_ID;
 const WEB_MODEL_ID = CHAT_MODEL_ID;
 const DESKTOP_MODEL_ID = CHAT_MODEL_ID;
-const AURA_CORE_VERSION = '6.3.3';
+const AURA_CORE_VERSION = '6.3.4';
 
 function desktopAvailable() {
   return !!globalThis.auraDesktop?.isDesktop;
@@ -855,18 +855,59 @@ async function collectChatCompletionStream(stream, onToken = () => {}) {
 async function runChatCompletionWithTimeout(localEngine, options, timeoutMs, phase = "yanıt üretimi", onToken = () => {}) {
   let timeoutId;
   let timedOut = false;
-  const inference = options?.stream
-    ? (async () => {
-        // WebLLM sürümlerinde create() bir Promise döndürebilir.
-        // Promise'i async iterator gibi okumak "stream is not async iterable" hatasına yol açar.
-        const stream = await localEngine.chat.completions.create(options);
-        if (stream && typeof stream[Symbol.asyncIterator] === "function") {
-          return collectChatCompletionStream(stream, onToken);
-        }
-        if (stream && Array.isArray(stream.choices)) return stream;
-        throw new Error("Yerel AI sağlayıcısı stream modunda okunabilir bir yanıt döndürmedi. Sağlayıcı uyumluluğunu kontrol et.");
-      })()
-    : localEngine.chat.completions.create(options);
+
+  const readFinalContent = result => {
+    const message = result?.choices?.[0]?.message;
+    if (typeof message?.content === "string") return message.content;
+    if (Array.isArray(message?.content)) {
+      return message.content.map(part => typeof part === "string" ? part : String(part?.text || "")).join("");
+    }
+    return "";
+  };
+
+  const inference = (async () => {
+    if (!options?.stream) {
+      return await localEngine.chat.completions.create(options);
+    }
+
+    let streamResult;
+    try {
+      streamResult = await localEngine.chat.completions.create(options);
+    } catch (streamError) {
+      const message = String(streamError?.message || streamError || "");
+      if (!/stream.*async iterable|async iterable.*stream/i.test(message)) throw streamError;
+
+      // Some bundled WebLLM builds reject stream:true internally. Retry the
+      // same request as a normal completion so commands/tool calls still work.
+      const fallback = await localEngine.chat.completions.create({ ...options, stream: false });
+      const finalText = readFinalContent(fallback);
+      if (finalText) {
+        try { onToken(finalText); } catch (_) {}
+      }
+      return fallback;
+    }
+
+    if (streamResult && typeof streamResult[Symbol.asyncIterator] === "function") {
+      return await collectChatCompletionStream(streamResult, onToken);
+    }
+    if (streamResult && Array.isArray(streamResult.choices)) {
+      const finalText = readFinalContent(streamResult);
+      if (finalText) {
+        try { onToken(finalText); } catch (_) {}
+      }
+      return streamResult;
+    }
+
+    // A provider may silently ignore stream:true and return an unsupported
+    // object. Retry once without streaming rather than throwing an iterator error.
+    const fallback = await localEngine.chat.completions.create({ ...options, stream: false });
+    const finalText = readFinalContent(fallback);
+    if (finalText) {
+      try { onToken(finalText); } catch (_) {}
+    }
+    return fallback;
+  })();
+
   try {
     return await Promise.race([
       inference,
@@ -875,20 +916,14 @@ async function runChatCompletionWithTimeout(localEngine, options, timeoutMs, pha
           timedOut = true;
           try {
             const interruption = localEngine?.interruptGenerate?.();
-            if (interruption && typeof interruption.catch === "function") {
-              interruption.catch(() => {});
-            }
-          } catch (_) {
-            // Keep the timeout error as the primary, user-visible failure.
-          }
+            if (interruption && typeof interruption.catch === "function") interruption.catch(() => {});
+          } catch (_) {}
           reject(new Error("Yerel AI " + phase + " için " + Math.round(timeoutMs / 1000) + " saniyede yanıt veremedi. Üretim durduruldu; modeli yeniden başlatıp tekrar deneyebilirsin."));
         }, timeoutMs);
       })
     ]);
   } finally {
     if (timeoutId) clearTimeout(timeoutId);
-    // Do not allow a late completion from an expired request to be mistaken
-    // for a successful foreground response.
     if (timedOut) {
       try { await localEngine?.interruptGenerate?.(); } catch (_) {}
     }
