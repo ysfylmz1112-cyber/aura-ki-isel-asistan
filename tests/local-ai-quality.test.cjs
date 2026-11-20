@@ -157,7 +157,7 @@ test("stream collector reconstructs fragmented tool calls", async () => {
 });
 
 test("stream async-iterable provider error retries as a non-stream completion", async () => {
-  const sandbox = {};
+  const sandbox = { setTimeout, clearTimeout };
   vm.runInNewContext(streamHelpers + "\nthis.runChatCompletionWithTimeout = runChatCompletionWithTimeout;", sandbox);
   const calls = [];
   const engine = { chat: { completions: { create: async options => {
@@ -173,7 +173,7 @@ test("stream async-iterable provider error retries as a non-stream completion", 
 });
 
 test("non-iterable stream response retries without streaming", async () => {
-  const sandbox = {};
+  const sandbox = { setTimeout, clearTimeout };
   vm.runInNewContext(streamHelpers + "\nthis.runChatCompletionWithTimeout = runChatCompletionWithTimeout;", sandbox);
   const calls = [];
   const engine = { chat: { completions: { create: async options => {
