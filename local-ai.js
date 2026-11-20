@@ -847,7 +847,16 @@ async function runChatCompletionWithTimeout(localEngine, options, timeoutMs, pha
   let timeoutId;
   let timedOut = false;
   const inference = options?.stream
-    ? collectChatCompletionStream(localEngine.chat.completions.create(options), onToken)
+    ? (async () => {
+        // WebLLM sürümlerinde create() bir Promise döndürebilir.
+        // Promise'i async iterator gibi okumak "stream is not async iterable" hatasına yol açar.
+        const stream = await localEngine.chat.completions.create(options);
+        if (stream && typeof stream[Symbol.asyncIterator] === "function") {
+          return collectChatCompletionStream(stream, onToken);
+        }
+        if (stream && Array.isArray(stream.choices)) return stream;
+        throw new Error("Yerel AI sağlayıcısı stream modunda okunabilir bir yanıt döndürmedi. Sağlayıcı uyumluluğunu kontrol et.");
+      })()
     : localEngine.chat.completions.create(options);
   try {
     return await Promise.race([
