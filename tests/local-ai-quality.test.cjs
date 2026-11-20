@@ -184,7 +184,7 @@ test("non-iterable stream response retries without streaming", async () => {
   assert.deepEqual(calls, [true, false]);
   assert.equal(result.choices[0].message.content, "Tamam.");
 });
-\ntest("primary answer generation streams and renderer shows the live response", () => {
+test("primary answer generation streams and renderer shows the live response", () => {
   assert.match(source, /stream:true/);
   assert.match(source, /stream:false/);
   assert.match(source, /Some bundled WebLLM builds reject stream:true internally/);
