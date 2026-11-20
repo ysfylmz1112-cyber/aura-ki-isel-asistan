@@ -33,7 +33,7 @@ const CODE_LARGE_MODEL_ID = "Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC";
 const CODE_FALLBACK_MODEL_ID = CODE_MODEL_ID;
 const WEB_MODEL_ID = CHAT_MODEL_ID;
 const DESKTOP_MODEL_ID = CHAT_MODEL_ID;
-const AURA_CORE_VERSION = '6.3.2';
+const AURA_CORE_VERSION = '6.3.3';
 
 function desktopAvailable() {
   return !!globalThis.auraDesktop?.isDesktop;
@@ -46,6 +46,7 @@ const SYSTEM_PROMPT = [
   "BAĞLAM: Son mesajı önceki konuşmayla birlikte yorumla. 'bunu', 'onu', 'devam et', 'aynısını yap' gibi takip ifadelerinde en yakın ilgili isteği kullan; çelişkide en yeni açık talimat geçerlidir. İlgisiz eski konuları taşıma. İstek açıksa gereksiz soru sorma; gerçekten gerekiyorsa tek bir net soru sor.",
   "HAFIZA: Kalıcı hafızaya yalnızca kullanıcı açıkça kaydetmemi istediğinde yaz. Önceki konuşma veya kişisel proje sorularında ilgili hafıza/konuşma geçmişini ara; ilgisiz kayıtları cevaba katma.",
   "PC GÜVENLİĞİ: Masaüstü araçlarının izin ve onay kurallarını aşma. Erişimi yalnızca kullanıcının seçtiği çalışma klasörleriyle sınırla; tüm sürücüleri, Windows, Program Files, AppData veya kimlik bilgilerini tarama. Yeni klasör için desktop_choose_folder kullan. Dosya yazma/silme, PowerShell, uygulama kapatma ve mouse/klavye işlemlerinde gereken kullanıcı onayını bekle.",
+  "GÜNCELLEME: Kullanıcı en son sürümü yükle, AURA'yı güncelle veya güncelleme kontrolü istediğinde desktop_update_latest aracını çağır. Araç sonucu zaten güncelse bunu söyle; yeni sürüm bulunduysa indirme ve kurulum onayı akışını açıkça bildir. Güncellemenin kurulduğunu, uygulama yeniden başlatılıp sürüm doğrulanmadan iddia etme.",
   "ARAÇLAR: Yalnızca izin verilen araçları doğru JSON biçiminde çağır. Araç sonucunu kontrol etmeden başarı iddia etme; hata varsa saklama. Araçtan sonra ilk göreve devam et ve sonucu kullanıcı isteğiyle ilişkilendir. Aynı aracı aynı argümanlarla tekrarlama; çok adımlı işlerde kısa plan yap ve en fazla 7 araç turu kullan. OpenClaw'ı yalnızca kullanıcı açıkça isterse kullan.",
   "KOD: Çalışabilir kod üret; pseudocode verme. İstenen dili ve dosya yapısını koru. Değişiklikten önce mevcut projeyi/dosyayı oku; küçük ve kontrollü değişiklik yap, uygun test/build ile doğrula.",
   "UNITY: Önce gerçek projeyi ve Unity Editor kurulumunu incele. Mevcut dosyaları rastgele silme; mümkünse desktop_unity_autopilot ve desktop_unity_health_check kullan. Oyun içi hava, trafik, yağmur, sis veya zaman mekaniğini gerçek dünya verisi sanma. Kullanıcı açıkça gerçek hava durumu istemedikçe desktop_get_weather kullanma; Unity görevinde web/hava araçlarına yönelme.",
@@ -56,6 +57,14 @@ const SYSTEM_PROMPT = [
 ].join("\n");
 
 const TOOLS = [
+  {
+    type: "function",
+    function: {
+      name: "desktop_update_latest",
+      description: "Kurulu AURA'nın resmi GitHub sürümünü kontrol eder. Yeni sürüm varsa electron-updater arka planda indirir; indirme bitince kurulum için yeniden başlatma onayı gösterilir.",
+      parameters: {type:"object",properties:{},additionalProperties:false}
+    }
+  },
   {
     type: "function",
     function: {
@@ -1186,6 +1195,7 @@ function toolDirectoryPrompt(query = "", mode = "chat") {
     "desktop_memory_save","desktop_memory_search","desktop_memory_list","desktop_memory_forget",
     "desktop_conversation_search","desktop_memory_clear"
   ]);
+  if(/en son sürüm|en son surum|güncelle|guncelle|update|yeni sürüm|yeni surum/.test(q)) add(["desktop_update_latest"]);
   if(/hatırlat|hatirlat|alarm/.test(q)) add(["desktop_reminder_create","desktop_reminder_list","desktop_reminder_cancel"]);
   if(/pano|clipboard/.test(q)) add(["desktop_clipboard_read","desktop_clipboard_write"]);
   if(/ekran görüntüsü|ekran goruntusu|screenshot/.test(q)) add(["desktop_capture_screen"]);
