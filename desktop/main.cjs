@@ -13,6 +13,7 @@ const openclaw = require('./openclaw.cjs');
 const createIncomeWebsiteDemo = require('./income.cjs');
 const createMarketingKit = require('./marketing.cjs');
 const createYoutubeStudio = require('./youtube-studio.cjs');
+const renderShorts = require('./shorts-renderer.cjs');
 const youtubeStudio = createYoutubeStudio({ getUserDataPath: () => app.getPath('userData') });
 
 function startAURAUpdater() {
@@ -2638,6 +2639,50 @@ async function renderMarketingVideo(html, options = {}) {
   }
 }
 
+
+async function renderShortsVideo(html, options = {}) {
+  const duration = Math.max(10, Math.min(90, Number(options.maxDurationSeconds || options.durationSeconds) || 35));
+  const view = new BrowserWindow({
+    show:false, width:540, height:960, paintWhenInitiallyHidden:true,
+    webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:false}
+  });
+  let timeoutId=null;
+  try {
+    await view.loadURL('data:text/html;charset=utf-8,'+encodeURIComponent(String(html||'')));
+    const renderPromise=view.webContents.executeJavaScript('window.__auraRender()',true);
+    const timeoutPromise=new Promise((_,reject)=>{timeoutId=setTimeout(()=>reject(new Error('Shorts video oluşturma zaman aşımına uğradı.')), (duration+35)*1000);});
+    const result=await Promise.race([renderPromise,timeoutPromise]);
+    if(!result||typeof result.base64!=='string')throw new Error('Shorts video oluşturucu geçerli çıktı döndürmedi.');
+    const bytes=Buffer.from(result.base64,'base64');
+    if(bytes.length<1500||bytes.subarray(0,4).toString('hex')!=='1a45dfa3')throw new Error('Shorts WebM dosyası doğrulanamadı.');
+    return {base64:result.base64,durationSeconds:result.durationSeconds||duration};
+  } finally { if(timeoutId)clearTimeout(timeoutId); if(!view.isDestroyed())view.destroy(); }
+}
+
+async function renderSpeechWav(text, language='tr') {
+  if(process.platform!=='win32')throw new Error('Yerel seslendirme şu anda yalnızca Windows destekliyor.');
+  const value=String(text||'').trim().slice(0,1000);
+  if(!value)throw new Error('Seslendirilecek metin boş.');
+  const output=path.join(app.getPath('temp'),'aura-tts-'+crypto.randomBytes(8).toString('hex')+'.wav');
+  const escaped=output.replace(/'/g,"''");
+  const encoded=Buffer.from(value,'utf8').toString('base64');
+  const culture=language==='en'?'en-US':'tr-TR';
+  const script="$ErrorActionPreference='Stop'; Add-Type -AssemblyName System.Speech; $text=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('"+encoded+"')); $s=New-Object System.Speech.Synthesis.SpeechSynthesizer; $culture='"+culture+"'; $v=@($s.GetInstalledVoices() | Where-Object { $_.Enabled -and $_.VoiceInfo.Culture.Name -like ($culture.Substring(0,2)+'*') }); if($v.Count -gt 0){$s.SelectVoice($v[0].VoiceInfo.Name)}; $name=$s.Voice.Name; $s.SetOutputToWaveFile('"+escaped+"'); $s.Speak($text); $s.Dispose(); Write-Output $name";
+  try {
+    await new Promise((resolve,reject)=>execFile('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-Command',script],{windowsHide:true,timeout:120000,maxBuffer:1024*1024},(error,stdout,stderr)=>error?reject(new Error(String(stderr||error.message||error))):resolve(stdout)));
+    const bytes=await fsp.readFile(output);
+    if(bytes.length<1000||bytes.subarray(0,4).toString('ascii')!=='RIFF')throw new Error('Windows ses motoru geçerli WAV üretmedi.');
+    return {base64:bytes.toString('base64'),voiceName:String((await fsp.readFile(output)).length? 'Windows yerel sesi':'').trim(),bytes:bytes.length};
+  } finally { await fsp.rm(output,{force:true}).catch(()=>{}); }
+}
+
+async function renderYoutubeShortsPlan(args={}) {
+  const listed=await youtubeStudio.listPlans({limit:50});
+  const plan=listed.plans.find(item=>item.id===String(args.planId||''))||(!args.planId?listed.plans[0]:null);
+  if(!plan)throw new Error('Önce Türkçe ve İngilizce senaryo taslağı oluşturulmalı.');
+  return renderShorts(plan,{desktopRoot:()=>app.getPath('desktop'),isAllowedPath,confirmAction,renderVideo:renderShortsVideo,renderSpeech:renderSpeechWav});
+}
+
 async function handleTool(tool,args) {
   switch(tool) {
     case 'openclaw_status': return openclaw.status();
@@ -2701,6 +2746,7 @@ async function handleTool(tool,args) {
     case 'youtube_studio_get_profile': return youtubeStudio.getProfile();
     case 'youtube_studio_save_profile': return youtubeStudio.saveProfile(args||{});
     case 'youtube_studio_create_plan': return youtubeStudio.createPlan(args||{});
+    case 'youtube_studio_render_plan': return renderYoutubeShortsPlan(args||{});
     case 'youtube_studio_list_plans': return youtubeStudio.listPlans(args||{});
     case 'desktop_marketing_create_kit': return createMarketingKit({
       desktopRoot: app.getPath('desktop'),
@@ -3156,6 +3202,7 @@ app.whenReady().then(async()=>{
       'social-ad-assets',
       'animated-webm-video',
       'youtube-shorts-studio-drafts',
+      'stickman-shorts-video-audio',
       'unified-agent-orchestration',
       'multi-step-agent-routing',
       'pc-interaction-controls',
