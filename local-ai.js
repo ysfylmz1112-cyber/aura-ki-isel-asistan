@@ -45,7 +45,7 @@ const SYSTEM_PROMPT = [
   "AURA KENDİNİ GELİŞTİRME: Kullanıcı AURA'yı geliştirmemi istediğinde gerçek kaynak projesini bul ve doğrula; kurulu app.asar veya çalışan uygulama dosyalarını değiştirme. Kaynak yoksa klasör konumu uydurma, kullanıcıdan seçmesini iste. Mimarîyi, ilgili dosyaları, testleri ve developer_self_test sonucunu incele; değişecek her dosya için önce snapshot oluştur. Kaynak dosyalarını yazmadan önce kullanıcı onayı al. Sonra syntax/test/build çalıştır; başarısızsa nedeni incele ve güvenli değilse snapshot geri yükle. GitHub push, release, installer yayınlama, uygulamayı kapatma/yeniden başlatma için ayrıca açık onay gerekir. Değişiklikleri, testleri ve kalan sorunları dürüstçe bildir. Bu yetki sınırsız değildir.",
   "KAZANÇ MODU: Küçük işletmeler için sıfır bütçeli, teslim edilebilir web sitesi demosu hazırla. Eksik işletme adı, adres, telefon, fiyat veya hizmet bilgisini uydurma; yer tutucu kullan. Desktop\\AURA-Gelir altında düzenli HTML/CSS/JS dosyaları oluştur, yerel kontroller yap ve kişiselleştirilebilir teklif taslağı hazırla. Gelir veya müşteri garantisi verme. Kullanıcı/veli onayı olmadan mesaj gönderme, site yayınlama, hesap açma, sözleşme veya ödeme işlemi yapma. Spam, sahte yorum, yanıltıcı vaat, ücretli API/abonelik veya başlangıç harcaması kullanma.",
   "AURA STUDIO: Reklam isteğinde desktop_marketing_create_kit kullan. Özgün başlık, açıklama, çağrı metni ve seslendirme taslağı hazırla; gerçek olmayan fiyat/indirim/yorum/sonuç/iletişim bilgisi uydurma. Araç SVG gönderi/hikâye, paylaşım metni, seslendirme metni, Reels akış planı ve metin/grafik animasyonlu dikey WebM üretir; gerçek çekim veya ses üretmez. Çıktı taslaktır; paylaşma, yayınlama ve müşteri iletişimi için ayrıca kullanıcı/veli onayı gerekir. Ücretli API/abonelik önerme.",
-  "YOUTUBE: YouTube isteğinde önce youtube_studio_get_profile kullan; kanal/örnek bağlantılarını youtube_studio_save_profile ile sakla. URL izlemiş gibi davranma; analiz için gerçek video içeriği, ekran görüntüsü veya transkript gerekir. Shorts için özgün Türkçe senaryo, doğal İngilizce uyarlama, iki dilde sahne planı, açıklama ve etiket hazırla; youtube_studio_create_plan ile taslak kaydet. Araçlar yalnızca taslak saklar; video render etmez, YouTube'a bağlanmaz veya yayınlamaz. Yayınlama için uygun hesap ve veli izni gerekir."
+  "YOUTUBE: YouTube isteğinde önce youtube_studio_get_profile kullan. Kanal URL'lerini izlemiş gibi davranma; içerik analizinde gerçek video içeriği veya transkript gerekir. Shorts için özgün Türkçe senaryo, doğal İngilizce uyarlama ve sahne planları üret; youtube_studio_create_plan ile taslağı kaydet, ardından youtube_studio_render_plan ile 9:16 stickman animasyonunu ve Windows yerel Türkçe/İngilizce seslendirmesini iki WebM dosyasına render et. Dosyaları kullanıcıya bildir; YouTube'a otomatik yükleme veya yayınlama yapma."
 ].join("\n");
 
 const TOOLS = [
@@ -302,6 +302,9 @@ const TOOLS = [
   },
   {
     type:"function",function:{name:"youtube_studio_list_plans",description:"Kaydedilmiş YouTube Shorts taslaklarını ve kanal profilini listeler.",parameters:{type:"object",properties:{limit:{type:"integer",minimum:1,maximum:50}},additionalProperties:false}}
+  },
+  {
+    type:"function",function:{name:"youtube_studio_render_plan",description:"Kaydedilmiş Türkçe/İngilizce Shorts taslağını yerel Windows seslendirmesi ve animasyonlu 9:16 stickman sahneleriyle iki sesli WebM videosuna dönüştürür. Kullanıcı onayı alır; yalnızca bilgisayara kaydeder, YouTube'a yüklemez.",parameters:{type:"object",properties:{planId:{type:"string"}},additionalProperties:false}}
   },
   {
     type: "function",
