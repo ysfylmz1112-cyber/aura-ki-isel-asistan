@@ -12,7 +12,7 @@ test('renders Turkish and English narrated 9:16 WebM drafts locally',async()=>{
  try{
   const result=await renderShorts({id:'test-plan-12345678',topic:'Otobüste mahsur kaldım',scriptTr:'Türkçe kısa hikâye.',scriptEn:'A short English story.',scenesTr:['Otobüse bindim','Şoför kayboldu'],scenesEn:['I got on the bus','The driver vanished'],captionTr:'Sonunda ne oldu?',captionEn:'What happened next?',durationSeconds:10},{
    desktopRoot:()=>root,isAllowedPath:()=>true,confirmAction:async()=>true,
-   renderSpeech:async(text,lang)=>({base64:'UklGRiQAAABXQVZF',voiceName:lang==='tr'?'Turkish test':'English test'}),
+   renderSpeech:async(text,lang)=>({base64:'UklGRiQAAABXQVZF'.repeat(12),voiceName:lang==='tr'?'Turkish test':'English test'}),
    renderVideo:async(html,opts)=>{calls.push({html,opts});assert.match(html,/canvas/);assert.match(html,/__auraRender/);return Buffer.concat([Buffer.from('1a45dfa3','hex'),Buffer.alloc(2000)]);}
   });
   assert.equal(result.ok,true);
