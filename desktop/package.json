@@ -11,8 +11,8 @@
     "prepare-renderer": "node prepare-renderer.cjs",
     "prestart": "npm run prepare-renderer",
     "prebuild:win": "npm run prepare-renderer",
-    "test": "node --test ../tests/local-ai-quality.test.cjs",
-    "test:ai-quality": "node --test ../tests/local-ai-quality.test.cjs"
+    "test": "node --test ../tests/local-ai-quality.test.cjs ../tests/youtube-studio.test.cjs",
+    "test:ai-quality": "node --test ../tests/local-ai-quality.test.cjs ../tests/youtube-studio.test.cjs"
   },
   "dependencies": {
     "duck-duck-scrape": "2.2.7",
@@ -40,7 +40,8 @@
       "openclaw.cjs",
       "income.cjs",
       "marketing.cjs",
-      "youtube-studio.cjs"
+      "youtube-studio.cjs",
+      "shorts-renderer.cjs"
     ],
     "win": {
       "target": [
