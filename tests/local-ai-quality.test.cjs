@@ -158,7 +158,7 @@ test("stream collector reconstructs fragmented tool calls", async () => {
 
 test("stream async-iterable provider error retries as a non-stream completion", async () => {
   const sandbox = {};
-  vm.runInNewContext(streamHelpers + "\\nthis.runChatCompletionWithTimeout = runChatCompletionWithTimeout;", sandbox);
+  vm.runInNewContext(streamHelpers + "\nthis.runChatCompletionWithTimeout = runChatCompletionWithTimeout;", sandbox);
   const calls = [];
   const engine = { chat: { completions: { create: async options => {
     calls.push(options.stream);
@@ -174,7 +174,7 @@ test("stream async-iterable provider error retries as a non-stream completion", 
 
 test("non-iterable stream response retries without streaming", async () => {
   const sandbox = {};
-  vm.runInNewContext(streamHelpers + "\\nthis.runChatCompletionWithTimeout = runChatCompletionWithTimeout;", sandbox);
+  vm.runInNewContext(streamHelpers + "\nthis.runChatCompletionWithTimeout = runChatCompletionWithTimeout;", sandbox);
   const calls = [];
   const engine = { chat: { completions: { create: async options => {
     calls.push(options.stream);
@@ -185,7 +185,9 @@ test("non-iterable stream response retries without streaming", async () => {
   assert.equal(result.choices[0].message.content, "Tamam.");
 });
 \ntest("primary answer generation streams and renderer shows the live response", () => {
-  assert.match(source, /stream:true/);\n  assert.match(source, /stream:false/);\n  assert.match(source, /async iterable.*Retry the same request|Some bundled WebLLM builds reject stream:true internally/s);
+  assert.match(source, /stream:true/);
+  assert.match(source, /stream:false/);
+  assert.match(source, /Some bundled WebLLM builds reject stream:true internally/);
   assert.match(source, /collectChatCompletionStream/);
   assert.ok(rendererSource.includes('p?.stage === "generating"'));
   assert.ok(rendererSource.includes("finish(q, answer, true, streamingMessage)"));
