@@ -16,7 +16,14 @@ function isDriveListRequest(q) {
 // Eski renderer/inline script sürümleri bu fonksiyonu globalden çağırabiliyor.
 // Modül içinde de globalde de aynı güvenli sürücü algılama fonksiyonunu kullan.
 globalThis.isDriveListRequest = isDriveListRequest;
-import { CreateMLCEngine, prebuiltAppConfig } from "https://esm.run/@mlc-ai/web-llm@0.2.85";
+let webllmModule;
+try {
+  webllmModule = await import("https://esm.sh/@mlc-ai/web-llm@0.2.85");
+} catch (primaryError) {
+  console.warn("[AURA] Primary WebLLM CDN failed; trying jsDelivr fallback.", primaryError);
+  webllmModule = await import("https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.85/+esm");
+}
+const { CreateMLCEngine, prebuiltAppConfig } = webllmModule;
 
 const CHAT_MODEL_ID = "Qwen2.5-3B-Instruct-q4f16_1-MLC";
 // 3B genel sohbet modeli, Türkçe bilgi yanıtlarında daha yüksek kalite için kullanılır.
