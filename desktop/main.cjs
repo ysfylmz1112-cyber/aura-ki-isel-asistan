@@ -16,6 +16,36 @@ const createYoutubeStudio = require('./youtube-studio.cjs');
 const renderShorts = require('./shorts-renderer.cjs');
 const youtubeStudio = createYoutubeStudio({ getUserDataPath: () => app.getPath('userData') });
 
+let auraUpdateCheckPromise = null;
+
+async function checkAuraLatestUpdate() {
+  if (!app.isPackaged) {
+    return { ok:false, status:'development', currentVersion:app.getVersion(), message:'Güncelleme kontrolü kurulu AURA uygulamasında kullanılabilir; geliştirme modunda atlandı.' };
+  }
+  if (process.platform !== 'win32') {
+    return { ok:false, status:'unsupported-platform', currentVersion:app.getVersion(), message:'Otomatik kurulum şu anda yalnızca Windows sürümü için yapılandırıldı.' };
+  }
+  if (auraUpdateCheckPromise) return auraUpdateCheckPromise;
+
+  auraUpdateCheckPromise = (async () => {
+    const currentVersion = app.getVersion();
+    const result = await autoUpdater.checkForUpdates();
+    const latestVersion = String(result?.updateInfo?.version || currentVersion);
+    if (!result?.isUpdateAvailable) {
+      return { ok:true, status:'up-to-date', currentVersion, latestVersion:currentVersion, message:'AURA zaten en son sürümde.' };
+    }
+    return {
+      ok:true,
+      status:'downloading',
+      currentVersion,
+      latestVersion,
+      message:'AURA ' + latestVersion + ' bulundu. Güncelleme arka planda indiriliyor; indirme bitince kurulum ve yeniden başlatma onayı gösterilecek.'
+    };
+  })().finally(() => { auraUpdateCheckPromise = null; });
+
+  return auraUpdateCheckPromise;
+}
+
 function startAURAUpdater() {
   if (!app.isPackaged) return;
 
@@ -2693,6 +2723,7 @@ async function handleTool(tool,args) {
     })();
     case 'openclaw_chat': return openclaw.chat(args?.input||'',args||{});
     case 'desktop_self_diagnostics': return getAuraSelfDiagnostics();
+    case 'desktop_update_latest': return checkAuraLatestUpdate();
     case 'desktop_get_hardware_metrics': return getHardwareMetrics();
     case 'desktop_get_system_health': return getAuraSystemHealth();
     case 'desktop_get_app_catalog': return getAuraAppCatalog();
