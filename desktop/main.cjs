@@ -2669,10 +2669,10 @@ async function renderSpeechWav(text, language='tr') {
   const culture=language==='en'?'en-US':'tr-TR';
   const script="$ErrorActionPreference='Stop'; Add-Type -AssemblyName System.Speech; $text=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('"+encoded+"')); $s=New-Object System.Speech.Synthesis.SpeechSynthesizer; $culture='"+culture+"'; $v=@($s.GetInstalledVoices() | Where-Object { $_.Enabled -and $_.VoiceInfo.Culture.Name -like ($culture.Substring(0,2)+'*') }); if($v.Count -gt 0){$s.SelectVoice($v[0].VoiceInfo.Name)}; $name=$s.Voice.Name; $s.SetOutputToWaveFile('"+escaped+"'); $s.Speak($text); $s.Dispose(); Write-Output $name";
   try {
-    await new Promise((resolve,reject)=>execFile('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-Command',script],{windowsHide:true,timeout:120000,maxBuffer:1024*1024},(error,stdout,stderr)=>error?reject(new Error(String(stderr||error.message||error))):resolve(stdout)));
+    const voiceOutput=await new Promise((resolve,reject)=>execFile('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-Command',script],{windowsHide:true,timeout:120000,maxBuffer:1024*1024},(error,stdout,stderr)=>error?reject(new Error(String(stderr||error.message||error))):resolve(String(stdout||'').trim())));
     const bytes=await fsp.readFile(output);
     if(bytes.length<1000||bytes.subarray(0,4).toString('ascii')!=='RIFF')throw new Error('Windows ses motoru geçerli WAV üretmedi.');
-    return {base64:bytes.toString('base64'),voiceName:String((await fsp.readFile(output)).length? 'Windows yerel sesi':'').trim(),bytes:bytes.length};
+    return {base64:bytes.toString('base64'),voiceName:voiceOutput||'Windows varsayılan sesi',bytes:bytes.length};
   } finally { await fsp.rm(output,{force:true}).catch(()=>{}); }
 }
 
