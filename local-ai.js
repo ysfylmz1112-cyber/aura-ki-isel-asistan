@@ -1763,7 +1763,6 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
           : 0
       };
       try { onProgress(timing); } catch (_) {}
-    }
     } catch (error) {
       const msg=String(error?.message||error);
       if (/context window|prompt tokens exceed|maximum context|context length|too many tokens/i.test(msg)) {
