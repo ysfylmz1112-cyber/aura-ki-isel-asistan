@@ -32,4 +32,4 @@ jobs:
         with:
           node-version: 22
       - name: Run deterministic AI quality tests
-        run: node --test tests/local-ai-quality.test.cjs
+        run: node --test tests/local-ai-quality.test.cjs tests/youtube-studio.test.cjs
