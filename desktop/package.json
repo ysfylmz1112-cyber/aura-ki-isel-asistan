@@ -2,7 +2,7 @@
   "name": "aura-desktop",
   "version": "6.4.1",
   "private": true,
-  "description": "AURA local desktop AI assistant",
+  "description": "AURA local desktop AI assistant with bilingual Shorts video studio",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
