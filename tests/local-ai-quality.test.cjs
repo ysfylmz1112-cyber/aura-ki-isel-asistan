@@ -137,7 +137,7 @@ test("renderer starts model warmup promptly with a bounded idle wait", () => {
 });
 
 test("AI core version matches the current desktop release", () => {
-  assert.match(source, /const AURA_CORE_VERSION = ['"]6.4.1['"]/);
+  assert.match(source, /const AURA_CORE_VERSION = ['"]6.4.2['"]/);
 });
 
 test("stream collector emits incremental text and returns a compatible final message", async () => {
@@ -327,4 +327,11 @@ test("renderer displays first-token and total generation timings", () => {
   assert.ok(rendererSource.includes('p?.stage === "metrics"'));
   assert.ok(rendererSource.includes("generationMetrics.timeToFirstTokenMs"));
   assert.ok(rendererSource.includes("generationMetrics.generationMs"));
+});
+
+
+test("YouTube Shorts requests expose the real render tool and avoid the marketing-only video tool", () => {
+  assert.match(source, /if\(youtube\) add\(\["youtube_studio_get_profile","youtube_studio_save_profile","youtube_studio_create_plan","youtube_studio_list_plans","youtube_studio_render_plan"\]\)/);
+  assert.match(source, /if \(youtube\) \{[\\s\\S]*?toolHints\.push\("youtube_studio_get_profile", "youtube_studio_create_plan", "youtube_studio_render_plan", "youtube_studio_list_plans"\)/);
+  assert.doesNotMatch(source, /const marketing=\/[^;]*(?:shorts|video)/);
 });
