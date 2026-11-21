@@ -7,7 +7,7 @@ on:
       - "local-ai.js"
       - "index.html"
       - "tests/**"
-      - "desktop/package.json"
+      - "desktop/**"
       - ".github/workflows/ai-quality-tests.yml"
   pull_request:
     paths:
