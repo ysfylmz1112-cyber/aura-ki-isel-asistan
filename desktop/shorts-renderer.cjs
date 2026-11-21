@@ -66,7 +66,8 @@ module.exports=async function renderShorts(plan,options={}){
   if(bytes.length<1500||bytes.subarray(0,4).toString('hex')!=='1a45dfa3')throw Error(lang+' WebM doğrulaması başarısız.');
   const name=lang==='tr'?'shorts-turkce.webm':'shorts-english.webm',target=path.join(dir,name);
   await fs.writeFile(target,bytes,{flag:'wx'});await fs.writeFile(path.join(dir,lang==='tr'?'seslendirme-turkce.txt':'voiceover-english.txt'),text,{flag:'wx'});
-  const subtitlePath=path.join(dir,lang==='tr'?'altyazi-turkce.srt':'subtitles-english.srt');\n  await fs.writeFile(subtitlePath,makeSrt(text,result?.durationSeconds||duration),'utf8');
+  const subtitlePath=path.join(dir,lang==='tr'?'altyazi-turkce.srt':'subtitles-english.srt');
+  await fs.writeFile(subtitlePath,makeSrt(text,result?.durationSeconds||duration),'utf8');
   outputs.push({language:lang,path:target,bytes:bytes.length,hasAudio:true,voice:speech.voiceName||'Windows varsayılan sesi',durationSeconds:result?.durationSeconds||duration,subtitlePath});
  }
  const manifest={topic:plan.topic,createdAt:new Date().toISOString(),format:'WebM 540x960 (9:16)',character:'consistent 2D stickman',visuals:'procedural parallax city backgrounds, animated character, scene cards and timed subtitles',outputs,publishingEnabled:false};
