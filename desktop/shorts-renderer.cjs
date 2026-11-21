@@ -6,6 +6,15 @@ function slug(v){
  return String(v||'shorts').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ı/g,'i').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40)||'shorts';
 }
 
+function makeSrt(text,duration){
+ const words=String(text||'').split(/\\s+/).filter(Boolean),groups=[];
+ for(let i=0;i<words.length;i+=7)groups.push(words.slice(i,i+7).join(' '));
+ const total=Math.max(1,groups.length),weight=groups.map(x=>Math.max(1,x.length)),sum=weight.reduce((a,b)=>a+b,0);
+ let elapsed=0;
+ const stamp=value=>{const ms=Math.max(0,Math.round(value*1000)),h=Math.floor(ms/3600000),m=Math.floor(ms%3600000/60000),sec=Math.floor(ms%60000/1000),mill=ms%1000;return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')+','+String(mill).padStart(3,'0');};
+ return groups.map((line,index)=>{const start=elapsed;elapsed+=duration*weight[index]/sum;return (index+1)+'\\n'+stamp(start)+' --> '+stamp(elapsed)+'\\n'+line;}).join('\\n\\n')+'\\n';
+}
+
 function html(plan,lang,audio){
  const scenes=lang==='en'?plan.scenesEn:plan.scenesTr;
  const script=lang==='en'?plan.scriptEn:plan.scriptTr;
@@ -56,7 +65,7 @@ module.exports=async function renderShorts(plan,options={}){
   const bytes=Buffer.isBuffer(result)?result:Buffer.from(result?.base64||'','base64');
   if(bytes.length<1500||bytes.subarray(0,4).toString('hex')!=='1a45dfa3')throw Error(lang+' WebM doğrulaması başarısız.');
   const name=lang==='tr'?'shorts-turkce.webm':'shorts-english.webm',target=path.join(dir,name);
-  await fs.writeFile(target,bytes,{flag:'wx'});await fs.writeFile(path.join(dir,lang==='tr'?'seslendirme-turkce.txt':'voiceover-english.txt'),text,{flag:'wx'});
+  await fs.writeFile(target,bytes,{flag:'wx'});await fs.writeFile(path.join(dir,lang==='tr'?'seslendirme-turkce.txt':'voiceover-english.txt'),text,{flag:'wx'});\n  await fs.writeFile(path.join(dir,lang==='tr'?'altyazi-turkce.srt':'subtitles-english.srt'),makeSrt(text,result?.durationSeconds||duration),'utf8');
   outputs.push({language:lang,path:target,bytes:bytes.length,hasAudio:true,voice:speech.voiceName||'Windows varsayılan sesi',durationSeconds:result?.durationSeconds||duration});
  }
  const manifest={topic:plan.topic,createdAt:new Date().toISOString(),format:'WebM 540x960 (9:16)',character:'consistent 2D stickman',visuals:'procedural parallax city backgrounds, animated character, scene cards and timed subtitles',outputs,publishingEnabled:false};
