@@ -17,14 +17,51 @@ const renderShorts = require('./shorts-renderer.cjs');
 const youtubeStudio = createYoutubeStudio({ getUserDataPath: () => app.getPath('userData') });
 
 let auraUpdateCheckPromise = null;
+let auraDownloadedUpdateInfo = null;
+let auraUpdateInstallRequested = false;
+let auraUpdateInstallStarted = false;
 
-async function checkAuraLatestUpdate() {
+function installDownloadedAuraUpdate() {
+  if (!auraUpdateInstallRequested || !auraDownloadedUpdateInfo || auraUpdateInstallStarted) return false;
+  auraUpdateInstallStarted = true;
+  const version = String(auraDownloadedUpdateInfo.version || 'yeni sürüm');
+  try {
+    if (Notification.isSupported()) {
+      new Notification({
+        title: 'AURA güncelleniyor',
+        body: 'AURA ' + version + ' kuruluyor. Uygulama otomatik yeniden açılacak.'
+      }).show();
+    }
+  } catch (error) {
+    console.warn('[AURA updater] notification failed:', error);
+  }
+  setTimeout(() => {
+    try {
+      autoUpdater.quitAndInstall(false, true);
+    } catch (error) {
+      auraUpdateInstallStarted = false;
+      console.error('[AURA updater] automatic install failed:', error);
+      dialog.showErrorBox('AURA güncellenemedi', String(error?.message || error));
+    }
+  }, 1200);
+  return true;
+}
+
+async function checkAuraLatestUpdate(options = {}) {
   if (!app.isPackaged) {
     return { ok:false, status:'development', currentVersion:app.getVersion(), message:'Güncelleme kontrolü kurulu AURA uygulamasında kullanılabilir; geliştirme modunda atlandı.' };
   }
   if (process.platform !== 'win32') {
     return { ok:false, status:'unsupported-platform', currentVersion:app.getVersion(), message:'Otomatik kurulum şu anda yalnızca Windows sürümü için yapılandırıldı.' };
   }
+
+  if (options.installWhenReady) {
+    auraUpdateInstallRequested = true;
+    if (installDownloadedAuraUpdate()) {
+      return { ok:true, status:'installing', currentVersion:app.getVersion(), latestVersion:auraDownloadedUpdateInfo?.version, message:'Güncelleme indirildi. AURA kurulumu kendi tamamlayıp yeniden başlayacak.' };
+    }
+  }
+
   if (auraUpdateCheckPromise) return auraUpdateCheckPromise;
 
   auraUpdateCheckPromise = (async () => {
@@ -32,6 +69,10 @@ async function checkAuraLatestUpdate() {
     const result = await autoUpdater.checkForUpdates();
     const latestVersion = String(result?.updateInfo?.version || currentVersion);
     if (!result?.isUpdateAvailable) {
+      if (auraDownloadedUpdateInfo && auraUpdateInstallRequested) {
+        installDownloadedAuraUpdate();
+        return { ok:true, status:'installing', currentVersion, latestVersion:auraDownloadedUpdateInfo.version, message:'İndirilen güncelleme otomatik kuruluyor. AURA yeniden açılacak.' };
+      }
       return { ok:true, status:'up-to-date', currentVersion, latestVersion:currentVersion, message:'AURA zaten en son sürümde.' };
     }
     return {
@@ -39,7 +80,7 @@ async function checkAuraLatestUpdate() {
       status:'downloading',
       currentVersion,
       latestVersion,
-      message:'AURA ' + latestVersion + ' bulundu. Güncelleme arka planda indiriliyor; indirme bitince kurulum ve yeniden başlatma onayı gösterilecek.'
+      message:'AURA ' + latestVersion + ' bulundu. İndirme arka planda yapılıyor; tamamlanınca AURA kurulumu otomatik yapıp yeniden başlayacak.'
     };
   })().finally(() => { auraUpdateCheckPromise = null; });
 
@@ -49,9 +90,6 @@ async function checkAuraLatestUpdate() {
 function startAURAUpdater() {
   if (!app.isPackaged) return;
 
-  // Güncellemeyi kullanıcı dosya indirip kurmadan arka planda hazırla.
-  // Kurulum, kullanıcı AURA'yı yeniden başlatmayı seçtiğinde veya uygulamadan
-  // normal şekilde çıktığında electron-updater tarafından tamamlanır.
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
   autoUpdater.allowDowngrade = false;
@@ -78,28 +116,30 @@ function startAURAUpdater() {
     console.log('[AURA updater] download progress:', Math.round(progress.percent || 0) + '%');
   });
 
-  autoUpdater.on('update-downloaded', async (info) => {
-    const choice = await dialog.showMessageBox({
-      type: 'info',
-      title: 'AURA güncellemesi hazır',
-      message: 'AURA ' + info.version + ' güncellemesi indirildi ve kuruluma hazır.',
-      detail: 'Kurulumu tamamlamak için AURA yeniden başlatılacak. Şimdi yeniden başlatabilir veya çalışmalarını bitirip AURA’dan normal şekilde çıkabilirsin. Güncelleme çıkışta otomatik kurulur.',
-      buttons: ['Şimdi yeniden başlat', 'Daha sonra'],
-      defaultId: 0,
-      cancelId: 1,
-      noLink: true
-    });
-    if (choice.response === 0) {
-      autoUpdater.quitAndInstall(false, true);
+  autoUpdater.on('update-downloaded', (info) => {
+    auraDownloadedUpdateInfo = info || {};
+    console.log('[AURA updater] update downloaded:', info?.version);
+    if (auraUpdateInstallRequested) installDownloadedAuraUpdate();
+    else {
+      try {
+        if (Notification.isSupported()) {
+          new Notification({
+            title: 'AURA güncellemesi hazır',
+            body: 'Güncelleme indirildi. "En son sürümü yükle" dediğinde AURA kurulumu kendi tamamlayacak.'
+          }).show();
+        }
+      } catch (error) {
+        console.warn('[AURA updater] notification failed:', error);
+      }
     }
   });
 
   autoUpdater.on('error', (error) => {
+    auraUpdateInstallStarted = false;
     console.error('[AURA updater] update error:', error);
   });
 
   setTimeout(() => {
-    // Share the guarded check path with the chat command to avoid overlapping checks.
     checkAuraLatestUpdate().catch(error => {
       console.error('[AURA updater] check failed:', error);
     });
@@ -2724,7 +2764,7 @@ async function handleTool(tool,args) {
     })();
     case 'openclaw_chat': return openclaw.chat(args?.input||'',args||{});
     case 'desktop_self_diagnostics': return getAuraSelfDiagnostics();
-    case 'desktop_update_latest': return checkAuraLatestUpdate();
+    case 'desktop_update_latest': return checkAuraLatestUpdate({installWhenReady:true});
     case 'desktop_get_hardware_metrics': return getHardwareMetrics();
     case 'desktop_get_system_health': return getAuraSystemHealth();
     case 'desktop_get_app_catalog': return getAuraAppCatalog();
