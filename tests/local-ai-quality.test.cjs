@@ -19,6 +19,7 @@ function extract(startMarker, endMarker) {
 
 const streamHelpers = extract("async function collectChatCompletionStream(", "\nfunction isCodeMode");
 
+const updateIntentHelper = extract("function isUpdateRequestIntent(", "\nexport async function askLocalAI");
 const helpers = [
   extract("function compactMemory(", "\nfunction toolDirectoryPrompt"),
   extract("function resolveAnswerTokenBudget(", "\nfunction cleanMessages"),
@@ -27,8 +28,22 @@ const helpers = [
   extract("function resolveFollowUpIntent(", "\nexport async function askLocalAI")
 ].join("\n");
 
+const updateSandbox = {};
+vm.runInNewContext(updateIntentHelper + "\nthis.isUpdateRequestIntent = isUpdateRequestIntent;", updateSandbox);
+
 const sandbox = {};
 vm.runInNewContext(helpers + "\nthis.compactMemory = compactMemory; this.cleanMessages = cleanMessages; this.resolveFollowUpIntent = resolveFollowUpIntent; this.resolveAnswerTokenBudget = resolveAnswerTokenBudget; this.shouldReviewAnswer = shouldReviewAnswer;", sandbox);
+
+
+test("update commands are routed deterministically without relying on model tool calls", () => {
+  for (const phrase of ["En son sürümü yükle", "AURA'yı güncelle", "Güncelleme kontrolü yap", "Yeni sürümü indir"]) {
+    assert.equal(updateSandbox.isUpdateRequestIntent(phrase), true, phrase);
+  }
+  for (const phrase of ["Merhaba", "Bilgisayarımın RAM durumunu göster"]) {
+    assert.equal(updateSandbox.isUpdateRequestIntent(phrase), false, phrase);
+  }
+  assert.match(source, /desktopCall\("desktop_update_latest",\s*\{\}\)/);
+});
 
 test("ordinary factual questions do not receive unrelated saved memories", () => {
   const memories = [
