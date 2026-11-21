@@ -320,7 +320,7 @@ const TOOLS = [
     type:"function",function:{name:"youtube_studio_list_plans",description:"Kaydedilmiş YouTube Shorts taslaklarını ve kanal profilini listeler.",parameters:{type:"object",properties:{limit:{type:"integer",minimum:1,maximum:50}},additionalProperties:false}}
   },
   {
-    type:"function",function:{name:"youtube_studio_render_plan",description:"Kaydedilmiş Türkçe/İngilizce Shorts taslağını yerel Windows seslendirmesi ve animasyonlu 9:16 stickman sahneleriyle iki sesli WebM videosuna dönüştürür. Kullanıcı onayı alır; yalnızca bilgisayara kaydeder, YouTube'a yüklemez.",parameters:{type:"object",properties:{planId:{type:"string"}},additionalProperties:false}}
+    type:"function",function:{name:"youtube_studio_render_plan",description:"Kaydedilmiş Türkçe/İngilizce Shorts taslağını sahne geçişli 9:16 stickman animasyonuna, ekrana gömülü altyazılara, ayrı SRT altyazı dosyalarına ve Windows yerel seslendirmesine dönüştürerek iki WebM videosu oluşturur. Kullanıcı onayı alır; yalnızca bilgisayara kaydeder, YouTube'a yüklemez.",parameters:{type:"object",properties:{planId:{type:"string"}},additionalProperties:false}}
   },
   {
     type: "function",
