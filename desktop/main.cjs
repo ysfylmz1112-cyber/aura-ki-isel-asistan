@@ -99,7 +99,8 @@ function startAURAUpdater() {
   });
 
   setTimeout(() => {
-    autoUpdater.checkForUpdates().catch(error => {
+    // Share the guarded check path with the chat command to avoid overlapping checks.
+    checkAuraLatestUpdate().catch(error => {
       console.error('[AURA updater] check failed:', error);
     });
   }, 8000);
