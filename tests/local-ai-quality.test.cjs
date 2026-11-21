@@ -137,7 +137,7 @@ test("renderer starts model warmup promptly with a bounded idle wait", () => {
 });
 
 test("AI core version matches the current desktop release", () => {
-  assert.match(source, /const AURA_CORE_VERSION = ['"]6.3.4['"]/);
+  assert.match(source, /const AURA_CORE_VERSION = ['"]6.3.5['"]/);
 });
 
 test("stream collector emits incremental text and returns a compatible final message", async () => {
