@@ -137,7 +137,7 @@ test("renderer starts model warmup promptly with a bounded idle wait", () => {
 });
 
 test("AI core version matches the current desktop release", () => {
-  assert.match(source, /const AURA_CORE_VERSION = ['"]6.4.2['"]/);
+  assert.match(source, /const AURA_CORE_VERSION = ['"]6.4.3['"]/);
 });
 
 test("stream collector emits incremental text and returns a compatible final message", async () => {
@@ -334,4 +334,14 @@ test("YouTube Shorts requests expose the real render tool and avoid the marketin
   assert.match(source, /if\(youtube\) add\(\["youtube_studio_get_profile","youtube_studio_save_profile","youtube_studio_create_plan","youtube_studio_list_plans","youtube_studio_render_plan"\]\)/);
   assert.match(source, /if \(youtube\) \{[\s\S]*?toolHints\.push\("youtube_studio_get_profile", "youtube_studio_create_plan", "youtube_studio_render_plan", "youtube_studio_list_plans"\)/);
   assert.doesNotMatch(source, /const marketing=\/[^;]*(?:shorts|video)/);
+});
+
+
+test("explicit update command requests silent install and automatic restart", () => {
+  const mainPath = path.join(__dirname, "..", "desktop", "main.cjs");
+  const mainSource = fs.readFileSync(mainPath, "utf8");
+  assert.match(mainSource, /case 'desktop_update_latest': return checkAuraLatestUpdate\(\{installWhenReady:true\}\)/);
+  assert.match(mainSource, /autoUpdater\.quitAndInstall\(false, true\)/);
+  assert.match(mainSource, /if \(auraUpdateInstallRequested\) installDownloadedAuraUpdate\(\)/);
+  assert.doesNotMatch(mainSource, /buttons: \['Şimdi yeniden başlat', 'Daha sonra'\]/);
 });
