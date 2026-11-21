@@ -332,6 +332,6 @@ test("renderer displays first-token and total generation timings", () => {
 
 test("YouTube Shorts requests expose the real render tool and avoid the marketing-only video tool", () => {
   assert.match(source, /if\(youtube\) add\(\["youtube_studio_get_profile","youtube_studio_save_profile","youtube_studio_create_plan","youtube_studio_list_plans","youtube_studio_render_plan"\]\)/);
-assert.match(source, /if \(youtube\) \{[\s\S]*?toolHints\.push\("youtube_studio_get_profile", "youtube_studio_create_plan", "youtube_studio_render_plan", "youtube_studio_list_plans"\)/);
+  assert.match(source, /if \(youtube\) \{[\s\S]*?toolHints\.push\("youtube_studio_get_profile", "youtube_studio_create_plan", "youtube_studio_render_plan", "youtube_studio_list_plans"\)/);
   assert.doesNotMatch(source, /const marketing=\/[^;]*(?:shorts|video)/);
 });
