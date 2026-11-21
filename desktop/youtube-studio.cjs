@@ -5,7 +5,7 @@ const crypto=require('node:crypto');
 const DEFAULT_PROFILE={version:1,channelUrl:"https://www.youtube.com/@Yusuf-b5z7w",exampleUrls:["https://youtube.com/shorts/3ARMrJk3fn4","https://youtube.com/shorts/_ZMU2QlQl-s","https://youtube.com/shorts/PyoilDHC5ac","https://youtube.com/shorts/lAUZuP6xz0Q","https://youtube.com/shorts/WoXQL7v0Q1A","https://youtube.com/shorts/6oQh0_znmi0","https://youtube.com/shorts/QcaCUgevi88"],analysisStatus:'links_saved_content_not_yet_analyzed',analysisNote:'Bağlantılar kaydedildi. Video görüntüsü, sesi, başlığı ve performans verileri henüz doğrulanmadı.',cadence:{frequency:'daily',firstLanguage:'tr',secondLanguage:'en',secondOffsetHours:4,publishTimeLocal:null},updatedAt:null};
 function clean(v,max=4000){return String(v??'').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g,' ').trim().slice(0,max);}
 function splitScenes(text){
- const parts=String(text||'').split(/(?<=[.!?])\\s+|\\n+/).map(x=>clean(x,700)).filter(Boolean);
+ const parts=String(text||'').split(/(?<=[.!?])\s+|\n+/).map(x=>clean(x,700)).filter(Boolean);
  if(parts.length<=1)return parts;
  const count=Math.min(16,Math.max(6,Math.ceil(parts.length/2))),size=Math.ceil(parts.length/count),out=[];
  for(let i=0;i<parts.length;i+=size)out.push(parts.slice(i,i+size).join(' '));
