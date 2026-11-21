@@ -33,7 +33,7 @@ const CODE_LARGE_MODEL_ID = "Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC";
 const CODE_FALLBACK_MODEL_ID = CODE_MODEL_ID;
 const WEB_MODEL_ID = CHAT_MODEL_ID;
 const DESKTOP_MODEL_ID = CHAT_MODEL_ID;
-const AURA_CORE_VERSION = '6.3.4';
+const AURA_CORE_VERSION = '6.3.5';
 
 function desktopAvailable() {
   return !!globalThis.auraDesktop?.isDesktop;
@@ -1645,6 +1645,11 @@ function resolveFollowUpIntent(message, history = []) {
   return { intentValue, isShortFollowUp, previousUserMessage };
 }
 
+function isUpdateRequestIntent(value) {
+  const q = String(value || "").toLocaleLowerCase("tr-TR").trim();
+  return /(?:en\\s+son|son|yeni|güncel|guncel).{0,36}(?:sürüm|surum|yükle|yukle|indir|güncelle|guncelle)|(?:aura(?:'yı|’yı|yi)?\\s*)?(?:güncelle|guncelle)|güncelleme\\s+(?:kontrol|denetle)|update\\s+(?:aura|app|application)/i.test(q);
+}
+
 export async function askLocalAI(message, history = [], onProgress = () => {}, environment = null, mode = "chat", memory = []) {
   const value = String(message || "").trim();
   if (!value) throw new Error("Mesaj boş.");
@@ -1682,6 +1687,26 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
       return "Aracın ham sonucu: " + JSON.stringify(selfTestResult);
     } catch (error) {
       return "Aracın ham sonucu: " + JSON.stringify({ ok:false, error:String(error?.message || error) });
+    }
+  }
+
+
+  // Update commands must never depend on the small local model deciding to call a tool.
+  // Route them directly to Electron so "En son sürümü yükle" always checks the updater.
+  if (isUpdateRequestIntent(intentValue)) {
+    if (!desktopAvailable()) return "Otomatik güncelleme için AURA masaüstü uygulaması bağlı olmalı.";
+    try {
+      const update = await desktopCall("desktop_update_latest", {});
+      const status = String(update?.status || "");
+      if (status === "downloading") {
+        return String(update?.message || "Yeni sürüm bulundu ve arka planda indiriliyor. İndirme bitince yeniden başlatma onayı çıkacak.");
+      }
+      if (status === "up-to-date") {
+        return "AURA zaten en son sürümde (" + String(update?.currentVersion || "sürüm bilgisi alınamadı") + "). Yeni kurulum dosyası indirmen gerekmiyor.";
+      }
+      return String(update?.message || "Güncelleme kontrolü tamamlandı.") + (update?.ok === false ? " (Kontrol başarısız.)" : "");
+    } catch (error) {
+      return "Otomatik güncelleme kontrolü başarısız: " + String(error?.message || error);
     }
   }
 
