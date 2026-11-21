@@ -1191,7 +1191,7 @@ function toolDirectoryPrompt(query = "", mode = "chat") {
 
   const income=/kazanç modu|kazanc modu|aura üzerinden para kazan|aura uzerinden para kazan|aura ile para kazan|gelir amaçlı site|gelir amacli site|müşteri sitesi|musteri sitesi|işletme sitesi|isletme sitesi|restoran sitesi/.test(q);
   const selfDevelopment=/kendini geliştir|kendini gelistir|kendi kodunu|kendi kaynak kodunu|aura geliştir|aura gelistir|aura iyileştir|aura iyilestir|self.?improv|self.?develop/.test(q);
-  const marketing=/reklam|tanıtım|tanitim|kampanya|instagram|reels|shorts|video|afiş|sosyal medya|gönderi|gonderi|hikaye|story|pazarlama/.test(q);
+  const marketing=/reklam|tanıtım|tanitim|kampanya|instagram|reels|afiş|sosyal medya|gönderi|gonderi|hikaye|story|pazarlama/.test(q);
   const youtube=/youtube|shorts|kanal|video üret|video uret|video oluştur|video olustur|animasyonlu video/.test(q);
   const inputControl=/tıkla|tikla|fare|mouse|klavye|tuş|tus|ekrana yaz|enter tuşu|tab tuşu/.test(q);
   const unity=/unity|kamyon|nakliye|oyun geliştir|oyun gelistir|oyun yap|oyun projesi|game dev/.test(q) || (isCodeMode(mode) && !income && !selfDevelopment);
@@ -1209,7 +1209,7 @@ function toolDirectoryPrompt(query = "", mode = "chat") {
     "desktop_unity_build","desktop_unity_run_editor"
   ]);
   if(marketing) add(["desktop_marketing_create_kit"]);
-  if(youtube) add(["youtube_studio_get_profile","youtube_studio_save_profile","youtube_studio_create_plan","youtube_studio_list_plans","desktop_marketing_create_kit"]);
+  if(youtube) add(["youtube_studio_get_profile","youtube_studio_save_profile","youtube_studio_create_plan","youtube_studio_list_plans","youtube_studio_render_plan"]);
   if(inputControl) add(["desktop_get_screen_context","desktop_get_foreground_window","desktop_capture_screen","desktop_mouse_click","desktop_keyboard_type","desktop_keyboard_key"]);
   if(selfDevelopment) add(["desktop_self_diagnostics","desktop_developer_self_test","desktop_get_system_health","desktop_search_files","desktop_list_directory","desktop_read_text_file","desktop_write_text_file","desktop_create_file_snapshot","desktop_restore_file_snapshot","desktop_run_powershell"]);
   if(files) add([
@@ -1264,7 +1264,7 @@ function buildAgentPlan(query, mode = "chat") {
   const toolHints = [];
 
   const income = /kazanç modu|kazanc modu|aura üzerinden para kazan|aura uzerinden para kazan|aura ile para kazan|gelir amaçlı site|gelir amacli site|müşteri sitesi|musteri sitesi|işletme sitesi|isletme sitesi|restoran sitesi/.test(q);
-  const marketing = /reklam|tanıtım|tanitim|kampanya|instagram|reels|shorts|video|afiş|sosyal medya|gönderi|gonderi|hikaye|story|pazarlama/.test(q);
+  const marketing = /reklam|tanıtım|tanitim|kampanya|instagram|reels|afiş|sosyal medya|gönderi|gonderi|hikaye|story|pazarlama/.test(q);
   const code = mode === "code" || income || marketing || /kod|script|proje|unity|oyun geliştir|oyun gelistir|dosya oluştur|dosya olustur/.test(q);
   const inputOps = /tıkla|tikla|fare|mouse|klavye|tuş|tus|bas|enter|tab|ekrana yaz/.test(q);
   const fileOps = !inputOps && /dosya|klasör|klasor|metin dosyası|dosyası|dosyayi|dosyayı|oku|yaz|oluştur|olustur|sil|taşı|tasi|kopyala|kopya|dosya yolu|dosya yolu|klasör yolu/.test(q);
@@ -1282,7 +1282,7 @@ function buildAgentPlan(query, mode = "chat") {
   if (marketing) {
     steps.push("reklam/video briefini ve gerçek işletme veya kanal bilgilerini belirle", "özgün senaryo, başlık, açıklama ve sahne akışı hazırla", "uygun görsel ve animasyon çıktısını üret", "çıktı dosyalarını ve video biçimini doğrula", "yayınlama veya mesaj gönderme için ayrıca kullanıcı onayı bekle");
     toolHints.push("desktop_marketing_create_kit", "desktop_create_directory", "desktop_write_text_file", "desktop_open_path");
-    if (/youtube|shorts|kanal/.test(q)) toolHints.push("youtube_studio_get_profile", "youtube_studio_create_plan", "youtube_studio_list_plans");
+    if (/youtube|shorts|kanal/.test(q)) toolHints.push("youtube_studio_get_profile", "youtube_studio_create_plan", "youtube_studio_list_plans", "youtube_studio_render_plan");
   } else if (income) {
     steps.push("AURA-Gelir çalışma klasörünü ve mevcut şablonları kontrol et", "küçük işletme için özgün ve mobil uyumlu web sitesi taslağı üret", "HTML/CSS/JavaScript dosyalarını kaydet", "yerel dosya ve sözdizimi kontrollerini çalıştır", "demo ve kişiselleştirilmiş teklif metnini hazırla; yayınlama veya iletişim için kullanıcı onayı bekle");
     toolHints.push("desktop_list_directory", "desktop_create_directory", "desktop_write_text_file", "desktop_read_text_file", "desktop_run_powershell", "desktop_open_path", "desktop_income_create_site");
