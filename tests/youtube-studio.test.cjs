@@ -32,6 +32,8 @@ test('renders Turkish and English narrated 9:16 WebM drafts locally',async()=>{
   assert.match(trSrt,/Türkçe kısa hikâye/);
   assert.match(enSrt,/A short English story/);
   assert.match(calls[0].html,/SAHNE/);
+  assert.match(calls[0].html,/SCENE/);
+  assert.match(calls[0].html,/remaining=Math\.max\(0,Math\.ceil\(total-t\)\)/);
   assert.match(calls[0].html,/captureStream\(30\)/);
   const manifest=JSON.parse(await fs.readFile(path.join(result.folder,'video-bilgisi.json'),'utf8'));
   assert.equal(manifest.publishingEnabled,false);
@@ -63,5 +65,41 @@ test('creates a scene breakdown when a Shorts plan omits scene arrays',async()=>
   assert.ok(result.plan.scenesTr.length>=3);
   assert.ok(result.plan.scenesEn.length>=3);
   assert.equal(result.plan.publishingEnabled,false);
+ }finally{await fs.rm(root,{recursive:true,force:true});}
+});
+
+test('rejects blank bilingual scripts before asking for permission',async()=>{
+ let asked=false;
+ await assert.rejects(()=>renderShorts({topic:'Test',scriptTr:'   ',scriptEn:'English',durationSeconds:10},{
+  desktopRoot:()=>'/tmp/aura-test',isAllowedPath:()=>true,confirmAction:async()=>{asked=true;return true;},
+  renderSpeech:async()=>({base64:'UklGRiQAAABXQVZF'.repeat(12)}),renderVideo:async()=>Buffer.alloc(3000)
+ }),/boş olamaz/);
+ assert.equal(asked,false);
+});
+
+test('removes only its newly-created output folder after a render failure',async()=>{
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'aura-shorts-cleanup-'));
+ const id='cleanup-12345678',folder=path.join(root,'AURA-YouTube','Shorts',new Date().toISOString().slice(0,10)+'-test-topic-'+id.slice(0,8));
+ try{
+  await assert.rejects(()=>renderShorts({id,topic:'Test topic',scriptTr:'Türkçe metin',scriptEn:'English text',durationSeconds:10},{
+   desktopRoot:()=>root,isAllowedPath:()=>true,confirmAction:async()=>true,
+   renderSpeech:async(text,lang)=>{if(lang==='en')throw Error('test speech failure');return{base64:'UklGRiQAAABXQVZF'.repeat(12)};},
+   renderVideo:async()=>Buffer.concat([Buffer.from('1a45dfa3','hex'),Buffer.alloc(2000)])
+  }),/test speech failure/);
+  await assert.rejects(()=>fs.access(folder));
+ }finally{await fs.rm(root,{recursive:true,force:true});}
+});
+
+test('does not overwrite an existing Shorts output folder',async()=>{
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'aura-shorts-existing-'));
+ const id='existing-123456',folder=path.join(root,'AURA-YouTube','Shorts',new Date().toISOString().slice(0,10)+'-test-topic-'+id.slice(0,8));
+ try{
+  await fs.mkdir(folder,{recursive:true});
+  await fs.writeFile(path.join(folder,'keep.txt'),'keep me');
+  await assert.rejects(()=>renderShorts({id,topic:'Test topic',scriptTr:'Türkçe metin',scriptEn:'English text',durationSeconds:10},{
+   desktopRoot:()=>root,isAllowedPath:()=>true,confirmAction:async()=>true,
+   renderSpeech:async()=>({base64:'UklGRiQAAABXQVZF'.repeat(12)}),renderVideo:async()=>Buffer.alloc(3000)
+  }),/EEXIST/);
+  assert.equal(await fs.readFile(path.join(folder,'keep.txt'),'utf8'),'keep me');
  }finally{await fs.rm(root,{recursive:true,force:true});}
 });

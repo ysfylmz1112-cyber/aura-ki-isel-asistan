@@ -345,3 +345,14 @@ test("explicit update command requests silent install and automatic restart", ()
   assert.match(mainSource, /if \(auraUpdateInstallRequested\) installDownloadedAuraUpdate\(\)/);
   assert.doesNotMatch(mainSource, /buttons: \['Şimdi yeniden başlat', 'Daha sonra'\]/);
 });
+
+
+test("explicit Shorts requests always enter the render pipeline instead of replying with a caption only", () => {
+  assert.match(source, /const videoCreationIntent = \/\(\?:shorts\|video\)/);
+  assert.match(source, /saniye\(\?:lik\)\?/);
+  assert.match(source, /await desktopCall\("youtube_studio_create_plan", plan\)/);
+  assert.match(source, /await desktopCall\("youtube_studio_render_plan", \{ planId:planId \}\)/);
+  assert.match(source, /outputs.length !== 2/);
+  assert.match(source, /Video oluşturulmuş gibi gösterilmedi/);
+});
+

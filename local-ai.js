@@ -1748,6 +1748,66 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   }
 
   const localEngine = await ensureLocalAI(effectiveMode,onProgress);
+
+  // Explicit video requests use a deterministic production pipeline: the model
+  // writes a structured plan, then AURA must save and render it before replying.
+  const videoCreationIntent = /(?:shorts|video).{0,100}(?:oluştur|olustur|üret|uret|hazırla|hazirla|yap)|(?:oluştur|olustur|üret|uret|hazırla|hazirla|yap).{0,60}(?:shorts|video)/i.test(value);
+  if (videoCreationIntent) {
+    if (!desktopAvailable()) return "Video üretimi için AURA masaüstü uygulaması bağlı olmalı.";
+    if (!/(shorts|dikey)/i.test(value)) return "Bu üretim akışı şu anda dikey Shorts videoları için etkin. Normal yatay video motoru ayrıca tamamlanmalı.";
+    const durationMatch = value.match(/(\d{1,3})\s*(?:saniye(?:lik)?|sn)\b/i);
+    const requestedDuration = durationMatch ? Number(durationMatch[1]) : 35;
+    if (!Number.isFinite(requestedDuration) || requestedDuration < 10 || requestedDuration > 90) {
+      return "Mevcut Shorts render motoru şu anda 10–90 saniye aralığını destekliyor. Daha uzun süre sınırları tamamlanmadan video oluşturulduğunu söylemeyeceğim.";
+    }
+    try {
+      onProgress({ stage:"video-production", text:"YouTube kanal ayarları kontrol ediliyor..." });
+      await desktopCall("youtube_studio_get_profile", {});
+      const planResponse = await runChatCompletionWithTimeout(localEngine, {
+        messages: [
+          { role:"system", content:"Sen AURA video senaryo hazırlayıcısısın. Kullanıcı briefine göre yalnızca geçerli JSON döndür; Markdown veya açıklama ekleme. Alanlar: topic, hookTr, hookEn, scriptTr, scriptEn, scenesTr (dizi), scenesEn (dizi), captionTr, captionEn. Türkçe ve İngilizce aynı hikâyeyi anlatsın. Süreye uygun kısa seslendirme ve 4–12 görselleştirilebilir sahne üret. Kullanıcının final mesajını captionTr alanında aynen koru." },
+          { role:"user", content:"Süre: "+requestedDuration+" saniye. Brief:\n"+value }
+        ],
+        temperature:0.2, top_p:0.8, max_tokens:900, stream:false
+      }, 120000, "video senaryosu hazırlama");
+      const rawPlan = String(planResponse && planResponse.choices && planResponse.choices[0] && planResponse.choices[0].message && planResponse.choices[0].message.content || "").trim();
+      const jsonText = rawPlan.replace(/^```(?:json)?\s*/i,"").replace(/\s*```$/,"");
+      const start = jsonText.indexOf("{"), end = jsonText.lastIndexOf("}");
+      if (start < 0 || end <= start) throw new Error("Senaryo modeli geçerli JSON planı döndürmedi.");
+      const generated = JSON.parse(jsonText.slice(start,end+1));
+      const plan = {
+        topic:String(generated.topic || "Disiplin ve motivasyon").trim(),
+        hookTr:String(generated.hookTr || "").trim(),
+        hookEn:String(generated.hookEn || "").trim(),
+        scriptTr:String(generated.scriptTr || "").trim(),
+        scriptEn:String(generated.scriptEn || "").trim(),
+        scenesTr:Array.isArray(generated.scenesTr) ? generated.scenesTr : [],
+        scenesEn:Array.isArray(generated.scenesEn) ? generated.scenesEn : [],
+        captionTr:String((value.match(/sonunda[\s\S]{0,80}["“]([^"”]+)["”]/i) || [])[1] || generated.captionTr || "").trim(),
+        captionEn:String(generated.captionEn || "").trim(),
+        durationSeconds:requestedDuration
+      };
+      if (!plan.topic || !plan.scriptTr || !plan.scriptEn || !plan.scenesTr.length || !plan.scenesEn.length) {
+        throw new Error("Senaryo planında konu, iki dilde seslendirme veya sahneler eksik.");
+      }
+      onProgress({ stage:"video-production", text:"Senaryo hazır. Video taslağı kaydediliyor..." });
+      const saved = await desktopCall("youtube_studio_create_plan", plan);
+      const planId = String(saved && saved.plan && saved.plan.id || "");
+      if (!planId) throw new Error("Video taslağı kaydedildi bilgisi doğrulanamadı; plan kimliği yok.");
+      onProgress({ stage:"video-production", text:"Animasyon, seslendirme ve altyazılar oluşturuluyor..." });
+      const rendered = await desktopCall("youtube_studio_render_plan", { planId:planId });
+      const outputs = Array.isArray(rendered && rendered.outputs) ? rendered.outputs : [];
+      if (!rendered || rendered.ok !== true || outputs.length !== 2 || outputs.some(item => !item || !item.path || Number(item.bytes) < 1500)) {
+        throw new Error("Video üretim aracı iki doğrulanmış çıktı döndürmedi.");
+      }
+      return "AURA VİDEO ÜRETİMİ TAMAMLANDI\nKonu: "+plan.topic+"\nSüre: "+requestedDuration+" saniye\nFormat: Dikey 9:16 Shorts\n"+
+        outputs.map(item => (item.language === "tr" ? "Türkçe" : "İngilizce")+": "+item.path+" ("+Math.round(Number(item.bytes)/1024)+" KB)").join("\n")+
+        "\nAltyazılar ve seslendirme metinleri de kaydedildi. YouTube yüklemesi yapılmadı.";
+    } catch (error) {
+      return "AURA video üretimini tamamlayamadı. Hata: "+String(error && error.message || error)+"\nVideo oluşturulmuş gibi gösterilmedi.";
+    }
+  }
+
   const memoryItems = compactMemory(memory, intentValue);
   let memoryContext = memoryItems.length
     ? "\nİLGİLİ KALICI HAFIZA:\n" + JSON.stringify(memoryItems)
