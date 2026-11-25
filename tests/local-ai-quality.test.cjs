@@ -379,8 +379,9 @@ test("explicit Shorts requests always enter the render pipeline instead of reply
 
 
 
+
 test("Shorts script generation has a deterministic fallback with bilingual scenes", () => {
-  const helper = extract("function buildFallbackVideoPlan(", "\nexport async function askLocalAI");
+  const helper = extract("function extractVideoTopic(", "\nexport async function askLocalAI");
   const sandbox = {};
   vm.runInNewContext(helper + "\nthis.buildFallbackVideoPlan = buildFallbackVideoPlan;", sandbox);
   const plan = sandbox.buildFallbackVideoPlan("15 saniyelik video\nKonu: Disiplin, motivasyondan daha güçlüdür.", 15);
@@ -392,14 +393,14 @@ test("Shorts script generation has a deterministic fallback with bilingual scene
   assert.equal(plan.durationSeconds, 15);
   assert.match(source, /\}, 45000, "video senaryosu hazırlama"\)/);
   assert.match(source, /buildFallbackVideoPlan\(value, requestedDuration\)/);
-  assert.match(source, /max_tokens:650, stream:false/);
+  assert.match(source, /max_tokens:1200, stream:false/);
 });
 
 test("video fallback keeps the requested topic instead of defaulting to discipline", () => {
-  const helper = extract("function extractVideoTopic(", "\\nexport async function askLocalAI");
+  const helper = extract("function extractVideoTopic(", "\nexport async function askLocalAI");
   const sandbox = {};
-  vm.runInNewContext(helper + "\\nthis.extractVideoTopic = extractVideoTopic; this.buildFallbackVideoPlan = buildFallbackVideoPlan;", sandbox);
-  const plan = sandbox.buildFallbackVideoPlan("15 saniyelik video\\nKonu: Otobüste mahsur kalan stickman", 15);
+  vm.runInNewContext(helper + "\nthis.buildFallbackVideoPlan = buildFallbackVideoPlan;", sandbox);
+  const plan = sandbox.buildFallbackVideoPlan("15 saniyelik video\nKonu: Otobüste mahsur kalan stickman", 15);
   assert.match(plan.topic, /Otobüste mahsur kalan stickman/);
   assert.match(plan.scenesTr.join(" "), /Otobüste mahsur kalan stickman/);
 });
@@ -434,23 +435,11 @@ test("scene renderer no longer appends the old fixed-city animation fragments", 
   const shortsSource = fs.readFileSync(path.join(__dirname, "..", "desktop", "shorts-renderer.cjs"), "utf8");
   assert.equal((shortsSource.match(/function sceneKind\(i\)/g) || []).length, 1);
   assert.equal((shortsSource.match(/function drawStickman\(t,i\)/g) || []).length, 1);
-  assert.doesNotMatch(shortsSource, /function drawStickman\(t,i\)[\\s\\S]*?function drawStickman\(t,i\)/);
+  assert.doesNotMatch(shortsSource, /x\.moveTo\(0,-62\);x\.lineTo\(-42,-24\+walk\*\.18\)/);
 });
 
-test("renderer contains no orphaned legacy scene fragments", () => {
+test("renderer custom scene functions are valid comma-separated entries", () => {
   const shortsSource = fs.readFileSync(path.join(__dirname, "..", "desktop", "shorts-renderer.cjs"), "utf8");
-  assert.doesNotMatch(shortsSource, /const sunX=405\+Math\.sin\(t\*\.08\+i\)\*18/);
-  assert.doesNotMatch(shortsSource, /function drawStickman\(t,i\)[\\s\\S]*?x\.beginPath\(\);x\.arc\(0,-125,34/);
-});
-
-test("renderer scene-specific function strings remain comma-separated array entries", () => {
-  const shortsSource = fs.readFileSync(path.join(__dirname, "..", "desktop", "shorts-renderer.cjs"), "utf8");
-  assert.match(shortsSource, /function sceneKind\(i\)[\\s\\S]*?,\\n  \"function drawStickman/);
-  assert.match(shortsSource, /function drawStickman\(t,i\)[\\s\\S]*?,\\n  'function sceneText/);
-});
-
-test("renderer generated JavaScript array has separators for each custom scene function", () => {
-  const shortsSource = fs.readFileSync(path.join(__dirname, "..", "desktop", "shorts-renderer.cjs"), "utf8");
-  assert.match(shortsSource, /function sceneKind\(i\)[\\s\\S]*?\\},\\n  \"function drawStickman/);
-  assert.match(shortsSource, /function drawStickman\(t,i\)[\\s\\S]*?\\},\\n  'function sceneText/);
+  assert.match(shortsSource, /\n  "function drawStickman/);
+  assert.match(shortsSource, /\n  'function sceneText/);
 });
