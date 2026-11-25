@@ -429,3 +429,10 @@ test("Windows TTS promise is syntactically closed and returns the requested lang
   assert.match(mainSource, /resolve\(String\(stdout\|\|''\)\.trim\(\)\)\)\);/);
   assert.match(mainSource, /bytes:bytes\.length,language/);
 });
+
+test("scene renderer no longer appends the old fixed-city animation fragments", () => {
+  const shortsSource = fs.readFileSync(path.join(__dirname, "..", "desktop", "shorts-renderer.cjs"), "utf8");
+  assert.equal((shortsSource.match(/function sceneKind\(i\)/g) || []).length, 1);
+  assert.equal((shortsSource.match(/function drawStickman\(t,i\)/g) || []).length, 1);
+  assert.doesNotMatch(shortsSource, /function drawStickman\(t,i\)[\\s\\S]*?function drawStickman\(t,i\)/);
+});
