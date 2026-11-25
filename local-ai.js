@@ -1648,6 +1648,16 @@ function resolveFollowUpIntent(message, history = []) {
   return { intentValue, isShortFollowUp, previousUserMessage };
 }
 
+function isExplicitVideoCreationIntent(value) {
+  const q = String(value || "").toLocaleLowerCase("tr-TR")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ı/g, "i");
+  // Explicit video requests take priority over the general-purpose tool router.
+  return /\b(shorts|video|animasyonlu video)\b/.test(q) &&
+    /\b(olustur|uret|hazirla|yap)\b/.test(q);
+}
+
 function isUpdateRequestIntent(value) {
   const q = String(value || "").toLocaleLowerCase("tr-TR").trim();
   return /(?:en\\s+son|son|yeni|güncel|guncel).{0,36}(?:sürüm|surum|yükle|yukle|indir|güncelle|guncelle)|(?:aura(?:'yı|’yı|yi)?\\s*)?(?:güncelle|guncelle)|güncelleme\\s+(?:kontrol|denetle)|update\\s+(?:aura|app|application)/i.test(q);
@@ -1779,12 +1789,10 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     }
   }
 
-  const localEngine = await ensureLocalAI(effectiveMode,onProgress);
-
-  // Explicit video requests use a deterministic production pipeline: the model
-  // writes a structured plan, then AURA must save and render it before replying.
-  const videoCreationIntent = /(?:shorts|video).{0,100}(?:oluştur|olustur|üret|uret|hazırla|hazirla|yap)|(?:oluştur|olustur|üret|uret|hazırla|hazirla|yap).{0,60}(?:shorts|video)/i.test(value);
+  // Route explicit video requests before the general-purpose agent can select unrelated tools.
+  const videoCreationIntent = isExplicitVideoCreationIntent(value);
   if (videoCreationIntent) {
+    const localEngine = await ensureLocalAI(effectiveMode,onProgress);
     if (!desktopAvailable()) return "Video üretimi için AURA masaüstü uygulaması bağlı olmalı.";
     if (!/(shorts|dikey)/i.test(value)) return "Bu üretim akışı şu anda dikey Shorts videoları için etkin. Normal yatay video motoru ayrıca tamamlanmalı.";
     const durationMatch = value.match(/(\d{1,3})\s*(?:saniye(?:lik)?|sn)\b/i);
@@ -1846,6 +1854,8 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
       return "AURA video üretimini tamamlayamadı. Hata: "+String(error && error.message || error)+"\nVideo oluşturulmuş gibi gösterilmedi.";
     }
   }
+
+  const localEngine = await ensureLocalAI(effectiveMode,onProgress);
 
   const memoryItems = compactMemory(memory, intentValue);
   let memoryContext = memoryItems.length
