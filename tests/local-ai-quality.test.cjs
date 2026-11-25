@@ -19,7 +19,7 @@ function extract(startMarker, endMarker) {
 
 const streamHelpers = extract("async function collectChatCompletionStream(", "\nfunction isCodeMode");
 
-const updateIntentHelper = extract("function isUpdateRequestIntent(", "\nexport async function askLocalAI");
+const updateIntentHelper = extract("function isUpdateRequestIntent(", "\nexport async function askLocalAI");\nconst videoIntentHelper = extract("function isExplicitVideoCreationIntent(", "\nfunction isUpdateRequestIntent");
 const helpers = [
   extract("function compactMemory(", "\nfunction toolDirectoryPrompt"),
   extract("function resolveAnswerTokenBudget(", "\nfunction cleanMessages"),
@@ -29,7 +29,7 @@ const helpers = [
 ].join("\n");
 
 const updateSandbox = {};
-vm.runInNewContext(updateIntentHelper + "\nthis.isUpdateRequestIntent = isUpdateRequestIntent;", updateSandbox);
+vm.runInNewContext(updateIntentHelper + "\nthis.isUpdateRequestIntent = isUpdateRequestIntent;", updateSandbox);\nconst videoSandbox = {};\nvm.runInNewContext(videoIntentHelper + "\nthis.isExplicitVideoCreationIntent = isExplicitVideoCreationIntent;", videoSandbox);
 
 const sandbox = {};
 vm.runInNewContext(helpers + "\nthis.compactMemory = compactMemory; this.cleanMessages = cleanMessages; this.resolveFollowUpIntent = resolveFollowUpIntent; this.resolveAnswerTokenBudget = resolveAnswerTokenBudget; this.shouldReviewAnswer = shouldReviewAnswer;", sandbox);
@@ -43,6 +43,22 @@ test("update commands are routed deterministically without relying on model tool
     assert.equal(updateSandbox.isUpdateRequestIntent(phrase), false, phrase);
   }
   assert.match(source, /desktopCall\("desktop_update_latest",\s*\{\}\)/);
+});
+
+test("explicit Shorts/video requests are routed before general-purpose tools", () => {
+  for (const phrase of [
+    "15 saniyelik, dikey 9:16 formatında YouTube Shorts videosu oluştur",
+    "Bana stickman Shorts hazırla",
+    "10 saniyelik video üret",
+    "Dikey video yap"
+  ]) assert.equal(videoSandbox.isExplicitVideoCreationIntent(phrase), true, phrase);
+  for (const phrase of [
+    "20 dakika sonra ders çalışmayı hatırlat",
+    "Bugün hava nasıl?",
+    "Disiplin motivasyondan daha güçlüdür"
+  ]) assert.equal(videoSandbox.isExplicitVideoCreationIntent(phrase), false, phrase);
+  assert.match(source, /Route explicit video requests before the general-purpose agent/);
+  assert.match(source, /if \\(videoCreationIntent\\) \\{\\s*const localEngine = await ensureLocalAI/);
 });
 
 test("ordinary factual questions do not receive unrelated saved memories", () => {
