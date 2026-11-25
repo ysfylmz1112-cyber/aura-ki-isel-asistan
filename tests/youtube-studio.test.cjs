@@ -32,6 +32,8 @@ test('renders Turkish and English narrated 9:16 WebM drafts locally',async()=>{
   assert.match(trSrt,/Türkçe kısa hikâye/);
   assert.match(enSrt,/A short English story/);
   assert.match(calls[0].html,/SAHNE/);
+  assert.match(calls[0].html,/SCENE/);
+  assert.match(calls[0].html,/remaining=Math\.max\(0,Math\.ceil\(total-t\)\)/);
   assert.match(calls[0].html,/captureStream\(30\)/);
   const manifest=JSON.parse(await fs.readFile(path.join(result.folder,'video-bilgisi.json'),'utf8'));
   assert.equal(manifest.publishingEnabled,false);
