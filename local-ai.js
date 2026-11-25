@@ -1755,7 +1755,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
   if (videoCreationIntent) {
     if (!desktopAvailable()) return "Video üretimi için AURA masaüstü uygulaması bağlı olmalı.";
     if (!/(shorts|dikey)/i.test(value)) return "Bu üretim akışı şu anda dikey Shorts videoları için etkin. Normal yatay video motoru ayrıca tamamlanmalı.";
-    const durationMatch = value.match(/(\d{1,3})\s*(?:saniye|sn)\b/i);
+    const durationMatch = value.match(/(\d{1,3})\s*(?:saniye(?:lik)?|sn)\b/i);
     const requestedDuration = durationMatch ? Number(durationMatch[1]) : 35;
     if (!Number.isFinite(requestedDuration) || requestedDuration < 10 || requestedDuration > 90) {
       return "Mevcut Shorts render motoru şu anda 10–90 saniye aralığını destekliyor. Daha uzun süre sınırları tamamlanmadan video oluşturulduğunu söylemeyeceğim.";
@@ -1771,7 +1771,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         temperature:0.2, top_p:0.8, max_tokens:900, stream:false
       }, 120000, "video senaryosu hazırlama");
       const rawPlan = String(planResponse && planResponse.choices && planResponse.choices[0] && planResponse.choices[0].message && planResponse.choices[0].message.content || "").trim();
-      const jsonText = rawPlan.replace(/^\`\`\`(?:json)?\s*/i,"").replace(/\s*\`\`\`$/,"");
+      const jsonText = rawPlan.replace(/^```(?:json)?\s*/i,"").replace(/\s*```$/,"");
       const start = jsonText.indexOf("{"), end = jsonText.lastIndexOf("}");
       if (start < 0 || end <= start) throw new Error("Senaryo modeli geçerli JSON planı döndürmedi.");
       const generated = JSON.parse(jsonText.slice(start,end+1));
@@ -1783,7 +1783,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         scriptEn:String(generated.scriptEn || "").trim(),
         scenesTr:Array.isArray(generated.scenesTr) ? generated.scenesTr : [],
         scenesEn:Array.isArray(generated.scenesEn) ? generated.scenesEn : [],
-        captionTr:String(generated.captionTr || "").trim(),
+        captionTr:String((value.match(/sonunda[\s\S]{0,80}["“]([^"”]+)["”]/i) || [])[1] || generated.captionTr || "").trim(),
         captionEn:String(generated.captionEn || "").trim(),
         durationSeconds:requestedDuration
       };
