@@ -436,3 +436,9 @@ test("scene renderer no longer appends the old fixed-city animation fragments", 
   assert.equal((shortsSource.match(/function drawStickman\(t,i\)/g) || []).length, 1);
   assert.doesNotMatch(shortsSource, /function drawStickman\(t,i\)[\\s\\S]*?function drawStickman\(t,i\)/);
 });
+
+test("renderer contains no orphaned legacy scene fragments", () => {
+  const shortsSource = fs.readFileSync(path.join(__dirname, "..", "desktop", "shorts-renderer.cjs"), "utf8");
+  assert.doesNotMatch(shortsSource, /const sunX=405\+Math\.sin\(t\*\.08\+i\)\*18/);
+  assert.doesNotMatch(shortsSource, /function drawStickman\(t,i\)[\\s\\S]*?x\.beginPath\(\);x\.arc\(0,-125,34/);
+});
