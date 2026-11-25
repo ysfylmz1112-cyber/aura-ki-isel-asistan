@@ -1656,7 +1656,7 @@ function isUpdateRequestIntent(value) {
 
 function buildFallbackVideoPlan(brief, durationSeconds) {
   const text = String(brief || "");
-  const topicMatch = text.match(/(?:konu|tema)\\s*:\\s*([^\\n.]+)/i);
+  const topicMatch = text.match(/(?:konu|tema)\s*:\s*([^\n.]+)/i);
   const topic = (topicMatch && topicMatch[1] || "Disiplin, motivasyondan daha güçlüdür").trim().slice(0, 160);
   return {
     topic,
