@@ -58,7 +58,7 @@ test("explicit Shorts/video requests are routed before general-purpose tools", (
     "Disiplin motivasyondan daha güçlüdür"
   ]) assert.equal(videoSandbox.isExplicitVideoCreationIntent(phrase), false, phrase);
   assert.match(source, /Route explicit video requests before the general-purpose agent/);
-  assert.match(source, /if \\(videoCreationIntent\\) \\{\\s*const localEngine = await ensureLocalAI/);
+  assert.match(source, /if \(videoCreationIntent\) \{\s*const localEngine = await ensureLocalAI/);
 });
 
 test("ordinary factual questions do not receive unrelated saved memories", () => {
