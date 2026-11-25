@@ -31,7 +31,8 @@ const helpers = [
 
 const updateSandbox = {};
 vm.runInNewContext(updateIntentHelper + "\nthis.isUpdateRequestIntent = isUpdateRequestIntent;", updateSandbox);
-const videoSandbox = {};\nvm.runInNewContext(videoIntentHelper + "\nthis.isExplicitVideoCreationIntent = isExplicitVideoCreationIntent;", videoSandbox);
+const videoSandbox = {};
+vm.runInNewContext(videoIntentHelper + "\nthis.isExplicitVideoCreationIntent = isExplicitVideoCreationIntent;", videoSandbox);
 
 const sandbox = {};
 vm.runInNewContext(helpers + "\nthis.compactMemory = compactMemory; this.cleanMessages = cleanMessages; this.resolveFollowUpIntent = resolveFollowUpIntent; this.resolveAnswerTokenBudget = resolveAnswerTokenBudget; this.shouldReviewAnswer = shouldReviewAnswer;", sandbox);
