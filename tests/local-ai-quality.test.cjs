@@ -423,3 +423,9 @@ test("Shorts renderer chooses scene-specific environments and character actions"
   assert.match(shortsSource, /celebrate=/);
   assert.match(shortsSource, /sitting=/);
 });
+
+test("Windows TTS promise is syntactically closed and returns the requested language metadata", () => {
+  const mainSource = fs.readFileSync(path.join(__dirname, "..", "desktop", "main.cjs"), "utf8");
+  assert.match(mainSource, /resolve\(String\(stdout\|\|''\)\.trim\(\)\)\)\);/);
+  assert.match(mainSource, /bytes:bytes\.length,language/);
+});
