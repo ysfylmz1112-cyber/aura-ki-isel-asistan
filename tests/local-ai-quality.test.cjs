@@ -448,3 +448,9 @@ test("renderer scene-specific function strings remain comma-separated array entr
   assert.match(shortsSource, /function sceneKind\(i\)[\\s\\S]*?,\\n  \"function drawStickman/);
   assert.match(shortsSource, /function drawStickman\(t,i\)[\\s\\S]*?,\\n  'function sceneText/);
 });
+
+test("renderer generated JavaScript array has separators for each custom scene function", () => {
+  const shortsSource = fs.readFileSync(path.join(__dirname, "..", "desktop", "shorts-renderer.cjs"), "utf8");
+  assert.match(shortsSource, /function sceneKind\(i\)[\\s\\S]*?\\},\\n  \"function drawStickman/);
+  assert.match(shortsSource, /function drawStickman\(t,i\)[\\s\\S]*?\\},\\n  'function sceneText/);
+});
