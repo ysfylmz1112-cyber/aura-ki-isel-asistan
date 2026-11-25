@@ -359,17 +359,17 @@ test("explicit Shorts requests always enter the render pipeline instead of reply
 
 
 test("Shorts script generation has a deterministic fallback with bilingual scenes", () => {
-  const helper = extract("function buildFallbackVideoPlan(", "\\nexport async function askLocalAI");
+  const helper = extract("function buildFallbackVideoPlan(", "\nexport async function askLocalAI");
   const sandbox = {};
-  vm.runInNewContext(helper + "\\nthis.buildFallbackVideoPlan = buildFallbackVideoPlan;", sandbox);
-  const plan = sandbox.buildFallbackVideoPlan("15 saniyelik video\\nKonu: Disiplin, motivasyondan daha güçlüdür.", 15);
+  vm.runInNewContext(helper + "\nthis.buildFallbackVideoPlan = buildFallbackVideoPlan;", sandbox);
+  const plan = sandbox.buildFallbackVideoPlan("15 saniyelik video\nKonu: Disiplin, motivasyondan daha güçlüdür.", 15);
   assert.match(plan.topic, /Disiplin/);
   assert.ok(plan.scriptTr.length > 40);
   assert.ok(plan.scriptEn.length > 40);
   assert.equal(plan.scenesTr.length, 6);
   assert.equal(plan.scenesEn.length, 6);
   assert.equal(plan.durationSeconds, 15);
-  assert.match(source, /video senaryosu hazırlama\\);[\\s\\S]*?\\}, 45000,/);
-  assert.match(source, /buildFallbackVideoPlan\\(value, requestedDuration\\)/);
+  assert.match(source, /video senaryosu hazırlama\);[\s\S]*?\}, 45000,/);
+  assert.match(source, /buildFallbackVideoPlan\(value, requestedDuration\)/);
   assert.match(source, /max_tokens:650, stream:false/);
 });
