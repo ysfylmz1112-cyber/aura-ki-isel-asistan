@@ -19,7 +19,8 @@ function extract(startMarker, endMarker) {
 
 const streamHelpers = extract("async function collectChatCompletionStream(", "\nfunction isCodeMode");
 
-const updateIntentHelper = extract("function isUpdateRequestIntent(", "\nexport async function askLocalAI");\nconst videoIntentHelper = extract("function isExplicitVideoCreationIntent(", "\nfunction isUpdateRequestIntent");
+const updateIntentHelper = extract("function isUpdateRequestIntent(", "\nexport async function askLocalAI");
+const videoIntentHelper = extract("function isExplicitVideoCreationIntent(", "\nfunction isUpdateRequestIntent");
 const helpers = [
   extract("function compactMemory(", "\nfunction toolDirectoryPrompt"),
   extract("function resolveAnswerTokenBudget(", "\nfunction cleanMessages"),
@@ -29,7 +30,8 @@ const helpers = [
 ].join("\n");
 
 const updateSandbox = {};
-vm.runInNewContext(updateIntentHelper + "\nthis.isUpdateRequestIntent = isUpdateRequestIntent;", updateSandbox);\nconst videoSandbox = {};\nvm.runInNewContext(videoIntentHelper + "\nthis.isExplicitVideoCreationIntent = isExplicitVideoCreationIntent;", videoSandbox);
+vm.runInNewContext(updateIntentHelper + "\nthis.isUpdateRequestIntent = isUpdateRequestIntent;", updateSandbox);
+const videoSandbox = {};\nvm.runInNewContext(videoIntentHelper + "\nthis.isExplicitVideoCreationIntent = isExplicitVideoCreationIntent;", videoSandbox);
 
 const sandbox = {};
 vm.runInNewContext(helpers + "\nthis.compactMemory = compactMemory; this.cleanMessages = cleanMessages; this.resolveFollowUpIntent = resolveFollowUpIntent; this.resolveAnswerTokenBudget = resolveAnswerTokenBudget; this.shouldReviewAnswer = shouldReviewAnswer;", sandbox);
