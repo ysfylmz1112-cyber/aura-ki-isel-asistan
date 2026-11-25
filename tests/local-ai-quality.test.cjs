@@ -367,7 +367,9 @@ test("explicit update command requests silent install and automatic restart", ()
 
 
 test("explicit Shorts requests always enter the render pipeline instead of replying with a caption only", () => {
-  assert.match(source, /const videoCreationIntent = \/\(\?:shorts\|video\)/);
+  assert.match(source, /function isExplicitVideoCreationIntent\(value\)/);
+  assert.match(source, /const videoCreationIntent = isExplicitVideoCreationIntent\(value\)/);
+  assert.ok(source.indexOf("const videoCreationIntent = isExplicitVideoCreationIntent(value)") < source.indexOf("const generalToolIntent ="));
   assert.match(source, /saniye\(\?:lik\)\?/);
   assert.match(source, /await desktopCall\("youtube_studio_create_plan", plan\)/);
   assert.match(source, /await desktopCall\("youtube_studio_render_plan", \{ planId:planId \}\)/);
