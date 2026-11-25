@@ -1801,12 +1801,12 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         const planResponse = await runChatCompletionWithTimeout(localEngine, {
           messages: [
             { role:"system", content:"Sen AURA video senaryo hazırlayıcısısın. Kullanıcı briefine göre yalnızca geçerli JSON döndür; Markdown veya açıklama ekleme. Alanlar: topic, hookTr, hookEn, scriptTr, scriptEn, scenesTr (dizi), scenesEn (dizi), captionTr, captionEn. Türkçe ve İngilizce aynı hikâyeyi anlatsın. Süreye uygun kısa seslendirme ve 4–12 görselleştirilebilir sahne üret. Kullanıcının final mesajını captionTr alanında aynen koru." },
-            { role:"user", content:"Süre: "+requestedDuration+" saniye. Brief:\\n"+value }
+            { role:"user", content:"Süre: "+requestedDuration+" saniye. Brief:\n"+value }
           ],
           temperature:0.2, top_p:0.8, max_tokens:650, stream:false
         }, 45000, "video senaryosu hazırlama");
         const rawPlan = String(planResponse && planResponse.choices && planResponse.choices[0] && planResponse.choices[0].message && planResponse.choices[0].message.content || "").trim();
-        const jsonText = rawPlan.replace(/^\x60\x60\x60(?:json)?\\s*/i,"").replace(/\\s*\x60\x60\x60$/,"");
+        const jsonText = rawPlan.replace(/^\x60\x60\x60(?:json)?\s*/i,"").replace(/\s*\x60\x60\x60$/,"");
         const jsonStart = jsonText.indexOf("{"), jsonEnd = jsonText.lastIndexOf("}");
         if (jsonStart < 0 || jsonEnd <= jsonStart) throw new Error("Senaryo modeli geçerli JSON planı döndürmedi.");
         generated = JSON.parse(jsonText.slice(jsonStart,jsonEnd+1));
