@@ -1855,7 +1855,9 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     }
   }
 
-  const localEngine = await ensureLocalAI(effectiveMode,onProgress);\n\n  const memoryItems = compactMemory(memory, intentValue);
+  const localEngine = await ensureLocalAI(effectiveMode,onProgress);
+
+  const memoryItems = compactMemory(memory, intentValue);
   let memoryContext = memoryItems.length
     ? "\nİLGİLİ KALICI HAFIZA:\n" + JSON.stringify(memoryItems)
     : "";
