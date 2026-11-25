@@ -1653,6 +1653,38 @@ function isUpdateRequestIntent(value) {
   return /(?:en\\s+son|son|yeni|güncel|guncel).{0,36}(?:sürüm|surum|yükle|yukle|indir|güncelle|guncelle)|(?:aura(?:'yı|’yı|yi)?\\s*)?(?:güncelle|guncelle)|güncelleme\\s+(?:kontrol|denetle)|update\\s+(?:aura|app|application)/i.test(q);
 }
 
+
+function buildFallbackVideoPlan(brief, durationSeconds) {
+  const text = String(brief || "");
+  const topicMatch = text.match(/(?:konu|tema)\s*:\s*([^\n.]+)/i);
+  const topic = (topicMatch && topicMatch[1] || "Disiplin, motivasyondan daha güçlüdür").trim().slice(0, 160);
+  return {
+    topic,
+    hookTr: "Motivasyon bekleme. Başla.",
+    hookEn: "Do not wait for motivation. Start.",
+    scriptTr: "Motivasyon her gün gelmez. Ama disiplin, istemediğin günlerde bile seni harekete geçirir. Küçük bir adım at, sözünü tut ve devam et. Başarı, tekrar ettiğin seçimlerle oluşur.",
+    scriptEn: "Motivation does not show up every day. Discipline keeps you moving even when you do not feel like it. Take one small step, keep your promise, and continue. Success is built by the choices you repeat.",
+    scenesTr: [
+      "Siyah-beyaz stickman alarmı kapatmak ister; ekranda büyük geri sayım başlar.",
+      "Stickman kararsız kalır, sonra ayağa kalkar; kamera hızla yaklaşır.",
+      "Stickman masasına oturur ve ilk küçük görevini tamamlar.",
+      "Zaman hızlandırılmış geçişle akar; stickman çalışmayı sürdürür.",
+      "Stickman ilerlemesini görür; küçük adımlar ekranda birikir.",
+      "Stickman kameraya döner; ekranda Disiplin > Motivasyon yazısı belirir."
+    ],
+    scenesEn: [
+      "A black-and-white stickman reaches to silence an alarm; a bold countdown appears.",
+      "The stickman hesitates, then gets up; the camera quickly pushes in.",
+      "The stickman sits at a desk and completes one small task.",
+      "Time passes in a fast-motion transition while the stickman keeps working.",
+      "The stickman notices progress as small completed steps add up on screen.",
+      "The stickman faces the camera as the words Discipline > Motivation appear."
+    ],
+    captionTr: "Disiplin, motivasyondan daha güçlüdür.",
+    captionEn: "Discipline is stronger than motivation.",
+    durationSeconds: Math.max(10, Math.min(90, Number(durationSeconds) || 15))
+  };
+}
 export async function askLocalAI(message, history = [], onProgress = () => {}, environment = null, mode = "chat", memory = []) {
   const value = String(message || "").trim();
   if (!value) throw new Error("Mesaj boş.");
@@ -1763,18 +1795,25 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
     try {
       onProgress({ stage:"video-production", text:"YouTube kanal ayarları kontrol ediliyor..." });
       await desktopCall("youtube_studio_get_profile", {});
-      const planResponse = await runChatCompletionWithTimeout(localEngine, {
-        messages: [
-          { role:"system", content:"Sen AURA video senaryo hazırlayıcısısın. Kullanıcı briefine göre yalnızca geçerli JSON döndür; Markdown veya açıklama ekleme. Alanlar: topic, hookTr, hookEn, scriptTr, scriptEn, scenesTr (dizi), scenesEn (dizi), captionTr, captionEn. Türkçe ve İngilizce aynı hikâyeyi anlatsın. Süreye uygun kısa seslendirme ve 4–12 görselleştirilebilir sahne üret. Kullanıcının final mesajını captionTr alanında aynen koru." },
-          { role:"user", content:"Süre: "+requestedDuration+" saniye. Brief:\n"+value }
-        ],
-        temperature:0.2, top_p:0.8, max_tokens:900, stream:false
-      }, 120000, "video senaryosu hazırlama");
-      const rawPlan = String(planResponse && planResponse.choices && planResponse.choices[0] && planResponse.choices[0].message && planResponse.choices[0].message.content || "").trim();
-      const jsonText = rawPlan.replace(/^```(?:json)?\s*/i,"").replace(/\s*```$/,"");
-      const start = jsonText.indexOf("{"), end = jsonText.lastIndexOf("}");
-      if (start < 0 || end <= start) throw new Error("Senaryo modeli geçerli JSON planı döndürmedi.");
-      const generated = JSON.parse(jsonText.slice(start,end+1));
+
+      let generated;
+      try {
+        const planResponse = await runChatCompletionWithTimeout(localEngine, {
+          messages: [
+            { role:"system", content:"Sen AURA video senaryo hazırlayıcısısın. Kullanıcı briefine göre yalnızca geçerli JSON döndür; Markdown veya açıklama ekleme. Alanlar: topic, hookTr, hookEn, scriptTr, scriptEn, scenesTr (dizi), scenesEn (dizi), captionTr, captionEn. Türkçe ve İngilizce aynı hikâyeyi anlatsın. Süreye uygun kısa seslendirme ve 4–12 görselleştirilebilir sahne üret. Kullanıcının final mesajını captionTr alanında aynen koru." },
+            { role:"user", content:"Süre: "+requestedDuration+" saniye. Brief:\n"+value }
+          ],
+          temperature:0.2, top_p:0.8, max_tokens:650, stream:false
+        }, 45000, "video senaryosu hazırlama");
+        const rawPlan = String(planResponse && planResponse.choices && planResponse.choices[0] && planResponse.choices[0].message && planResponse.choices[0].message.content || "").trim();
+        const jsonText = rawPlan.replace(/^\x60\x60\x60(?:json)?\s*/i,"").replace(/\s*\x60\x60\x60$/,"");
+        const jsonStart = jsonText.indexOf("{"), jsonEnd = jsonText.lastIndexOf("}");
+        if (jsonStart < 0 || jsonEnd <= jsonStart) throw new Error("Senaryo modeli geçerli JSON planı döndürmedi.");
+        generated = JSON.parse(jsonText.slice(jsonStart,jsonEnd+1));
+      } catch (generationError) {
+        onProgress({ stage:"video-production", text:"Yerel AI senaryoyu zamanında hazırlayamadı; hızlı yerleşik senaryo şablonu kullanılıyor..." });
+        generated = buildFallbackVideoPlan(value, requestedDuration);
+      }
       const plan = {
         topic:String(generated.topic || "Disiplin ve motivasyon").trim(),
         hookTr:String(generated.hookTr || "").trim(),
