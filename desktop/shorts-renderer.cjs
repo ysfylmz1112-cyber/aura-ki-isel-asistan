@@ -50,27 +50,38 @@ function html(plan,lang,audio){
 
 module.exports=async function renderShorts(plan,options={}){
  const {desktopRoot,isAllowedPath,confirmAction,renderVideo,renderSpeech}=options;
- if(!plan||!plan.scriptTr||!plan.scriptEn)throw Error('Türkçe ve İngilizce senaryo gerekli.');
+ if(!plan||typeof plan!=='object')throw Error('Geçerli bir Shorts planı gerekli.');
+ const scriptTr=String(plan.scriptTr||'').trim(),scriptEn=String(plan.scriptEn||'').trim(),topic=String(plan.topic||'').trim();
+ if(!topic||!scriptTr||!scriptEn)throw Error('Konu, Türkçe senaryo ve İngilizce senaryo boş olamaz.');
  if(![desktopRoot,isAllowedPath,confirmAction,renderVideo,renderSpeech].every(v=>typeof v==='function'))throw Error('Video/ses altyapısı hazır değil.');
- const duration=Number(plan.durationSeconds)||35;
+ const requestedDuration=Number(plan.durationSeconds),duration=Number.isFinite(requestedDuration)&&requestedDuration!==0?requestedDuration:35;
  if(duration<10||duration>90)throw Error('Video süresi 10–90 saniye arasında olmalı.');
- const dir=path.resolve(desktopRoot(),'AURA-YouTube','Shorts',new Date().toISOString().slice(0,10)+'-'+slug(plan.topic)+'-'+String(plan.id||'draft').slice(0,8));
+ const safePlan={...plan,topic,scriptTr:scriptTr.slice(0,1000),scriptEn:scriptEn.slice(0,1000)};
+ for(const key of ['scenesTr','scenesEn'])safePlan[key]=Array.isArray(plan[key])?plan[key].slice(0,16).map(v=>String(v||'').trim().slice(0,700)).filter(Boolean):[];
+ const dir=path.resolve(desktopRoot(),'AURA-YouTube','Shorts',new Date().toISOString().slice(0,10)+'-'+slug(topic)+'-'+String(plan.id||'draft').slice(0,8));
  if(!isAllowedPath(dir))throw Error('Çıktı klasörü izinli değil.');
  if(!await confirmAction('AURA — Shorts video oluşturma','AURA Türkçe ve İngilizce, sahne geçişli, altyazılı, seslendirmeli iki dikey video oluşturacak.\n\n'+dir+'\n\nYalnızca bilgisayara kaydedilecek; YouTube’a yüklenmeyecek.'))throw Error('Video oluşturma iptal edildi.');
- await fs.mkdir(dir,{recursive:true});const outputs=[];
- for(const lang of ['tr','en']){
-  const text=String(lang==='tr'?plan.scriptTr:plan.scriptEn).slice(0,1000),speech=await renderSpeech(text,lang);
-  if(!speech?.base64||speech.base64.length<100)throw Error(lang+' seslendirme üretilemedi.');
-  const result=await renderVideo(html(plan,lang,speech.base64),{width:540,height:960,durationSeconds:duration,maxDurationSeconds:90});
-  const bytes=Buffer.isBuffer(result)?result:Buffer.from(result?.base64||'','base64');
-  if(bytes.length<1500||bytes.subarray(0,4).toString('hex')!=='1a45dfa3')throw Error(lang+' WebM doğrulaması başarısız.');
-  const name=lang==='tr'?'shorts-turkce.webm':'shorts-english.webm',target=path.join(dir,name);
-  await fs.writeFile(target,bytes,{flag:'wx'});await fs.writeFile(path.join(dir,lang==='tr'?'seslendirme-turkce.txt':'voiceover-english.txt'),text,{flag:'wx'});
-  const subtitlePath=path.join(dir,lang==='tr'?'altyazi-turkce.srt':'subtitles-english.srt');
-  await fs.writeFile(subtitlePath,makeSrt(text,result?.durationSeconds||duration),'utf8');
-  outputs.push({language:lang,path:target,bytes:bytes.length,hasAudio:true,voice:speech.voiceName||'Windows varsayılan sesi',durationSeconds:result?.durationSeconds||duration,subtitlePath});
+ await fs.mkdir(path.dirname(dir),{recursive:true});
+ await fs.mkdir(dir);
+ const outputs=[];
+ try{
+  for(const lang of ['tr','en']){
+   const text=lang==='tr'?safePlan.scriptTr:safePlan.scriptEn,speech=await renderSpeech(text,lang);
+   if(!speech?.base64||speech.base64.length<100)throw Error(lang+' seslendirme üretilemedi.');
+   const result=await renderVideo(html(safePlan,lang,speech.base64),{width:540,height:960,durationSeconds:duration,maxDurationSeconds:90});
+   const bytes=Buffer.isBuffer(result)?result:Buffer.from(result?.base64||'','base64');
+   if(bytes.length<1500||bytes.subarray(0,4).toString('hex')!=='1a45dfa3')throw Error(lang+' WebM doğrulaması başarısız.');
+   const name=lang==='tr'?'shorts-turkce.webm':'shorts-english.webm',target=path.join(dir,name);
+   await fs.writeFile(target,bytes,{flag:'wx'});await fs.writeFile(path.join(dir,lang==='tr'?'seslendirme-turkce.txt':'voiceover-english.txt'),text,{flag:'wx'});
+   const subtitlePath=path.join(dir,lang==='tr'?'altyazi-turkce.srt':'subtitles-english.srt');
+   await fs.writeFile(subtitlePath,makeSrt(text,result?.durationSeconds||duration),'utf8');
+   outputs.push({language:lang,path:target,bytes:bytes.length,hasAudio:true,voice:speech.voiceName||'Windows varsayılan sesi',durationSeconds:result?.durationSeconds||duration,subtitlePath});
+  }
+  const manifest={topic,createdAt:new Date().toISOString(),format:'WebM 540x960 (9:16)',character:'consistent 2D stickman',visuals:'procedural parallax city backgrounds, animated character, scene cards and timed subtitles',outputs,publishingEnabled:false};
+  await fs.writeFile(path.join(dir,'video-bilgisi.json'),JSON.stringify(manifest,null,2));
+  return {ok:true,folder:dir,outputs,manifest,message:'Türkçe ve İngilizce seslendirmeli, altyazılı Shorts videoları oluşturuldu. YouTube’a yüklenmedi.'};
+ }catch(error){
+  await fs.rm(dir,{recursive:true,force:true}).catch(()=>{});
+  throw error;
  }
- const manifest={topic:plan.topic,createdAt:new Date().toISOString(),format:'WebM 540x960 (9:16)',character:'consistent 2D stickman',visuals:'procedural parallax city backgrounds, animated character, scene cards and timed subtitles',outputs,publishingEnabled:false};
- await fs.writeFile(path.join(dir,'video-bilgisi.json'),JSON.stringify(manifest,null,2));
- return {ok:true,folder:dir,outputs,manifest,message:'Türkçe ve İngilizce seslendirmeli, altyazılı Shorts videoları oluşturuldu. YouTube’a yüklenmedi.'};
 };
