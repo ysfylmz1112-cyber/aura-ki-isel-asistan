@@ -156,7 +156,7 @@ test("renderer starts model warmup promptly with a bounded idle wait", () => {
 });
 
 test("AI core version matches the current desktop release", () => {
-  assert.match(source, /const AURA_CORE_VERSION = ['"]6.4.3['"]/);
+  assert.match(source, /const AURA_CORE_VERSION = ['\"]6.4.7['\"]/);
 });
 
 test("stream collector emits incremental text and returns a compatible final message", async () => {
@@ -379,8 +379,9 @@ test("explicit Shorts requests always enter the render pipeline instead of reply
 
 
 
+
 test("Shorts script generation has a deterministic fallback with bilingual scenes", () => {
-  const helper = extract("function buildFallbackVideoPlan(", "\nexport async function askLocalAI");
+  const helper = extract("function extractVideoTopic(", "\nexport async function askLocalAI");
   const sandbox = {};
   vm.runInNewContext(helper + "\nthis.buildFallbackVideoPlan = buildFallbackVideoPlan;", sandbox);
   const plan = sandbox.buildFallbackVideoPlan("15 saniyelik video\nKonu: Disiplin, motivasyondan daha güçlüdür.", 15);
@@ -392,5 +393,47 @@ test("Shorts script generation has a deterministic fallback with bilingual scene
   assert.equal(plan.durationSeconds, 15);
   assert.match(source, /\}, 45000, "video senaryosu hazırlama"\)/);
   assert.match(source, /buildFallbackVideoPlan\(value, requestedDuration\)/);
-  assert.match(source, /max_tokens:650, stream:false/);
+  assert.match(source, /max_tokens:1200, stream:false/);
+});
+
+test("video fallback keeps the requested topic instead of defaulting to discipline", () => {
+  const helper = extract("function extractVideoTopic(", "\nexport async function askLocalAI");
+  const sandbox = {};
+  vm.runInNewContext(helper + "\nthis.buildFallbackVideoPlan = buildFallbackVideoPlan;", sandbox);
+  const plan = sandbox.buildFallbackVideoPlan("15 saniyelik video\nKonu: Otobüste mahsur kalan stickman", 15);
+  assert.match(plan.topic, /Otobüste mahsur kalan stickman/);
+  assert.match(plan.scenesTr.join(" "), /Otobüste mahsur kalan stickman/);
+});
+
+test("video storyboard prompt explicitly locks every scene to the user's topic and language", () => {
+  assert.match(source, /kullanıcının verdiği ana konuyu asla değiştirme/i);
+  assert.match(source, /dilleri karıştırma/i);
+  assert.match(source, /max_tokens:1200, stream:false/);
+});
+
+test("Windows speech refuses cross-language fallback voices", () => {
+  const mainSource = fs.readFileSync(path.join(__dirname, "..", "desktop", "main.cjs"), "utf8");
+  assert.match(mainSource, /if\(\$v\.Count -eq 0\).*Yanlış dilde seslendirme yapılmadı/);
+  assert.doesNotMatch(mainSource, /istenen dil paketi yok; varsayılan ses kullanıldı/);
+});
+
+test("Shorts renderer chooses scene-specific environments and character actions", () => {
+  const shortsSource = fs.readFileSync(path.join(__dirname, "..", "desktop", "shorts-renderer.cjs"), "utf8");
+  assert.match(shortsSource, /function sceneKind\(i\)/);
+  assert.match(shortsSource, /palettes=\{desk:/);
+  assert.match(shortsSource, /celebrate=/);
+  assert.match(shortsSource, /sitting=/);
+});
+
+test("Windows TTS promise is syntactically closed and returns the requested language metadata", () => {
+  const mainSource = fs.readFileSync(path.join(__dirname, "..", "desktop", "main.cjs"), "utf8");
+  assert.match(mainSource, /resolve\(String\(stdout\|\|''\)\.trim\(\)\)\)\);/);
+  assert.match(mainSource, /bytes:bytes\.length,language/);
+});
+
+
+test("video manifest accurately describes scene-specific environments", () => {
+  const shortsSource = fs.readFileSync(path.join(__dirname, "..", "desktop", "shorts-renderer.cjs"), "utf8");
+  assert.match(shortsSource, /scene-specific vector environments/);
+  assert.doesNotMatch(shortsSource, /procedural parallax city backgrounds/);
 });

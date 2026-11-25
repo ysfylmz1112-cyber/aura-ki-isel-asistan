@@ -33,7 +33,7 @@ const CODE_LARGE_MODEL_ID = "Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC";
 const CODE_FALLBACK_MODEL_ID = CODE_MODEL_ID;
 const WEB_MODEL_ID = CHAT_MODEL_ID;
 const DESKTOP_MODEL_ID = CHAT_MODEL_ID;
-const AURA_CORE_VERSION = '6.4.3';
+const AURA_CORE_VERSION = '6.4.7';
 
 function desktopAvailable() {
   return !!globalThis.auraDesktop?.isDesktop;
@@ -1664,34 +1664,49 @@ function isUpdateRequestIntent(value) {
 }
 
 
+function extractVideoTopic(brief, fallbackTopic) {
+  const text = String(brief || "").replace(/\\r/g, "");
+  const explicit = text.match(/(?:konu|tema)\\s*[:：]\\s*([^\\n.!?]+)/i);
+  if (explicit && explicit[1].trim()) return explicit[1].trim().slice(0, 160);
+  const about = text.match(/(?:hakkında|konulu|konusunda)\\s+([^.!?\\n]+)/i);
+  if (about && about[1].trim()) return about[1].trim().slice(0, 160);
+  const cleaned = text
+    .replace(/\\b\\d+\\s*saniyelik\\b/gi, " ")
+    .replace(/\\b(9:16|dikey|youtube|shorts|video|oluştur|olustur|üret|uret|hazırla|hazirla|yap|türkçe|turkce|ingilizce|seslendirmeli|altyazılı|altyazili|stickman|stickmanli|sticman|geri sayımlı|geri sayimli|masaüstüne kaydet|masaustune kaydet)\\b/gi, " ")
+    .replace(/[.,;:!?]+/g, " ")
+    .replace(/\\s+/g, " ")
+    .trim();
+  if (cleaned.length >= 3) return cleaned.slice(0, 160);
+  return String(fallbackTopic || "").trim().slice(0, 160);
+}
+
 function buildFallbackVideoPlan(brief, durationSeconds) {
-  const text = String(brief || "");
-  const topicMatch = text.match(/(?:konu|tema)\s*:\s*([^\n.]+)/i);
-  const topic = (topicMatch && topicMatch[1] || "Disiplin, motivasyondan daha güçlüdür").trim().slice(0, 160);
+  const topic = extractVideoTopic(brief, "Kullanıcının seçtiği konu");
+  const topicSafe = topic.replace(/[.!?]+$/g, "");
   return {
-    topic,
-    hookTr: "Motivasyon bekleme. Başla.",
-    hookEn: "Do not wait for motivation. Start.",
-    scriptTr: "Motivasyon her gün gelmez. Ama disiplin, istemediğin günlerde bile seni harekete geçirir. Küçük bir adım at, sözünü tut ve devam et. Başarı, tekrar ettiğin seçimlerle oluşur.",
-    scriptEn: "Motivation does not show up every day. Discipline keeps you moving even when you do not feel like it. Take one small step, keep your promise, and continue. Success is built by the choices you repeat.",
+    topic: topicSafe,
+    hookTr: topicSafe + ": küçük bir karar her şeyi değiştirebilir.",
+    hookEn: topicSafe + ": one small decision can change everything.",
+    scriptTr: topicSafe + " konusunda sonucu beklemek yetmez. İlk küçük adımı şimdi at. Zorlandığında neden başladığını hatırla. Her sahnede biraz daha ilerle ve başladığın işi tamamla.",
+    scriptEn: "When it comes to " + topicSafe + ", waiting for a result is not enough. Take the first small step now. When it gets difficult, remember why you started. Move forward one scene at a time and finish what you began.",
     scenesTr: [
-      "Siyah-beyaz stickman alarmı kapatmak ister; ekranda büyük geri sayım başlar.",
-      "Stickman kararsız kalır, sonra ayağa kalkar; kamera hızla yaklaşır.",
-      "Stickman masasına oturur ve ilk küçük görevini tamamlar.",
-      "Zaman hızlandırılmış geçişle akar; stickman çalışmayı sürdürür.",
-      "Stickman ilerlemesini görür; küçük adımlar ekranda birikir.",
-      "Stickman kameraya döner; ekranda Disiplin > Motivasyon yazısı belirir."
+      topicSafe + " ile ilgili güçlü bir açılış görüntüsü; stickman karar vermek üzere durur.",
+      "Stickman, " + topicSafe + " konusunda ilk engelle karşılaşır.",
+      "Yakın plan: stickman somut bir ilk adım atar.",
+      "Hareketli geçiş: çaba ve ilerleme görünür hale gelir.",
+      "Stickman önceki haline göre ilerlediğini fark eder.",
+      "Final: stickman kameraya döner; " + topicSafe + " mesajı ekranda belirir."
     ],
     scenesEn: [
-      "A black-and-white stickman reaches to silence an alarm; a bold countdown appears.",
-      "The stickman hesitates, then gets up; the camera quickly pushes in.",
-      "The stickman sits at a desk and completes one small task.",
-      "Time passes in a fast-motion transition while the stickman keeps working.",
-      "The stickman notices progress as small completed steps add up on screen.",
-      "The stickman faces the camera as the words Discipline > Motivation appear."
+      "A strong opening image about " + topicSafe + "; the stickman pauses before making a decision.",
+      "The stickman faces the first challenge related to " + topicSafe + ".",
+      "Close-up: the stickman takes one concrete first step.",
+      "A dynamic transition makes the effort and progress visible.",
+      "The stickman notices how far they have moved forward.",
+      "Final: the stickman faces the camera as the message about " + topicSafe + " appears."
     ],
-    captionTr: "Disiplin, motivasyondan daha güçlüdür.",
-    captionEn: "Discipline is stronger than motivation.",
+    captionTr: topicSafe,
+    captionEn: topicSafe,
     durationSeconds: Math.max(10, Math.min(90, Number(durationSeconds) || 15))
   };
 }
@@ -1808,10 +1823,10 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
       try {
         const planResponse = await runChatCompletionWithTimeout(localEngine, {
           messages: [
-            { role:"system", content:"Sen AURA video senaryo hazırlayıcısısın. Kullanıcı briefine göre yalnızca geçerli JSON döndür; Markdown veya açıklama ekleme. Alanlar: topic, hookTr, hookEn, scriptTr, scriptEn, scenesTr (dizi), scenesEn (dizi), captionTr, captionEn. Türkçe ve İngilizce aynı hikâyeyi anlatsın. Süreye uygun kısa seslendirme ve 4–12 görselleştirilebilir sahne üret. Kullanıcının final mesajını captionTr alanında aynen koru." },
+            { role:"system", content:"Sen AURA video senaryo ve storyboard motorusun. Kullanıcının verdiği ana konuyu asla değiştirme ve başka bir konuya geçme. Önce briefteki asıl konuyu belirle; tüm anlatım, karakter eylemleri ve sahneler yalnızca bu konuya bağlı olsun. Her sahne farklı, somut ve çizilebilir bir olay anlatsın; yalnızca genel motivasyon cümleleri veya aynı karakterin tekrar tekrar durması olmasın. Türkçe metinlerin tamamı doğal Türkçe, İngilizce metinlerin tamamı doğal İngilizce olsun; dilleri karıştırma. İki dil aynı hikâyenin doğru uyarlaması olsun. Yalnızca geçerli JSON döndür, Markdown veya açıklama ekleme. Alanlar: topic, hookTr, hookEn, scriptTr, scriptEn, scenesTr (dizi), scenesEn (dizi), captionTr, captionEn. Süreye uygun kısa seslendirme ve 4–8 farklı, görselleştirilebilir sahne üret. Kullanıcının final mesajını captionTr alanında aynen koru." },
             { role:"user", content:"Süre: "+requestedDuration+" saniye. Brief:\n"+value }
           ],
-          temperature:0.2, top_p:0.8, max_tokens:650, stream:false
+          temperature:0.1, top_p:0.75, max_tokens:1200, stream:false
         }, 45000, "video senaryosu hazırlama");
         const rawPlan = String(planResponse && planResponse.choices && planResponse.choices[0] && planResponse.choices[0].message && planResponse.choices[0].message.content || "").trim();
         const jsonText = rawPlan.replace(/^\x60\x60\x60(?:json)?\s*/i,"").replace(/\s*\x60\x60\x60$/,"");
@@ -1823,7 +1838,7 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         generated = buildFallbackVideoPlan(value, requestedDuration);
       }
       const plan = {
-        topic:String(generated.topic || "Disiplin ve motivasyon").trim(),
+        topic:extractVideoTopic(value, generated.topic || "Kullanıcının seçtiği konu"),
         hookTr:String(generated.hookTr || "").trim(),
         hookEn:String(generated.hookEn || "").trim(),
         scriptTr:String(generated.scriptTr || "").trim(),
