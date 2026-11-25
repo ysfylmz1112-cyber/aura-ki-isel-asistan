@@ -72,7 +72,7 @@ module.exports=async function renderShorts(plan,options={}){
    await fs.writeFile(subtitlePath,makeSrt(text,result?.durationSeconds||duration),'utf8');
    outputs.push({language:lang,path:target,bytes:bytes.length,hasAudio:true,voice:speech.voiceName||'Windows varsayılan sesi',durationSeconds:result?.durationSeconds||duration,subtitlePath});
   }
-  const manifest={topic,createdAt:new Date().toISOString(),format:'WebM 540x960 (9:16)',character:'consistent 2D stickman',visuals:'procedural parallax city backgrounds, animated character, scene cards and timed subtitles',outputs,publishingEnabled:false};
+  const manifest={topic,createdAt:new Date().toISOString(),format:'WebM 540x960 (9:16)',character:'consistent 2D stickman',visuals:'scene-specific vector environments (desk, field, bedroom, bus, gym, classroom, road and city), action-aware Stickman animation, scene cards and timed subtitles',outputs,publishingEnabled:false};
   await fs.writeFile(path.join(dir,'video-bilgisi.json'),JSON.stringify(manifest,null,2));
   return {ok:true,folder:dir,outputs,manifest,message:'Türkçe ve İngilizce seslendirmeli, altyazılı Shorts videoları oluşturuldu. YouTube’a yüklenmedi.'};
  }catch(error){
