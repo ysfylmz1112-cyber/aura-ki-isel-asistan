@@ -442,3 +442,9 @@ test("renderer contains no orphaned legacy scene fragments", () => {
   assert.doesNotMatch(shortsSource, /const sunX=405\+Math\.sin\(t\*\.08\+i\)\*18/);
   assert.doesNotMatch(shortsSource, /function drawStickman\(t,i\)[\\s\\S]*?x\.beginPath\(\);x\.arc\(0,-125,34/);
 });
+
+test("renderer scene-specific function strings remain comma-separated array entries", () => {
+  const shortsSource = fs.readFileSync(path.join(__dirname, "..", "desktop", "shorts-renderer.cjs"), "utf8");
+  assert.match(shortsSource, /function sceneKind\(i\)[\\s\\S]*?,\\n  \"function drawStickman/);
+  assert.match(shortsSource, /function drawStickman\(t,i\)[\\s\\S]*?,\\n  'function sceneText/);
+});
