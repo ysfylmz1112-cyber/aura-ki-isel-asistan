@@ -431,3 +431,9 @@ test("Windows TTS promise is syntactically closed and returns the requested lang
   assert.match(mainSource, /bytes:bytes\.length,language/);
 });
 
+
+test("video manifest accurately describes scene-specific environments", () => {
+  const shortsSource = fs.readFileSync(path.join(__dirname, "..", "desktop", "shorts-renderer.cjs"), "utf8");
+  assert.match(shortsSource, /scene-specific vector environments/);
+  assert.doesNotMatch(shortsSource, /procedural parallax city backgrounds/);
+});
