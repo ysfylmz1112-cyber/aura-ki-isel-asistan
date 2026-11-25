@@ -369,7 +369,7 @@ test("Shorts script generation has a deterministic fallback with bilingual scene
   assert.equal(plan.scenesTr.length, 6);
   assert.equal(plan.scenesEn.length, 6);
   assert.equal(plan.durationSeconds, 15);
-  assert.match(source, /video senaryosu hazırlama\);[\s\S]*?\}, 45000,/);
+  assert.match(source, /\\}, 45000, "video senaryosu hazırlama"\\)/);
   assert.match(source, /buildFallbackVideoPlan\(value, requestedDuration\)/);
   assert.match(source, /max_tokens:650, stream:false/);
 });
