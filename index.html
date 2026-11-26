@@ -1878,6 +1878,22 @@ async function run(q) {
       }
       return;
     }
+    // One-word AURA update command: bypass the local model and call the real desktop updater.
+    const auraUpdateRequest = /^(?:güncelle|güncellemeyi yükle|aurayı güncelle|aura'yı güncelle|aura güncelle|son sürümü yükle|en son sürümü yükle)$/i.test(
+      q.toLocaleLowerCase("tr-TR").replace(/[.!?]+$/,"").trim()
+    );
+    if (auraUpdateRequest) {
+      try {
+        if (!hasDesktopAgent()) throw new Error("Otomatik güncelleme için kurulu AURA Desktop uygulaması açık olmalı.");
+        const result = await callDesktop("desktop_update_latest", {});
+        const message = String(result?.message || (result?.ok ? "AURA güncelleme kontrolü tamamlandı." : "AURA güncellemesi başlatılamadı."));
+        if (myGeneration===runGeneration) finish(q, message, false);
+      } catch (error) {
+        if (myGeneration===runGeneration) finish(q, "AURA güncelleme hatası: " + String(error?.message || error), false);
+      }
+      return;
+    }
+
     const diagnosticsDirect=isDiagnosticsRequest(q);
     const quick = quickLocalAnswer(q);
     if (diagnosticsDirect) {
