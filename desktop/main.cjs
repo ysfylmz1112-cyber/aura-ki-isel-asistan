@@ -2714,7 +2714,7 @@ async function renderMarketingVideo(html, options = {}) {
 async function renderShortsVideo(html, options = {}) {
   const duration = Math.max(10, Math.min(90, Number(options.maxDurationSeconds || options.durationSeconds) || 35));
   const view = new BrowserWindow({
-    show:false, width:540, height:960, paintWhenInitiallyHidden:true,
+    show:false, width:720, height:1280, paintWhenInitiallyHidden:true,
     webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:false}
   });
   let timeoutId=null;

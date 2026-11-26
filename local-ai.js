@@ -1673,40 +1673,73 @@ function extractVideoTopic(brief, fallbackTopic) {
   const cleaned = text
     .replace(/\\b\\d+\\s*saniyelik\\b/gi, " ")
     .replace(/\\b(9:16|dikey|youtube|shorts|video|oluştur|olustur|üret|uret|hazırla|hazirla|yap|türkçe|turkce|ingilizce|seslendirmeli|altyazılı|altyazili|stickman|stickmanli|sticman|geri sayımlı|geri sayimli|masaüstüne kaydet|masaustune kaydet)\\b/gi, " ")
-    .replace(/[.,;:!?]+/g, " ")
-    .replace(/\\s+/g, " ")
-    .trim();
-  if (cleaned.length >= 3) return cleaned.slice(0, 160);
-  return String(fallbackTopic || "").trim().slice(0, 160);
+    .replace(/[.,;:!?]+/g, " ").replace(/\\s+/g, " ").trim();
+  return (cleaned.length >= 3 ? cleaned : String(fallbackTopic || "")).slice(0, 160);
 }
 
 function buildFallbackVideoPlan(brief, durationSeconds) {
-  const topic = extractVideoTopic(brief, "Kullanıcının seçtiği konu");
-  const topicSafe = topic.replace(/[.!?]+$/g, "");
+  const topic = extractVideoTopic(brief, "Seçilen konu").replace(/[.!?]+$/g, "");
+  const t = topic.toLocaleLowerCase("tr-TR");
+  let scenesTr, scenesEn, scriptTr, scriptEn;
+  if (/disiplin|motivasyon|alışkanlık|aliskanlik/.test(t)) {
+    scenesTr = [
+      "Sabah alarmı çalar; stickman ertelemek yerine yataktan kalkar.",
+      "Stickman masasına oturur ve telefonunu uzağa bırakır.",
+      "Saat ilerlerken stickman tek bir göreve odaklanır.",
+      "Zorlandığı anda durur, nefes alır ve çalışmaya geri döner.",
+      "Takvimde tamamlanan günleri işaretler; ilerleme görünür.",
+      "Stickman kameraya döner: motivasyon bekleme, disiplinle devam et."
+    ];
+    scenesEn = [
+      "The morning alarm rings; the stickman gets up instead of snoozing.",
+      "The stickman sits at a desk and puts the phone away.",
+      "Time passes as the stickman focuses on one task.",
+      "When the task gets difficult, the stickman resets and continues.",
+      "Completed days are marked on a calendar to show steady progress.",
+      "The stickman faces the camera: do not wait for motivation, keep going with discipline."
+    ];
+    scriptTr = "Alarm çaldığında erteleme. Telefonu bırak ve tek bir işe başla. Zorlandığında vazgeçme; kısa bir mola verip geri dön. Her gün küçük bir adım at. Çünkü motivasyon değişir, disiplin seni ilerletir.";
+    scriptEn = "When the alarm rings, do not hit snooze. Put the phone away and start one task. When it gets difficult, take a short break and return. Make one small step every day. Motivation changes, but discipline keeps you moving.";
+  } else if (/futbol|football|soccer/.test(t)) {
+    scenesTr = ["Stickman boş futbol sahasına girer ve topu önüne alır.","Top sürme çalışırken koniler arasından geçer.","Duvara pas verir ve topu kontrol eder.","Şut çeker; top kaleye doğru ilerler.","Antrenman sonrası notlarına gelişimini yazar.","Sahadan çıkarken bir sonraki antrenman hedefini gösterir."];
+    scenesEn = ["The stickman enters an empty football field and places the ball down.","The stickman dribbles through training cones.","The stickman passes against a wall and controls the rebound.","The stickman shoots as the ball travels toward goal.","After practice, the stickman records progress in a notebook.","The stickman leaves the pitch with a clear next training goal."];
+    scriptTr = "Gelişim bir anda gelmez. Önce top kontrolünü çalış. Sonra paslarını tekrarla. Şutlarını dene ve hatalarını not et. Her antrenmanda bir ayrıntıyı geliştir. Sahada farkı düzenli çalışma yaratır.";
+    scriptEn = "Progress does not happen overnight. Start with ball control. Repeat your passing, practice your shots, and note your mistakes. Improve one detail at every session. Consistent practice makes the difference on the pitch.";
+  } else if (/otobüs|otobus|bus/.test(t)) {
+    scenesTr = ["Stickman otobüse biner ve boş koltuk arar.","Otobüs hareket eder; stickman durağı kaçırdığını fark eder.","Telefonunda güzergâhı kontrol eder.","Şoföre yaklaşarak doğru durak hakkında soru sorar.","Bir sonraki durakta iner ve çevresini kontrol eder.","Stickman doğru yola ulaşır ve rahatlar."];
+    scenesEn = ["The stickman boards a bus and looks for an empty seat.","The bus moves and the stickman realizes the stop was missed.","The stickman checks the route on a phone.","The stickman asks the driver about the correct stop.","The stickman gets off at the next stop and checks the surroundings.","The stickman finds the right way and relaxes."];
+    scriptTr = "Otobüse bindin, ama durağını kaçırdın. Önce panik yapma. Güzergâhı kontrol et ve şoföre danış. İlk güvenli durakta inip yönünü yeniden bul. Küçük bir aksilik bütün yolculuğu mahvetmez.";
+    scriptEn = "You get on the bus, but miss your stop. Do not panic. Check the route and ask the driver. Get off at the next safe stop and find your way again. One small setback does not ruin the whole journey.";
+  } else if (/oyun|gaming|minecraft|oyuncu/.test(t)) {
+    scenesTr = ["Stickman bilgisayarında oyunu açar ve hedefini belirler.","Ekranda ilk zorluk belirir; stickman dikkatle inceler.","Stickman farklı bir strateji dener.","İlk deneme başarısız olur; stickman hatasını fark eder.","Yeni taktikle görevi tamamlar.","Stickman sonucunu gösterir ve sıradaki hedefi belirler."];
+    scenesEn = ["The stickman opens a game on the computer and sets a goal.","The first challenge appears and the stickman studies it.","The stickman tries a different strategy.","The first attempt fails, and the stickman spots the mistake.","A new tactic helps the stickman complete the challenge.","The stickman shows the result and sets the next goal."];
+    scriptTr = "Oyunda ilerlemek için sadece hızlı olmak yetmez. Önce görevi anla. Bir strateji dene. Olmazsa hatanı bul ve taktiğini değiştir. Her denemeden bir şey öğren. Sonraki turda daha hazırlıklı olursun.";
+    scriptEn = "Getting better at a game is not only about being fast. Understand the objective first. Try a strategy. If it fails, find the mistake and change your approach. Learn from every attempt and be better prepared next round.";
+  } else {
+    scenesTr = [
+      topic + " ile ilgili dikkat çekici bir açılış: stickman konuyu gösteren nesnenin yanında belirir.",
+      "Stickman " + topic + " için gereken ilk somut adımı atar.",
+      "Yakın plan: konuyla ilgili araç veya ayrıntı ekranda görünür.",
+      "İlk engel ortaya çıkar; stickman farklı bir yöntem dener.",
+      "Yöntem işe yarar ve sonuç görsel olarak belirir.",
+      "Final: stickman elde ettiği sonucu gösterir ve konunun ana mesajı ekranda belirir."
+    ];
+    scenesEn = [
+      "A strong opening about " + topic + ": the stickman appears beside an object representing the topic.",
+      "The stickman takes the first concrete step related to " + topic + ".",
+      "Close-up of a tool or detail directly connected to the topic.",
+      "An obstacle appears, and the stickman tries a different approach.",
+      "The approach works and the result becomes visible.",
+      "Final: the stickman shows the result and the key message about " + topic + " appears."
+    ];
+    scriptTr = topic + " için önce neye ulaşmak istediğini belirle. İlk adımı küçük ve net tut. Karşına çıkan engeli incele, yöntemini gerektiğinde değiştir. İlerlemeni kontrol et ve öğrendiğini uygula. Sonuç, doğru adımları sürdürünce ortaya çıkar.";
+    scriptEn = "First, decide what you want to achieve with " + topic + ". Keep the first step small and clear. Study each obstacle and adjust your approach when needed. Check your progress and apply what you learn. Results come from continuing the right steps.";
+  }
+  if (scenesTr.length) scenesTr[0] = topic + ": " + scenesTr[0];
+  if (scenesEn.length) scenesEn[0] = topic + ": " + scenesEn[0];
   return {
-    topic: topicSafe,
-    hookTr: topicSafe + ": küçük bir karar her şeyi değiştirebilir.",
-    hookEn: topicSafe + ": one small decision can change everything.",
-    scriptTr: topicSafe + " konusunda sonucu beklemek yetmez. İlk küçük adımı şimdi at. Zorlandığında neden başladığını hatırla. Her sahnede biraz daha ilerle ve başladığın işi tamamla.",
-    scriptEn: "When it comes to " + topicSafe + ", waiting for a result is not enough. Take the first small step now. When it gets difficult, remember why you started. Move forward one scene at a time and finish what you began.",
-    scenesTr: [
-      topicSafe + " ile ilgili güçlü bir açılış görüntüsü; stickman karar vermek üzere durur.",
-      "Stickman, " + topicSafe + " konusunda ilk engelle karşılaşır.",
-      "Yakın plan: stickman somut bir ilk adım atar.",
-      "Hareketli geçiş: çaba ve ilerleme görünür hale gelir.",
-      "Stickman önceki haline göre ilerlediğini fark eder.",
-      "Final: stickman kameraya döner; " + topicSafe + " mesajı ekranda belirir."
-    ],
-    scenesEn: [
-      "A strong opening image about " + topicSafe + "; the stickman pauses before making a decision.",
-      "The stickman faces the first challenge related to " + topicSafe + ".",
-      "Close-up: the stickman takes one concrete first step.",
-      "A dynamic transition makes the effort and progress visible.",
-      "The stickman notices how far they have moved forward.",
-      "Final: the stickman faces the camera as the message about " + topicSafe + " appears."
-    ],
-    captionTr: topicSafe,
-    captionEn: topicSafe,
+    topic, hookTr: topic + ": ilk adımı şimdi at.", hookEn: topic + ": take the first step now.",
+    scriptTr, scriptEn, scenesTr, scenesEn, captionTr: topic, captionEn: topic,
     durationSeconds: Math.max(10, Math.min(90, Number(durationSeconds) || 15))
   };
 }
@@ -1834,7 +1867,22 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         if (jsonStart < 0 || jsonEnd <= jsonStart) throw new Error("Senaryo modeli geçerli JSON planı döndürmedi.");
         generated = JSON.parse(jsonText.slice(jsonStart,jsonEnd+1));
       } catch (generationError) {
-        onProgress({ stage:"video-production", text:"Yerel AI senaryoyu zamanında hazırlayamadı; hızlı yerleşik senaryo şablonu kullanılıyor..." });
+        onProgress({ stage:"video-production", text:"Senaryo modeli yanıt veremedi; konuya özel güvenli taslak hazırlanıyor..." });
+        generated = buildFallbackVideoPlan(value, requestedDuration);
+      }
+      // Never pass a wrong-language or off-topic model response into the renderer.
+      const requestedTopic = extractVideoTopic(value, generated.topic || "Seçilen konu");
+      const trText = [generated.scriptTr, ...(Array.isArray(generated.scenesTr) ? generated.scenesTr : [])].join(" ");
+      const enText = [generated.scriptEn, ...(Array.isArray(generated.scenesEn) ? generated.scenesEn : [])].join(" ");
+      const hasTurkish = /\\b(ve|bir|için|icin|bu|şimdi|simdi|sonra|çünkü|cunku|değil|degil|olarak|her|daha|önce|once|başla|basla|devam)\\b|[çğıöşüİ]/i.test(trText);
+      const hasEnglish = /\\b(the|and|you|your|with|when|this|that|first|then|because|keep|start|from|into|every)\\b/i.test(enText);
+      const topicWords = requestedTopic.toLocaleLowerCase("tr-TR").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").split(/[^a-z0-9]+/).filter(word => word.length > 3 && !["video","shorts","stickman","sticman","turkce","ingilizce","saniyelik"].includes(word));
+      const generatedText = (trText + " " + enText + " " + String(generated.topic || "")).toLocaleLowerCase("tr-TR").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"");
+      const topicHits = topicWords.filter(word => generatedText.includes(word)).length;
+      const topicIsRelevant = topicWords.length === 0 || topicHits >= Math.min(2, topicWords.length);
+      const scenesAreUsable = Array.isArray(generated.scenesTr) && generated.scenesTr.length >= 4 && Array.isArray(generated.scenesEn) && generated.scenesEn.length >= 4;
+      if (!hasTurkish || !hasEnglish || !topicIsRelevant || !scenesAreUsable || !String(generated.scriptTr || "").trim() || !String(generated.scriptEn || "").trim()) {
+        onProgress({ stage:"video-production", text:"Dil veya konu kontrolü başarısız; yanlış video yerine konuya özel Türkçe/İngilizce senaryo hazırlanıyor..." });
         generated = buildFallbackVideoPlan(value, requestedDuration);
       }
       const plan = {
