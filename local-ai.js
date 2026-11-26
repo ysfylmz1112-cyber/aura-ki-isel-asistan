@@ -1735,6 +1735,8 @@ function buildFallbackVideoPlan(brief, durationSeconds) {
     scriptTr = topic + " için önce neye ulaşmak istediğini belirle. İlk adımı küçük ve net tut. Karşına çıkan engeli incele, yöntemini gerektiğinde değiştir. İlerlemeni kontrol et ve öğrendiğini uygula. Sonuç, doğru adımları sürdürünce ortaya çıkar.";
     scriptEn = "First, decide what you want to achieve with " + topic + ". Keep the first step small and clear. Study each obstacle and adjust your approach when needed. Check your progress and apply what you learn. Results come from continuing the right steps.";
   }
+  if (scenesTr.length) scenesTr[0] = topic + ": " + scenesTr[0];
+  if (scenesEn.length) scenesEn[0] = topic + ": " + scenesEn[0];
   return {
     topic, hookTr: topic + ": ilk adımı şimdi at.", hookEn: topic + ": take the first step now.",
     scriptTr, scriptEn, scenesTr, scenesEn, captionTr: topic, captionEn: topic,
