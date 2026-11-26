@@ -39,7 +39,7 @@ jobs:
       - name: Verify installer exists
         shell: pwsh
         run: |
-          $installer = Get-ChildItem -Path desktop/dist -Filter "AURA-*-Setup.exe" -File | Select-Object -First 1
+          $installer = Get-Item -Path "desktop/dist/AURA-Setup.exe" -ErrorAction SilentlyContinue
           if (-not $installer) { throw "AURA installer was not generated." }
           Write-Host "Installer: $($installer.FullName)"
           Write-Host "Size: $($installer.Length) bytes"
@@ -48,6 +48,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: AURA-Windows-Installer
-          path: desktop/dist/AURA-*-Setup.exe
+          path: desktop/dist/AURA-Setup.exe
           if-no-files-found: error
           retention-days: 14

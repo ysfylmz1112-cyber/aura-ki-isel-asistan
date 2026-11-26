@@ -66,8 +66,8 @@ jobs:
           $version = node -p "require('./package.json').version"
           $tag = "v$version"
           $files = @(
-            "dist/AURA-$version-Setup.exe",
-            "dist/AURA-$version-Setup.exe.blockmap",
+            "dist/AURA-Setup.exe",
+            "dist/AURA-Setup.exe.blockmap",
             "dist/latest.yml"
           )
           foreach ($file in $files) {

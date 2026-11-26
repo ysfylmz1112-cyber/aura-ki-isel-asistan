@@ -1,6 +1,6 @@
 {
   "name": "aura-desktop",
-  "version": "6.4.7",
+  "version": "6.4.8",
   "private": true,
   "description": "AURA local desktop AI assistant with bilingual Shorts video studio",
   "main": "main.cjs",
@@ -26,7 +26,7 @@
   "build": {
     "appId": "com.aura.personalassistant",
     "productName": "AURA",
-    "artifactName": "AURA-${version}-Setup.exe",
+    "artifactName": "AURA-Setup.exe",
     "directories": {
       "output": "dist",
       "buildResources": "build"
