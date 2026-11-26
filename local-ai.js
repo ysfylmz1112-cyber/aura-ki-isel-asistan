@@ -1865,7 +1865,22 @@ export async function askLocalAI(message, history = [], onProgress = () => {}, e
         if (jsonStart < 0 || jsonEnd <= jsonStart) throw new Error("Senaryo modeli geçerli JSON planı döndürmedi.");
         generated = JSON.parse(jsonText.slice(jsonStart,jsonEnd+1));
       } catch (generationError) {
-        onProgress({ stage:"video-production", text:"Yerel AI senaryoyu zamanında hazırlayamadı; hızlı yerleşik senaryo şablonu kullanılıyor..." });
+        onProgress({ stage:"video-production", text:"Senaryo modeli yanıt veremedi; konuya özel güvenli taslak hazırlanıyor..." });
+        generated = buildFallbackVideoPlan(value, requestedDuration);
+      }
+      // Never pass a wrong-language or off-topic model response into the renderer.
+      const requestedTopic = extractVideoTopic(value, generated.topic || "Seçilen konu");
+      const trText = [generated.scriptTr, ...(Array.isArray(generated.scenesTr) ? generated.scenesTr : [])].join(" ");
+      const enText = [generated.scriptEn, ...(Array.isArray(generated.scenesEn) ? generated.scenesEn : [])].join(" ");
+      const hasTurkish = /\\b(ve|bir|için|icin|bu|şimdi|simdi|sonra|çünkü|cunku|değil|degil|olarak|her|daha|önce|once|başla|basla|devam)\\b|[çğıöşüİ]/i.test(trText);
+      const hasEnglish = /\\b(the|and|you|your|with|when|this|that|first|then|because|keep|start|from|into|every)\\b/i.test(enText);
+      const topicWords = requestedTopic.toLocaleLowerCase("tr-TR").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").split(/[^a-z0-9]+/).filter(word => word.length > 3 && !["video","shorts","stickman","sticman","turkce","ingilizce","saniyelik"].includes(word));
+      const generatedText = (trText + " " + enText + " " + String(generated.topic || "")).toLocaleLowerCase("tr-TR").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"");
+      const topicHits = topicWords.filter(word => generatedText.includes(word)).length;
+      const topicIsRelevant = topicWords.length === 0 || topicHits >= Math.min(2, topicWords.length);
+      const scenesAreUsable = Array.isArray(generated.scenesTr) && generated.scenesTr.length >= 4 && Array.isArray(generated.scenesEn) && generated.scenesEn.length >= 4;
+      if (!hasTurkish || !hasEnglish || !topicIsRelevant || !scenesAreUsable || !String(generated.scriptTr || "").trim() || !String(generated.scriptEn || "").trim()) {
+        onProgress({ stage:"video-production", text:"Dil veya konu kontrolü başarısız; yanlış video yerine konuya özel Türkçe/İngilizce senaryo hazırlanıyor..." });
         generated = buildFallbackVideoPlan(value, requestedDuration);
       }
       const plan = {
