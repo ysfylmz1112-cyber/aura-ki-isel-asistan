@@ -687,10 +687,21 @@ function isWeatherRequest(q){
   return /^(?:aura[, ]*)?(?:bugün|bugun|şu an|su an|şimdi|simdi)?\s*(?:istanbul|ankara|izmir|bursa|antalya|adana|konya|gaziantep|diyarbakır|diyarbakir|kayseri|mersin|trabzon|samsun|eskişehir|eskisehir|londra|berlin|paris|roma|tokyo|new york)?\s*(?:için\s*)?(?:hava(?: durumu)?|hava nasıl|hava nasil|sıcaklık|sicaklik|kaç derece|kac derece|weather)\b/.test(x) ||
     /^(?:aura[, ]*)?(?:bugün|bugun|şu an|su an|şimdi|simdi)?\s*(?:hava(?: durumu)?|hava nasıl|hava nasil|sıcaklık|sicaklik|kaç derece|kac derece|weather)\b/.test(x);
 }
+function isVideoCreationRequest(q){
+  const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
+  return /(?:video|shorts|stickman|animasyon|klip|reels)/i.test(x) &&
+    /(?:oluştur|olustur|hazırla|hazirla|yap|üret|uret|render|sahne|seslendirme|altyazı|altyazi)/i.test(x);
+}
 function isReminderRequest(q){
   const x=String(q||"").toLocaleLowerCase("tr-TR").trim();
-  return /(?:hatırlat|hatirlat|hatırlatıcı|hatirlatici)/.test(x) &&
-    /(?:sonra|dakika|saat|yarın|yarin|bugün|bugun|hatırlat|hatirlat)/.test(x);
+  // A video prompt may ask for an on-screen like/subscribe reminder. That is
+  // content direction, not a scheduled reminder for the user.
+  if(isVideoCreationRequest(x)) return false;
+  const reminderIntent =
+    /(?:bana.{0,100}hatırlat|bana.{0,100}hatirlat|hatırlatıcı(?:yı)?\s*(?:kur|oluştur|olustur|ekle)|hatirlaticiyi?\s*(?:kur|olustur|ekle)|hatırlatma(?:yı)?\s*(?:kur|oluştur|olustur)|hatirlatmayi?\s*(?:kur|olustur))/.test(x);
+  const hasTime =
+    /(?:\d+\s*(?:dakika|dk|saat)\s*sonra|yarın|yarin|bugün\s*(?:saat\s*)?\d{1,2}(?::\d{2})?)/.test(x);
+  return reminderIntent && (hasTime || /bana.{0,100}hatırlat|bana.{0,100}hatirlat/.test(x));
 }
 function parseReminderRequest(q){
   const raw=String(q||"").trim();
