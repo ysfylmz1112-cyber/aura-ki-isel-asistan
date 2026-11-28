@@ -360,8 +360,10 @@ test("explicit update command requests silent install and automatic restart", ()
   const mainPath = path.join(__dirname, "..", "desktop", "main.cjs");
   const mainSource = fs.readFileSync(mainPath, "utf8");
   assert.match(mainSource, /case 'desktop_update_latest': return checkAuraLatestUpdate\(\{installWhenReady:true\}\)/);
-  assert.match(mainSource, /autoUpdater\.quitAndInstall\(false, true\)/);
-  assert.match(mainSource, /if \(auraUpdateInstallRequested\) installDownloadedAuraUpdate\(\)/);
+  assert.match(mainSource, /autoUpdater\.quitAndInstall\(true, true\)/);
+  assert.match(mainSource, /auraUpdateInstallRequested = true;[\s\S]*?installDownloadedAuraUpdate\(\);/);
+  assert.match(mainSource, /auraActiveRenderJobs > 0/);
+  assert.match(mainSource, /backgroundTasks\.size > 0/);
   assert.doesNotMatch(mainSource, /buttons: \['Şimdi yeniden başlat', 'Daha sonra'\]/);
 });
 
