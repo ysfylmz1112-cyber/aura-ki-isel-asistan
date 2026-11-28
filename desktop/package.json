@@ -1,6 +1,6 @@
 {
   "name": "aura-desktop",
-  "version": "6.4.12",
+  "version": "6.4.13",
   "private": true,
   "description": "AURA local desktop AI assistant with bilingual Shorts video studio",
   "main": "main.cjs",

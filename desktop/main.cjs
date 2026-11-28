@@ -125,7 +125,7 @@ function startAURAUpdater() {
         if (Notification.isSupported()) {
           new Notification({
             title: 'AURA güncellemesi hazır',
-            body: 'Güncelleme indirildi. "En son sürümü yükle" dediğinde AURA kurulumu kendi tamamlayacak.'
+            body: 'Güncelleme indirildi. AURA, güvenli olması için bir sonraki kapanışında otomatik kurulacak ve yeniden açılacak. EXE indirmen gerekmiyor.'
           }).show();
         }
       } catch (error) {
@@ -139,11 +139,19 @@ function startAURAUpdater() {
     console.error('[AURA updater] update error:', error);
   });
 
+  // Check once shortly after startup, then periodically while AURA is open.
   setTimeout(() => {
     checkAuraLatestUpdate().catch(error => {
-      console.error('[AURA updater] check failed:', error);
+      console.error('[AURA updater] startup check failed:', error);
     });
   }, 8000);
+
+  const updateCheckInterval = setInterval(() => {
+    checkAuraLatestUpdate().catch(error => {
+      console.error('[AURA updater] scheduled check failed:', error);
+    });
+  }, 6 * 60 * 60 * 1000);
+  updateCheckInterval.unref?.();
 }
 // Chromium'un Electron içindeki Web Speech servisinin etkinleştirilmesini destekle.
 const PROD_URL = 'https://aura-ki-isel-asistan.vercel.app/';
