@@ -1,3 +1,4 @@
+# Rebuild the existing stable release when this workflow changes.
 name: Publish AURA Windows Update
 
 on:
