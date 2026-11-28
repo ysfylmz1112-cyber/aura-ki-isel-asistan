@@ -89,7 +89,17 @@ async function checkAuraLatestUpdate(options = {}) {
         installDownloadedAuraUpdate();
         return { ok:true, status:'installing', currentVersion, latestVersion:auraDownloadedUpdateInfo.version, message:'İndirilen güncelleme otomatik kuruluyor. AURA yeniden açılacak.' };
       }
-      return { ok:true, status:'up-to-date', currentVersion, latestVersion:currentVersion, message:'AURA zaten en son sürümde.' };
+      if (latestVersion !== currentVersion) {
+        console.warn('[AURA updater] feed version differs but updater reported no update:', { currentVersion, latestVersion });
+        return {
+          ok:false,
+          status:'update-metadata-mismatch',
+          currentVersion,
+          latestVersion,
+          message:'Güncelleme sunucusu AURA ' + latestVersion + ' sürümünü gösteriyor ancak indirme başlatılamadı. Güncelleme kontrolü tekrar denenmeli.'
+        };
+      }
+      return { ok:true, status:'up-to-date', currentVersion, latestVersion, message:'AURA ' + currentVersion + ' zaten en son sürümde.' };
     }
     return {
       ok:true,
@@ -106,6 +116,14 @@ async function checkAuraLatestUpdate(options = {}) {
 function startAURAUpdater() {
   if (!app.isPackaged) return;
 
+  // Set the GitHub feed explicitly instead of relying only on packaged app-update.yml.
+  // This keeps the updater pointed at the public stable release repository.
+  autoUpdater.setFeedURL({
+    provider: 'github',
+    owner: 'ysfylmz1112-cyber',
+    repo: 'aura-ki-isel-asistan',
+    releaseType: 'release'
+  });
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
   autoUpdater.allowDowngrade = false;
