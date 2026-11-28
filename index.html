@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#05070b">
+<meta name="theme-color" content="#ffffff">
 <title>AURA — Kişisel Asistan</title>
 <style>
 :root{
@@ -310,6 +310,82 @@ html,body{
 .core[data-state="speaking"] .orbit-one,.core[data-state="speaking"] .orbit-two{animation-duration:3.5s}
 @media(max-width:600px){.core{width:290px;height:290px}}
 @media(prefers-reduced-motion:reduce){.core-orbit,.core-back-rings,.core-light-streaks,.coreGlow{animation:none!important}}
+
+
+/* AURA 6.4.16 · sade beyaz arayüz */
+:root{
+  color-scheme:light;
+  --bg:#f5f7fa;--bg2:#ffffff;--side:#ffffff;--panel:#ffffff;--panel2:#f8fafc;
+  --line:#e5e9ef;--text:#202938;--muted:#778294;
+  --accent:#269fbd;--accent2:#7587d8;--ok:#15966b;--danger:#d94b62;
+}
+html,body{background:#f5f7fa!important;color:#202938!important}
+.app{background:#f5f7fa!important;grid-template-columns:232px minmax(0,1fr)!important}
+.sidebar{background:#fff!important;border-right:1px solid #e7ebf0!important;box-shadow:none!important}
+.sideTop{padding:18px 16px 12px!important}
+.brand{color:#202938!important}
+.logo{border-color:#b9dce5!important;background:#f0fbfd!important;box-shadow:none!important}
+.logo:after{background:#269fbd!important;box-shadow:0 0 10px #269fbd55!important}
+.brandSub,.sideLabel{color:#8a94a3!important}
+.newChat{background:#f5fafc!important;border:1px solid #dce8ed!important;color:#344354!important;box-shadow:none!important}
+.newChat:hover{background:#eaf5f8!important;transform:none!important}
+.nav{color:#657184!important;border-color:transparent!important}
+.nav:hover{background:#f4f7fa!important;color:#263446!important;transform:none!important}
+.nav.active{background:#eaf5f8!important;color:#167e99!important;border-color:#d7ebf0!important;box-shadow:inset 3px 0 #269fbd!important}
+.nav.active .ico,.ico{color:#6f8792!important}
+.sideDivider{background:#edf0f4!important}
+.pcState{color:#15966b!important}
+.dot{box-shadow:none!important}
+.stat{background:#f8fafc!important;border:1px solid #e9edf2!important;box-shadow:none!important}
+.stat span,.tinyRow,.footer{color:#8993a1!important}
+.stat b,.tinyRow b{color:#354255!important}
+.sideBottom{border-top:1px solid #edf0f4!important}
+.usageText{color:#7c8796!important}
+.historyItem:hover{background:#f4f7fa!important}
+.historyItem b{color:#344154!important}.historyItem small{color:#8b95a2!important}
+.main{background:#f5f7fa!important}
+.topbar{background:rgba(255,255,255,.96)!important;border-bottom:1px solid #e7ebf0!important;box-shadow:none!important;backdrop-filter:blur(12px)}
+.modelName{color:#263446!important}.modelMeta{color:#8490a0!important}
+.coreDot{background:#269fbd!important;box-shadow:0 0 0 4px #269fbd18!important}
+.btn{background:#fff!important;border:1px solid #e1e7ed!important;color:#526174!important;box-shadow:none!important}
+.btn:hover{background:#f5f8fa!important;border-color:#cbd8e0!important;color:#263446!important;transform:none!important}
+.btn.primary{background:#eaf6f9!important;border-color:#cce8ef!important;color:#167e99!important}
+.status{background:#effaf5!important;border-color:#d4efe1!important;color:#16865f!important}
+.workspace{grid-template-rows:minmax(270px,36vh) minmax(0,1fr)!important}
+.coreStage{background:linear-gradient(180deg,#fff 0%,#f7fafc 100%)!important}
+.coreStage:before{border-color:#dce9ee!important;box-shadow:0 0 90px #269fbd0a!important}
+.coreStage:after{border-color:#e7eaf4!important}
+.core{filter:drop-shadow(0 10px 24px #4e8ea51a)!important}
+.coreText b{background:none!important;color:#263746!important;-webkit-text-fill-color:#263746!important;text-shadow:none!important}
+.coreText small{color:#8095a0!important;text-shadow:none!important}
+.coreLabelTop,.coreLabelLive,.coreLabelBottom{color:#81919b!important}
+.modeBadgeTop{color:#269fbd!important}
+.weatherMini{background:#fff!important;border:1px solid #e7edf1!important;box-shadow:0 4px 16px #1f34400a!important}
+.weatherMini span,.weatherMini small{color:#8793a0!important}
+.weatherMini b{color:#354255!important}
+.hudRail,.dataStream{display:none!important}
+.chatStage{background:#fff!important;border-top:1px solid #e7ebf0!important}
+.chatWrap{background:#fff!important}
+.welcome h1{color:#263446!important}.welcome p{color:#8994a2!important}
+.msg{color:#354255!important}
+.msg:not(.me):not(.error) b{color:#1687a2!important}
+.msg.me{background:#f1f6f8!important;border:1px solid #e0e9ed!important;color:#334255!important;box-shadow:none!important}
+.msg.error{background:#fff3f4!important;border-color:#f2d9de!important;color:#a33d50!important}
+.composerArea{background:linear-gradient(180deg,#ffffff00,#fff 25%)!important}
+.composer{background:#fff!important;border:1px solid #dfe6ec!important;border-radius:14px!important;box-shadow:0 5px 22px #2637460b!important}
+.input{color:#263446!important}.input::placeholder{color:#9aa4b0!important}
+.send{background:#eaf6f9!important;color:#167e99!important;border:1px solid #d6ebf0!important}
+.modeBadge{background:#f3f6f8!important;color:#728091!important}
+.chip,.commandTag{background:#f7fafb!important;border:1px solid #e6edf0!important;color:#647486!important}
+.chip:hover,.commandTag:hover{background:#edf5f7!important;color:#286477!important}
+.helper{color:#9aa4af!important}
+.qrModal{background:#24334266!important}
+.qrPanel{background:#fff!important;border:1px solid #e4eaf0!important;box-shadow:0 24px 70px #24334222!important;color:#263446!important}
+.qrHead small,.qrHint{color:#7d8998!important}
+.qrClose{background:#f2f5f7!important;color:#405064!important}
+.qrUrl{background:#f6fafb!important;border-color:#e2eaee!important;color:#167e99!important}
+@media(max-width:900px){.sidebar{display:none!important}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 
 </style>
 </head><body><div class="app">
