@@ -20,9 +20,24 @@ let auraUpdateCheckPromise = null;
 let auraDownloadedUpdateInfo = null;
 let auraUpdateInstallRequested = false;
 let auraUpdateInstallStarted = false;
+let auraUpdateInstallTimer = null;
+let auraActiveRenderJobs = 0;
 
 function installDownloadedAuraUpdate() {
   if (!auraUpdateInstallRequested || !auraDownloadedUpdateInfo || auraUpdateInstallStarted) return false;
+
+  // Never close AURA while a video render or tracked background process is running.
+  if (auraActiveRenderJobs > 0 || (typeof backgroundTasks !== 'undefined' && backgroundTasks.size > 0)) {
+    if (!auraUpdateInstallTimer) {
+      auraUpdateInstallTimer = setTimeout(() => {
+        auraUpdateInstallTimer = null;
+        installDownloadedAuraUpdate();
+      }, 5000);
+      auraUpdateInstallTimer.unref?.();
+    }
+    return false;
+  }
+
   auraUpdateInstallStarted = true;
   const version = String(auraDownloadedUpdateInfo.version || 'yeni sürüm');
   try {
@@ -37,7 +52,8 @@ function installDownloadedAuraUpdate() {
   }
   setTimeout(() => {
     try {
-      autoUpdater.quitAndInstall(false, true);
+      // Silent NSIS update: no installer wizard or manual EXE interaction.
+      autoUpdater.quitAndInstall(true, true);
     } catch (error) {
       auraUpdateInstallStarted = false;
       console.error('[AURA updater] automatic install failed:', error);
@@ -119,19 +135,10 @@ function startAURAUpdater() {
   autoUpdater.on('update-downloaded', (info) => {
     auraDownloadedUpdateInfo = info || {};
     console.log('[AURA updater] update downloaded:', info?.version);
-    if (auraUpdateInstallRequested) installDownloadedAuraUpdate();
-    else {
-      try {
-        if (Notification.isSupported()) {
-          new Notification({
-            title: 'AURA güncellemesi hazır',
-            body: 'Güncelleme indirildi. AURA, güvenli olması için bir sonraki kapanışında otomatik kurulacak ve yeniden açılacak. EXE indirmen gerekmiyor.'
-          }).show();
-        }
-      } catch (error) {
-        console.warn('[AURA updater] notification failed:', error);
-      }
-    }
+    // Download completion now automatically schedules installation.
+    // The installer waits for active renders/background tasks to finish.
+    auraUpdateInstallRequested = true;
+    installDownloadedAuraUpdate();
   });
 
   autoUpdater.on('error', (error) => {
@@ -2701,6 +2708,7 @@ async function renderMarketingVideo(html, options = {}) {
     }
   });
   let timeoutId = null;
+  auraActiveRenderJobs++;
   try {
     await view.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(String(html || '')));
     const renderPromise = view.webContents.executeJavaScript('window.__auraRender()', true);
@@ -2715,6 +2723,7 @@ async function renderMarketingVideo(html, options = {}) {
   } finally {
     if (timeoutId) clearTimeout(timeoutId);
     if (!view.isDestroyed()) view.destroy();
+    auraActiveRenderJobs = Math.max(0, auraActiveRenderJobs - 1);
   }
 }
 
@@ -2726,6 +2735,7 @@ async function renderShortsVideo(html, options = {}) {
     webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:false}
   });
   let timeoutId=null;
+  auraActiveRenderJobs++;
   try {
     await view.loadURL('data:text/html;charset=utf-8,'+encodeURIComponent(String(html||'')));
     const renderPromise=view.webContents.executeJavaScript('window.__auraRender()',true);
@@ -2735,7 +2745,11 @@ async function renderShortsVideo(html, options = {}) {
     const bytes=Buffer.from(result.base64,'base64');
     if(bytes.length<1500||bytes.subarray(0,4).toString('hex')!=='1a45dfa3')throw new Error('Shorts WebM dosyası doğrulanamadı.');
     return {base64:result.base64,durationSeconds:result.durationSeconds||duration};
-  } finally { if(timeoutId)clearTimeout(timeoutId); if(!view.isDestroyed())view.destroy(); }
+  } finally {
+    if(timeoutId)clearTimeout(timeoutId);
+    if(!view.isDestroyed())view.destroy();
+    auraActiveRenderJobs = Math.max(0, auraActiveRenderJobs - 1);
+  }
 }
 
 async function renderSpeechWav(text, language='tr') {
